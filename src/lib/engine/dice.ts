@@ -171,14 +171,3 @@ export function skillCheck(modifier: number): RollResult {
     // { rolls: rolls, modifier: modifier, total: total }
     return { rolls, modifier, total };
 }
-
-
-// -----------------------------------------------------------------------------
-// Temporary manual tests: run with `node src/lib/engine/dice.ts`
-// These get replaced by real automated tests in issue #1.
-// -----------------------------------------------------------------------------
-console.log(rollDie(20));
-console.log(rollDice(3, 6));
-console.log(sumRolls([4, 5, 5]));
-console.log(roll(1, 10, 14));
-console.log(roll(2, 6, 0));
