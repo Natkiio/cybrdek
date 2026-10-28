@@ -1,4 +1,5 @@
 import type { Ruleset } from '#lib/engine/types.ts';
+import { red } from './red/index.ts';
 
-// Register rulesets here, e.g. import { carbon2185 } from './carbon2185';
-export const rulesets: Ruleset[] = [];
+// Every game system the app supports. Cyberpunk RED is the only one for v1.
+export const rulesets: Ruleset[] = [red];
