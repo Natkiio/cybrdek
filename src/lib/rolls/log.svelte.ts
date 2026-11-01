@@ -20,20 +20,23 @@ export interface RollEntry {
 }
 
 const storageKey = 'cybrdek:rolls';
-let hasLoaded = false;
-let rolls = $state<RollEntry[]>([]);
 
-function loadRolls(): void {
-	if (hasLoaded || typeof localStorage === 'undefined') return;
-	hasLoaded = true;
+/** Read saved rolls once, when this module first loads in the browser. */
+function loadSavedRolls(): RollEntry[] {
+	if (typeof localStorage === 'undefined') return [];
 
 	try {
 		const saved = JSON.parse(localStorage.getItem(storageKey) ?? '[]');
-		if (Array.isArray(saved)) rolls = capRolls(saved as RollEntry[]);
+		return Array.isArray(saved) ? capRolls(saved as RollEntry[]) : [];
 	} catch {
 		// A blocked or malformed browser storage value should never stop the app.
+		return [];
 	}
 }
+
+// Loaded eagerly, not lazily inside getRolls(): components call getRolls() inside
+// $derived, and Svelte 5 doesn't allow changing state while a $derived is computing.
+let rolls = $state<RollEntry[]>(loadSavedRolls());
 
 function saveRolls(): void {
 	if (typeof localStorage === 'undefined') return;
@@ -47,7 +50,6 @@ function saveRolls(): void {
 
 /** Add a roll to the front of the log and keep 20 entries per log. */
 export function logRoll(entry: Omit<RollEntry, 'id' | 'at'>): RollEntry {
-	loadRolls();
 	const newEntry: RollEntry = { ...entry, id: crypto.randomUUID(), at: Date.now() };
 	rolls = capRolls([newEntry, ...rolls]);
 	saveRolls();
@@ -56,13 +58,11 @@ export function logRoll(entry: Omit<RollEntry, 'id' | 'at'>): RollEntry {
 
 /** Reactive, newest first. Supplying an ID selects only that character's rolls. */
 export function getRolls(characterId?: string): RollEntry[] {
-	loadRolls();
 	return filterRolls(rolls, characterId);
 }
 
 /** Clear all rolls, or only the rolls belonging to one character. */
 export function clearRolls(characterId?: string): void {
-	loadRolls();
 	rolls = clearRollsFromEntries(rolls, characterId);
 	saveRolls();
 }

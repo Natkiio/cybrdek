@@ -3,12 +3,14 @@
 	import { page } from '$app/state';
 	import Panel from '#lib/components/Panel.svelte';
 	import RollLog from '#lib/components/RollLog.svelte';
+	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import HpTracker from '#lib/components/sheet/HpTracker.svelte';
-	import { rollDie, skillCheck, type RollResult } from '#lib/engine/dice.ts';
+	import { roll, rollDie, skillCheck, type RollResult } from '#lib/engine/dice.ts';
 	import type { Character } from '#lib/engine/types.ts';
 	import { logRoll, type RollKind } from '#lib/rolls/log.svelte.ts';
 	import { rulesets } from '#lib/rulesets/index.ts';
 	import { derivedStats } from '#lib/rulesets/red/derived.ts';
+	import { gearOf, isDamageCrit, parseDamage, type GearItem } from '#lib/rulesets/red/gear.ts';
 	import {
 		actionPenalty,
 		clampHp,
@@ -22,7 +24,13 @@
 	let character = $state<Character | undefined>(undefined);
 	let loaded = $state(false);
 	let showAllSkills = $state(false);
-	let lastRoll = $state<{ label: string; result: RollResult; crit: boolean; fumble: boolean } | null>(null);
+	let lastRoll = $state<{
+		label: string;
+		result: RollResult;
+		crit: boolean;
+		fumble: boolean;
+		note?: string;
+	} | null>(null);
 	let lastDeathSave = $state<DeathSaveResult | null>(null);
 	let saveError = $state('');
 
@@ -42,6 +50,7 @@
 	const deathSavePenalty = $derived(Number(character?.extra.deathSavePenalty ?? 0));
 	const wound = $derived(woundState(hp, maxHp));
 	const penalty = $derived(actionPenalty(wound));
+	const gear = $derived(character ? gearOf(character.extra) : []);
 
 	const skillGroups = $derived.by(() => {
 		if (!character || !ruleset) return [];
@@ -77,6 +86,35 @@
 		const result = skillCheck(base + penalty);
 		logRoll({ characterId: character?.id, label, kind, result });
 		lastRoll = { label, result, crit: result.rolls[0] === 10, fumble: result.rolls[0] === 1 };
+	}
+
+	/** Attack base for a weapon skill: STAT + skill level + wound penalty. */
+	function attackBase(skillId: string) {
+		const skill = ruleset?.skills.find((s) => s.id === skillId);
+		if (!character || !skill) return 0;
+		return (character.stats[skill.stat] ?? 0) + (character.skills[skillId] ?? 0) + penalty;
+	}
+
+	function attackWith(item: GearItem) {
+		const skill = ruleset?.skills.find((s) => s.id === item.skill);
+		const base = attackBase(item.skill ?? '') - penalty; // check() adds the penalty back
+		check(`${item.name}: attack${skill ? ` (${skill.name})` : ''}`, base, 'skill');
+	}
+
+	function rollDamage(item: GearItem) {
+		const dice = parseDamage(item.damage ?? '');
+		if (!dice) return;
+		const result = roll(dice.count, dice.sides, 0);
+		const crit = isDamageCrit(result.rolls);
+		const label = `${item.name}: damage`;
+		logRoll({ characterId: character?.id, label, kind: 'damage', result });
+		lastRoll = {
+			label,
+			result,
+			crit,
+			fumble: false,
+			note: crit ? 'CRITICAL INJURY · +5 bonus damage' : undefined
+		};
 	}
 
 	function rollDeathSave() {
@@ -123,7 +161,7 @@
 			<span class="label">{lastRoll.label}</span>
 			<span class="dice">[{lastRoll.result.rolls.join(', ')}] {signed(lastRoll.result.modifier)}</span>
 			<strong>{lastRoll.result.total}</strong>
-			{#if lastRoll.crit}<span class="tag">CRIT</span>{/if}
+			{#if lastRoll.note}<span class="tag">{lastRoll.note}</span>{:else if lastRoll.crit}<span class="tag">CRIT</span>{/if}
 			{#if lastRoll.fumble}<span class="tag">FUMBLE</span>{/if}
 			<button type="button" class="close" aria-label="Dismiss" onclick={() => (lastRoll = null)}>×</button>
 		</div>
@@ -196,6 +234,14 @@
 			</Panel>
 		</div>
 	</div>
+
+	<GearPanel
+		{gear}
+		{attackBase}
+		onchange={(next) => update({ gear: next })}
+		onattack={attackWith}
+		ondamage={rollDamage}
+	/>
 
 	<RollLog characterId={character.id} />
 {/if}
