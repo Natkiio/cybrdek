@@ -9,6 +9,7 @@
 	const nav = [
 		{ href: '/', label: 'HOME' },
 		{ href: '/characters', label: 'CHARS' },
+		{ href: '/dice', label: 'DICE' },
 		{ href: '/rules', label: 'RULES' }
 	];
 </script>
