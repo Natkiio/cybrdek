@@ -68,3 +68,23 @@ describe('character backups', () => {
 		if (!role.ok) expect(role.errors).toContain('Unknown role: legend.');
 	});
 });
+
+it('preserves equipped armor and independent ablated SP in a backup', () => {
+	const original = character();
+	original.extra.gear = [{ id: 'suit', kind: 'armor', name: 'Bodyweight Suit', location: 'both',
+		sp: 11, penalty: 0, equipped: true, currentSp: { head: 8, body: 10 } },
+		{ id: 'flak', kind: 'armor', name: 'Flak', location: 'body', sp: 15, penalty: -4, equipped: false }];
+	expect(parseCharacterFile(exportCharacter(original))).toEqual({ ok: true, character: original });
+});
+
+it('rejects invalid imported armor state but accepts legacy armor', () => {
+	const original = character();
+	const item = { id: 'a', kind: 'armor', name: 'Kevlar', location: 'head', sp: 7, penalty: 0 };
+	original.extra.gear = [item];
+	expect(parseCharacterFile(exportCharacter(original)).ok).toBe(true);
+	for (const bad of [{ sp: -1 }, { penalty: 4 }, { equipped: 'yes' },
+		{ location: 'legs' }, { currentSp: { head: 8 } }, { currentSp: { body: 1.5 } }]) {
+		original.extra.gear = [{ ...item, ...bad }];
+		expect(parseCharacterFile(exportCharacter(original)).ok).toBe(false);
+	}
+});

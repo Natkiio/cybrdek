@@ -1,3 +1,4 @@
+import { validArmorState } from '#lib/rulesets/red/armor.ts';
 import type { Character } from '#lib/engine/types.ts';
 import { rulesets } from '#lib/rulesets/index.ts';
 
@@ -118,6 +119,15 @@ export function parseCharacterFile(text: string): ParseResult {
 		!ruleset.roles.some((role) => role.id === extra.role)
 	) {
 		errors.push(`Unknown role: ${extra.role}.`);
+	}
+
+	// Gear stays in extra, so Dexie and version-1 backups preserve armor without a migration.
+	if (candidate.rulesetId === 'cyberpunk-red' && isPlainObject(extra) && Array.isArray(extra.gear)) {
+		for (const item of extra.gear) {
+			if (isPlainObject(item) && item.kind === 'armor' && !validArmorState(item)) {
+				errors.push('Armor must have a valid location, SP, penalty, equipment state and current SP.');
+			}
+		}
 	}
 
 	if (errors.length > 0) return { ok: false, errors };

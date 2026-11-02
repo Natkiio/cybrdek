@@ -24,7 +24,10 @@ export interface GearItem {
 	ammo?: number; // rounds loaded now
 	// armor
 	sp?: number; // Stopping Power
-	location?: ArmorLocation;
+	location?: ArmorLocation | 'both';
+	armorType?: string;
+	equipped?: boolean; // legacy armor is worn unless explicitly unequipped
+	currentSp?: Partial<Record<ArmorLocation, number>>; // absent = full SP
 	penalty?: number; // to REF, DEX and MOVE (negative or 0)
 }
 
@@ -65,7 +68,7 @@ export interface ArmorType {
 	penalty: number;
 }
 
-/** Core p. 97: armor types. Penalty applies to REF, DEX and MOVE. */
+/** Core p. 350: armor types. Penalty applies to REF, DEX and MOVE. */
 export const ARMOR_TYPES: ArmorType[] = [
 	{ id: 'leathers', name: 'Leathers', sp: 4, penalty: 0 },
 	{ id: 'kevlar', name: 'Kevlar', sp: 7, penalty: 0 },
@@ -93,7 +96,8 @@ export function weaponFromType(type: WeaponType, id: string, name = type.name): 
 
 /** New armor from a preset type. */
 export function armorFromType(type: ArmorType, id: string, location: ArmorLocation): GearItem {
-	return { id, kind: 'armor', name: type.name, sp: type.sp, penalty: type.penalty, location };
+	return { id, kind: 'armor', name: type.name, sp: type.sp, penalty: type.penalty,
+		armorType: type.id, location: type.id === 'bodyweight-suit' ? 'both' : location };
 }
 
 /** Simple damage dice like '3d6' or '1d10'. Returns null if it isn't NdM. */
@@ -123,8 +127,11 @@ export function validateGear(item: GearItem): string[] {
 		if (!item.rof || item.rof < 1) problems.push('ROF must be at least 1.');
 		if (item.magazine !== undefined && item.magazine < 1) problems.push('Magazine must be at least 1.');
 	}
-	if (item.kind === 'armor' && (item.sp === undefined || item.sp < 0 || item.sp > 30)) {
-		problems.push('SP must be 0–30.');
+	if (item.kind === 'armor') {
+		if (!Number.isInteger(item.sp) || item.sp! < 0 || item.sp! > 30) problems.push('SP must be a whole number from 0–30.');
+		if (item.penalty !== undefined && (!Number.isInteger(item.penalty) || item.penalty < -10 || item.penalty > 0)) problems.push('Penalty must be a whole number from −10 to 0.');
+		if (!['head', 'body', 'both'].includes(item.location ?? '')) problems.push('Choose an armor location.');
+		if (item.currentSp && Object.values(item.currentSp).some((sp) => !Number.isInteger(sp) || sp < 0 || sp > (item.sp ?? 0))) problems.push('Current SP must be between 0 and full SP; mark repaired before lowering full SP.');
 	}
 	if (item.kind === 'item' && item.quantity !== undefined && item.quantity < 0) {
 		problems.push("Quantity can't be negative.");
@@ -132,14 +139,8 @@ export function validateGear(item: GearItem): string[] {
 	return problems;
 }
 
-/** Best SP worn on each location (only the highest layer counts). */
-export function wornSp(gear: GearItem[]): Record<ArmorLocation, number> {
-	const best = { head: 0, body: 0 };
-	for (const g of gear) {
-		if (g.kind === 'armor' && g.location && (g.sp ?? 0) > best[g.location]) best[g.location] = g.sp ?? 0;
-	}
-	return best;
-}
+// Kept here for existing gear consumers; armor.ts owns the combat rules.
+export { wornSp } from './armor.ts';
 
 /** Read gear safely from a character's free-form `extra`. */
 export function gearOf(extra: Record<string, unknown>): GearItem[] {

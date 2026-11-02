@@ -4,17 +4,20 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import RollLog from '#lib/components/RollLog.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
+	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
+	import { armoredStats } from '#lib/rulesets/red/armor.ts';
 	import HpTracker from '#lib/components/sheet/HpTracker.svelte';
 	import { roll, rollDie, skillCheck, type RollResult } from '#lib/engine/dice.ts';
 	import type { Character } from '#lib/engine/types.ts';
 	import { logRoll, type RollKind } from '#lib/rolls/log.svelte.ts';
 	import { rulesets } from '#lib/rulesets/index.ts';
 	import { derivedStats } from '#lib/rulesets/red/derived.ts';
-	import { gearOf, isDamageCrit, parseDamage, type GearItem } from '#lib/rulesets/red/gear.ts';
+	import { gearOf, isDamageCrit, parseDamage, type ArmorLocation, type GearItem } from '#lib/rulesets/red/gear.ts';
 	import {
 		actionPenalty,
 		clampHp,
 		resolveDeathSave,
+		takeArmoredDamage,
 		woundedMove,
 		woundState,
 		type DeathSaveResult
@@ -52,6 +55,13 @@
 	const penalty = $derived(actionPenalty(wound));
 	const gear = $derived(character ? gearOf(character.extra) : []);
 
+	const effectiveStats = $derived(armoredStats(character?.stats ?? {}, gear));
+
+	function takeDamage(amount: number, location: ArmorLocation) {
+		const result = takeArmoredDamage(hp, maxHp, gear, amount, location);
+		void update({ currentHp: result.hp, gear: result.gear });
+	}
+
 	const skillGroups = $derived.by(() => {
 		if (!character || !ruleset) return [];
 		const levels = character.skills;
@@ -62,7 +72,7 @@
 					.filter((s) => s.category === category && (showAllSkills || (levels[s.id] ?? 0) > 0))
 					.map((s) => {
 						const level = levels[s.id] ?? 0;
-						const statValue = character!.stats[s.stat] ?? 0;
+						const statValue = effectiveStats[s.stat] ?? 0;
 						return { ...s, level, statValue, base: statValue + level };
 					})
 			}))
@@ -92,7 +102,7 @@
 	function attackBase(skillId: string) {
 		const skill = ruleset?.skills.find((s) => s.id === skillId);
 		if (!character || !skill) return 0;
-		return (character.stats[skill.stat] ?? 0) + (character.skills[skillId] ?? 0) + penalty;
+		return (effectiveStats[skill.stat] ?? 0) + (character.skills[skillId] ?? 0) + penalty;
 	}
 
 	function attackWith(item: GearItem) {
@@ -176,6 +186,7 @@
 				deathSave={sheet.deathSave}
 				{deathSavePenalty}
 				onchange={(next) => update({ currentHp: next })}
+				ondamage={takeDamage}
 				ondeathsave={rollDeathSave}
 				onresetpenalty={() => update({ deathSavePenalty: 0 })}
 			/>
@@ -191,7 +202,7 @@
 				<div class="stats">
 					{#each ruleset.stats as s (s.id)}
 						{@const value = character.stats[s.id]}
-						{@const shown = s.id === 'MOVE' ? woundedMove(value, wound) : value}
+						{@const shown = s.id === 'MOVE' ? Math.min(effectiveStats.MOVE, woundedMove(effectiveStats.MOVE, wound)) : effectiveStats[s.id]}
 						<button type="button" class="stat" onclick={() => check(s.id, shown, 'stat')} title={s.name}>
 							<span class="stat-id">{s.id}</span>
 							<span class="stat-value" class:reduced={shown !== value}>{shown}</span>
@@ -234,6 +245,8 @@
 			</Panel>
 		</div>
 	</div>
+
+	<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
 
 	<GearPanel
 		{gear}
