@@ -67,4 +67,17 @@ describe('character backups', () => {
 		if (!skill.ok) expect(skill.errors).toContain('Unknown skill: unknown.');
 		if (!role.ok) expect(role.errors).toContain('Unknown role: legend.');
 	});
+
+	it('keeps Improvement Points and their history', () => {
+		const original = character();
+		original.extra.ip = 40;
+		original.extra.ipLog = [{ kind: 'skill', target: 'handgun', from: 5, to: 6, cost: 120 }];
+		expect(parseCharacterFile(exportCharacter(original))).toEqual({ ok: true, character: original });
+	});
+
+	it.each([-5, 2.5, '40'])('rejects Improvement Points of %s', (ip) => {
+		const result = parseCharacterFile(fileWith((file) => ((file.character as Record<string, Record<string, unknown>>).extra.ip = ip)));
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.errors).toContain('Improvement Points must be a whole number of 0 or more.');
+	});
 });

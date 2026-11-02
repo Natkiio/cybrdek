@@ -119,6 +119,9 @@ export function parseCharacterFile(text: string): ParseResult {
 	) {
 		errors.push(`Unknown role: ${extra.role}.`);
 	}
+	if (isPlainObject(extra) && 'ip' in extra && !isWholeNumberInRange(extra.ip, 0, Number.MAX_SAFE_INTEGER)) {
+		errors.push('Improvement Points must be a whole number of 0 or more.');
+	}
 
 	if (errors.length > 0) return { ok: false, errors };
 
