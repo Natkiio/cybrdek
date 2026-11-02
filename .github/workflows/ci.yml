@@ -28,3 +28,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install browser for offline rulebook test
+        run: npx playwright install --with-deps chromium
+
+      - name: Offline rulebook browser test
+        run: npx playwright test

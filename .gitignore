@@ -26,3 +26,7 @@ vite.config.ts.timestamp-*
 static/rulebooks/
 src/lib/rules-content/
 *.pdf
+
+# Browser test output
+test-results/
+playwright-report/
