@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	awardIp,
+	isIpSpend,
 	ipLogOf,
 	ipOf,
 	IP_LOG_LIMIT,
@@ -151,5 +152,39 @@ describe('undoLastSpend', () => {
 
 	it('refuses if the level has changed since the spend', () => {
 		expect(undoLastSpend([spend], 20, 6).ok).toBe(false);
+	});
+});
+
+describe('bad saved data (Codex review of #34)', () => {
+	it('refuses to raise from an invalid rank or level', () => {
+		expect(raiseRole(-2, 20).ok).toBe(false); // used to "succeed" and give 80 IP
+		expect(raiseRole(4.5, 1000).ok).toBe(false);
+		expect(raiseSkill(handgun, -1, 1000).ok).toBe(false);
+		expect(raiseSkill(handgun, 11, 1000).ok).toBe(false);
+	});
+
+	it('refuses an invalid IP balance', () => {
+		expect(raiseSkill(handgun, 1, -50).ok).toBe(false);
+		expect(raiseSkill(handgun, 1, Number.NaN).ok).toBe(false);
+		expect(awardIp(Number.NaN, 10)).toBeNaN();
+	});
+
+	it('drops a history with a malformed entry instead of undoing it', () => {
+		const bad = { kind: 'skill', target: 'handgun', from: 4, to: 5, cost: '100' };
+		expect(ipLogOf({ ipLog: [bad] })).toEqual([]);
+		// Even if one slips through, undo won't turn the balance into a string.
+		expect(undoLastSpend([bad as unknown as IpSpend], 20, 5).ok).toBe(false);
+	});
+
+	it('checks spend shape, step and cost', () => {
+		const skillCost = (id: string) => (id === 'handgun' ? 1 : id === 'autofire' ? 2 : undefined);
+		expect(isIpSpend({ kind: 'skill', target: 'handgun', from: 4, to: 5, cost: 100 }, skillCost)).toBe(true);
+		expect(isIpSpend({ kind: 'skill', target: 'autofire', from: 2, to: 3, cost: 120 }, skillCost)).toBe(true);
+		expect(isIpSpend({ kind: 'role', target: 'role', from: 4, to: 5, cost: 300 })).toBe(true);
+		expect(isIpSpend({ kind: 'skill', target: 'nope', from: 4, to: 5, cost: 100 }, skillCost)).toBe(false);
+		expect(isIpSpend({ kind: 'skill', target: 'handgun', from: 4, to: 5, cost: 999 }, skillCost)).toBe(false);
+		expect(isIpSpend({ kind: 'role', target: 'role', from: 9, to: 10, cost: 600 })).toBe(true);
+		expect(isIpSpend({ kind: 'role', target: 'role', from: 10, to: 11, cost: 660 })).toBe(false);
+		expect(isIpSpend(null)).toBe(false);
 	});
 });

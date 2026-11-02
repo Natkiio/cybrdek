@@ -49,13 +49,13 @@ export type SpendResult =
 
 /** IP to raise a skill from `level` to `level + 1`, or null if it's already maxed. */
 export function skillRaiseCost(skill: Pick<SkillDef, 'costMultiplier'>, level: number): number | null {
-	if (level >= MAX_SKILL_LEVEL) return null;
+	if (!isLevel(level, MAX_SKILL_LEVEL) || level >= MAX_SKILL_LEVEL) return null;
 	return (level + 1) * IP_PER_SKILL_LEVEL * skill.costMultiplier;
 }
 
 /** IP to raise the Role Ability from `rank` to `rank + 1`, or null if it's already maxed. */
 export function roleRaiseCost(rank: number): number | null {
-	if (rank >= MAX_ROLE_RANK) return null;
+	if (!isLevel(rank, MAX_ROLE_RANK) || rank >= MAX_ROLE_RANK) return null;
 	return (rank + 1) * IP_PER_ROLE_RANK;
 }
 
@@ -76,6 +76,9 @@ function pay(
 	ip: number,
 	cost: number | null
 ): SpendResult {
+	// Saved data can be edited or imported, so never trust it to be in range.
+	if (!isLevel(from, 10)) return { ok: false, reason: `Invalid current level: ${from}.` };
+	if (!isIp(ip)) return { ok: false, reason: `Invalid IP balance: ${ip}.` };
 	if (cost === null) return { ok: false, reason: 'Already at the maximum of 10.' };
 	if (cost > ip) return { ok: false, reason: `Needs ${cost} IP; you have ${ip}.` };
 	const to = from + 1;
@@ -84,19 +87,51 @@ function pay(
 
 /** Add IP the GM awarded. Only positive whole numbers count. */
 export function awardIp(ip: number, amount: number): number {
-	if (!Number.isInteger(amount) || amount <= 0) return ip;
+	if (!isIp(ip) || !Number.isInteger(amount) || amount <= 0) return ip;
 	return ip + amount;
 }
 
 /** Read the IP balance safely from a character's free-form `extra`. */
 export function ipOf(extra: Record<string, unknown>): number {
-	const ip = extra.ip;
-	return typeof ip === 'number' && Number.isInteger(ip) && ip >= 0 ? ip : 0;
+	return isIp(extra.ip) ? extra.ip : 0;
+}
+
+/** A whole number from 0 to `max`. */
+function isLevel(value: unknown, max: number): value is number {
+	return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max;
+}
+
+/** A whole, non-negative, safe IP amount. */
+export function isIp(value: unknown): value is number {
+	return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+/**
+ * True if `value` is a spend this app could have made: a known kind, a level
+ * step of exactly one inside 0–10, and the cost the rules charge for it. When
+ * `skillCost` is given it supplies the multiplier for a skill target (and
+ * rejects unknown skills by returning undefined).
+ */
+export function isIpSpend(
+	value: unknown,
+	skillCost?: (skillId: string) => 1 | 2 | undefined
+): value is IpSpend {
+	if (typeof value !== 'object' || value === null) return false;
+	const v = value as Record<string, unknown>;
+	if (!isLevel(v.from, 9) || v.to !== (v.from as number) + 1) return false;
+	if (v.kind === 'role') return v.target === 'role' && v.cost === roleRaiseCost(v.from as number);
+	if (v.kind !== 'skill' || typeof v.target !== 'string') return false;
+	const multiplier = skillCost ? skillCost(v.target) : 1;
+	if (multiplier === undefined) return false;
+	if (!skillCost) return isIp(v.cost) && v.cost > 0;
+	return v.cost === skillRaiseCost({ costMultiplier: multiplier }, v.from as number);
 }
 
 /** Read the spend history safely from a character's free-form `extra`. */
 export function ipLogOf(extra: Record<string, unknown>): IpSpend[] {
-	return Array.isArray(extra.ipLog) ? (extra.ipLog as IpSpend[]) : [];
+	if (!Array.isArray(extra.ipLog)) return [];
+	// A history with any malformed entry can't be undone safely: drop all of it.
+	return extra.ipLog.every((spend) => isIpSpend(spend)) ? (extra.ipLog as IpSpend[]) : [];
 }
 
 /** Append a spend to the history, keeping only the newest IP_LOG_LIMIT entries. */
@@ -116,6 +151,7 @@ export type UndoResult =
 export function undoLastSpend(log: IpSpend[], ip: number, currentLevel: number): UndoResult {
 	const last = log.at(-1);
 	if (!last) return { ok: false, reason: 'Nothing to undo.' };
+	if (!isIpSpend(last) || !isIp(ip)) return { ok: false, reason: 'That spend history is damaged.' };
 	if (currentLevel !== last.to) return { ok: false, reason: 'That level has changed since; undo it by hand.' };
 	return {
 		ok: true,

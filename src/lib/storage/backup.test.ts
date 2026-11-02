@@ -80,4 +80,22 @@ describe('character backups', () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) expect(result.errors).toContain('Improvement Points must be a whole number of 0 or more.');
 	});
+
+	it.each([
+		['a string cost', { kind: 'skill', target: 'handgun', from: 4, to: 5, cost: '100' }],
+		['a wrong cost', { kind: 'skill', target: 'handgun', from: 4, to: 5, cost: 1 }],
+		['an unknown skill', { kind: 'skill', target: 'hacking', from: 4, to: 5, cost: 100 }],
+		['a skipped level', { kind: 'skill', target: 'handgun', from: 4, to: 6, cost: 100 }],
+		['a negative rank', { kind: 'role', target: 'role', from: -2, to: -1, cost: -60 }]
+	])('rejects an IP history with %s', (_name, spend) => {
+		const result = parseCharacterFile(fileWith((file) => ((file.character as Record<string, Record<string, unknown>>).extra.ipLog = [spend])));
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.errors).toContain('Improvement Point history is damaged.');
+	});
+
+	it.each([-2, 11, 4.5, '4'])('rejects a Role rank of %s', (rank) => {
+		const result = parseCharacterFile(fileWith((file) => ((file.character as Record<string, Record<string, unknown>>).extra.roleRank = rank)));
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.errors).toContain('Role rank must be a whole number from 0 to 10.');
+	});
 });
