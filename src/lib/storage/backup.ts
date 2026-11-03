@@ -1,3 +1,4 @@
+import { isIp, isIpSpend } from '#lib/rulesets/red/improvement.ts';
 import type { Character } from '#lib/engine/types.ts';
 import { rulesets } from '#lib/rulesets/index.ts';
 
@@ -118,6 +119,20 @@ export function parseCharacterFile(text: string): ParseResult {
 		!ruleset.roles.some((role) => role.id === extra.role)
 	) {
 		errors.push(`Unknown role: ${extra.role}.`);
+	}
+	if (isPlainObject(extra)) {
+		if ('ip' in extra && !isIp(extra.ip)) {
+			errors.push('Improvement Points must be a whole number of 0 or more.');
+		}
+		if ('roleRank' in extra && !isWholeNumberInRange(extra.roleRank, 0, 10)) {
+			errors.push('Role rank must be a whole number from 0 to 10.');
+		}
+		if ('ipLog' in extra) {
+			const skillCost = (id: string) => ruleset?.skills.find((skill) => skill.id === id)?.costMultiplier;
+			if (!Array.isArray(extra.ipLog) || !extra.ipLog.every((spend) => isIpSpend(spend, skillCost))) {
+				errors.push('Improvement Point history is damaged.');
+			}
+		}
 	}
 
 	if (errors.length > 0) return { ok: false, errors };
