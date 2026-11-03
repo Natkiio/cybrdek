@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Panel from '#lib/components/Panel.svelte';
 	import { deleteEntry, listEntries, saveEntry } from '#lib/lore/api.ts';
+	import { latestOnly } from '#lib/lore/latest.ts';
 	import { backlinks } from '#lib/lore/links.ts';
 	import { renderBody } from '#lib/lore/render.ts';
 	import { LORE_TYPE_LABELS, type LoreEntry } from '#lib/lore/types.ts';
@@ -21,8 +23,12 @@
 	const html = $derived(entry ? renderBody(entry.body, known) : '');
 	const linkedFrom = $derived(entry ? backlinks(entries, entry.slug) : []);
 
+	const latest = latestOnly();
+
 	async function load() {
+		const current = latest.begin();
 		const result = await listEntries();
+		if (!current()) return; // a newer load (other entry, or GM mode changed) wins
 		entries = result.entries;
 		offline = result.offline;
 		loaded = true;
@@ -32,7 +38,8 @@
 	// and again when GM mode changes (that changes what RLS returns).
 	$effect(() => {
 		void slug;
-		void gm.isGm;
+		// Leaving GM mode: hide GM-only rows now, not when the reload finishes.
+		if (!gm.isGm) entries = untrack(() => entries).filter((e) => e.visible);
 		void load();
 	});
 
