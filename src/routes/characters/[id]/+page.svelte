@@ -7,11 +7,13 @@
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
 	import { armoredStats } from '#lib/rulesets/red/armor.ts';
 	import HpTracker from '#lib/components/sheet/HpTracker.svelte';
+	import ImprovementPanel from '#lib/components/sheet/ImprovementPanel.svelte';
 	import { roll, rollDie, skillCheck, type RollResult } from '#lib/engine/dice.ts';
 	import type { Character } from '#lib/engine/types.ts';
 	import { logRoll, type RollKind } from '#lib/rolls/log.svelte.ts';
 	import { rulesets } from '#lib/rulesets/index.ts';
 	import { derivedStats } from '#lib/rulesets/red/derived.ts';
+	import { ipLogOf, ipOf, type ImprovementChange } from '#lib/rulesets/red/improvement.ts';
 	import { gearOf, isDamageCrit, parseDamage, type ArmorLocation, type GearItem } from '#lib/rulesets/red/gear.ts';
 	import {
 		actionPenalty,
@@ -83,6 +85,20 @@
 	async function update(extra: Record<string, unknown>) {
 		if (!character) return;
 		character.extra = { ...character.extra, ...extra };
+		await persist();
+	}
+
+	/** Save an IP award, spend or undo: the balance, the log and what was raised. */
+	async function improve(change: ImprovementChange) {
+		if (!character) return;
+		if (change.skill) character.skills = { ...character.skills, [change.skill.id]: change.skill.level };
+		const extra: Record<string, unknown> = { ip: change.ip, ipLog: change.ipLog };
+		if (change.roleRank !== undefined) extra.roleRank = change.roleRank;
+		await update(extra);
+	}
+
+	async function persist() {
+		if (!character) return;
 		try {
 			await saveCharacter($state.snapshot(character));
 			saveError = '';
@@ -254,6 +270,17 @@
 		onchange={(next) => update({ gear: next })}
 		onattack={attackWith}
 		ondamage={rollDamage}
+	/>
+
+	<ImprovementPanel
+		ip={ipOf(character.extra)}
+		ipLog={ipLogOf(character.extra)}
+		skills={ruleset.skills}
+		skillCategories={ruleset.skillCategories}
+		levels={character.skills}
+		roleAbility={role?.ability}
+		{roleRank}
+		onchange={improve}
 	/>
 
 	<RollLog characterId={character.id} />
