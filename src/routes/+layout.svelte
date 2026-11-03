@@ -11,6 +11,7 @@
 	const nav = [
 		{ href: '/', label: 'HOME' },
 		{ href: '/characters', label: 'CHARS' },
+		{ href: '/lore', label: 'LORE' },
 		{ href: '/dice', label: 'DICE' },
 		{ href: '/rules', label: 'RULES' }
 	];
@@ -27,7 +28,7 @@
 	<nav>
 		<span class="brand">CYBRDEK://</span>
 		{#each nav as item (item.href)}
-			<a href={item.href} class:active={page.url.pathname === item.href}>{item.label}</a>
+			<a href={item.href} class:active={item.href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(item.href)}>{item.label}</a>
 		{/each}
 		<a href="/gm" class="gm" class:active={page.url.pathname === '/gm'} class:on={gm.isGm}>
 			{gm.isGm ? 'GM MODE' : 'GM'}
