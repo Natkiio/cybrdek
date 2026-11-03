@@ -78,3 +78,11 @@ npm run test:rulebook
 CI runs this check after type-checking, unit tests and building. The test generates
 an invented PDF in memory; never substitute a real rulebook. For a locally
 installed Chromium, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its executable path.
+
+## City map
+
+Open `/map` for Voyage City's district map. Drag/pinch or use the wheel and buttons
+to navigate; the district list also supports keyboard selection. The overview
+works offline, with detail cached after zooming. Names and geometry are data in
+`src/lib/map/districts.ts`; integration hooks and asset details are documented in
+`src/lib/map/README.md`. GM pins and lore wiring are a separate follow-up.
