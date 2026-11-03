@@ -1,3 +1,5 @@
+import { damageThroughArmor } from './armor.ts';
+import type { ArmorLocation, GearItem } from './gear.ts';
 // =============================================================================
 // wounds.ts: Cyberpunk RED Wound States and Death Saves (Core p. 220–221)
 // =============================================================================
@@ -59,4 +61,13 @@ export interface DeathSaveResult {
 export function resolveDeathSave(die: number, penalty: number, body: number): DeathSaveResult {
 	const total = die + penalty;
 	return { die, penalty, total, body, survived: die !== 10 && total < body };
+}
+
+/** Core pp. 170, 186: armor first; aimed head hits double damage that penetrates. */
+export function takeArmoredDamage(
+	hp: number, maxHp: number, gear: GearItem[], damage: number, location: ArmorLocation
+) {
+	const result = damageThroughArmor(gear, damage, location);
+	const hpDamage = result.penetrating * (location === 'head' ? 2 : 1);
+	return { ...result, hpDamage, hp: clampHp(hp - hpDamage, maxHp) };
 }
