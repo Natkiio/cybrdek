@@ -6,6 +6,7 @@ import { slugify } from './links.ts';
 import type { LoreDraft, LoreEntry } from './types.ts';
 
 const CACHE_KEY = 'cybrdek.lore.v1';
+const LIST_TIMEOUT_MS = 8000;
 
 export interface LoreList {
 	entries: LoreEntry[];
@@ -18,7 +19,16 @@ export interface LoreList {
  * never sits in a browser's storage after the GM signs out.
  */
 export async function listEntries(): Promise<LoreList> {
-	const { data, error } = await supabase().from('lore_entries').select('*').order('title');
+	// Known offline: don't wait. supabase-js retries a failed GET 3 times with
+	// 1 s, 2 s and 4 s waits, which looked like a stuck page.
+	if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+		return { entries: readCache(), offline: true };
+	}
+	const { data, error } = await supabase()
+		.from('lore_entries')
+		.select('*')
+		.order('title')
+		.abortSignal(AbortSignal.timeout(LIST_TIMEOUT_MS)); // bad signal: give up, use the cache
 	if (error || !data) return { entries: readCache(), offline: true };
 	const entries = data as LoreEntry[];
 	writeCache(entries.filter((e) => e.visible));
