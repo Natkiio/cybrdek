@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { equipArmor } from '#lib/rulesets/red/armor.ts';
 	import Panel from '#lib/components/Panel.svelte';
 	import GearEditor from '#lib/components/sheet/GearEditor.svelte';
 	import {
@@ -50,7 +51,8 @@
 	}
 
 	function save(item: GearItem) {
-		onchange(editing?.isNew ? [...gear, item] : gear.map((g) => (g.id === item.id ? item : g)));
+		const next = editing?.isNew ? [...gear, item] : gear.map((g) => (g.id === item.id ? item : g));
+		onchange(item.kind === 'armor' ? equipArmor(next, item.id, item.equipped !== false) : next);
 		editing = null;
 	}
 
@@ -96,7 +98,7 @@
 									{#if item.kind === 'weapon'}
 										{skillName(item.skill)} · {item.damage} · ROF {item.rof}
 									{:else if item.kind === 'armor'}
-										{item.location === 'head' ? 'Head' : 'Body'} · SP {item.sp}{item.penalty
+										{item.location === 'both' ? 'Head + body' : item.location === 'head' ? 'Head' : 'Body'} · Max SP {item.sp} · {item.equipped === false ? 'carried' : 'worn'}{item.penalty
 											? ` · ${item.penalty} REF/DEX/MOVE`
 											: ''}
 									{:else}

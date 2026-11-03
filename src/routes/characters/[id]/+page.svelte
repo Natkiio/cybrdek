@@ -4,17 +4,22 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import RollLog from '#lib/components/RollLog.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
+	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
+	import { armoredStats } from '#lib/rulesets/red/armor.ts';
 	import HpTracker from '#lib/components/sheet/HpTracker.svelte';
+	import ImprovementPanel from '#lib/components/sheet/ImprovementPanel.svelte';
 	import { roll, rollDie, skillCheck, type RollResult } from '#lib/engine/dice.ts';
 	import type { Character } from '#lib/engine/types.ts';
 	import { logRoll, type RollKind } from '#lib/rolls/log.svelte.ts';
 	import { rulesets } from '#lib/rulesets/index.ts';
 	import { derivedStats } from '#lib/rulesets/red/derived.ts';
-	import { gearOf, isDamageCrit, parseDamage, type GearItem } from '#lib/rulesets/red/gear.ts';
+	import { ipLogOf, ipOf, type ImprovementChange } from '#lib/rulesets/red/improvement.ts';
+	import { gearOf, isDamageCrit, parseDamage, type ArmorLocation, type GearItem } from '#lib/rulesets/red/gear.ts';
 	import {
 		actionPenalty,
 		clampHp,
 		resolveDeathSave,
+		takeArmoredDamage,
 		woundedMove,
 		woundState,
 		type DeathSaveResult
@@ -52,6 +57,13 @@
 	const penalty = $derived(actionPenalty(wound));
 	const gear = $derived(character ? gearOf(character.extra) : []);
 
+	const effectiveStats = $derived(armoredStats(character?.stats ?? {}, gear));
+
+	function takeDamage(amount: number, location: ArmorLocation) {
+		const result = takeArmoredDamage(hp, maxHp, gear, amount, location);
+		void update({ currentHp: result.hp, gear: result.gear });
+	}
+
 	const skillGroups = $derived.by(() => {
 		if (!character || !ruleset) return [];
 		const levels = character.skills;
@@ -62,7 +74,7 @@
 					.filter((s) => s.category === category && (showAllSkills || (levels[s.id] ?? 0) > 0))
 					.map((s) => {
 						const level = levels[s.id] ?? 0;
-						const statValue = character!.stats[s.stat] ?? 0;
+						const statValue = effectiveStats[s.stat] ?? 0;
 						return { ...s, level, statValue, base: statValue + level };
 					})
 			}))
@@ -73,6 +85,20 @@
 	async function update(extra: Record<string, unknown>) {
 		if (!character) return;
 		character.extra = { ...character.extra, ...extra };
+		await persist();
+	}
+
+	/** Save an IP award, spend or undo: the balance, the log and what was raised. */
+	async function improve(change: ImprovementChange) {
+		if (!character) return;
+		if (change.skill) character.skills = { ...character.skills, [change.skill.id]: change.skill.level };
+		const extra: Record<string, unknown> = { ip: change.ip, ipLog: change.ipLog };
+		if (change.roleRank !== undefined) extra.roleRank = change.roleRank;
+		await update(extra);
+	}
+
+	async function persist() {
+		if (!character) return;
 		try {
 			await saveCharacter($state.snapshot(character));
 			saveError = '';
@@ -92,7 +118,7 @@
 	function attackBase(skillId: string) {
 		const skill = ruleset?.skills.find((s) => s.id === skillId);
 		if (!character || !skill) return 0;
-		return (character.stats[skill.stat] ?? 0) + (character.skills[skillId] ?? 0) + penalty;
+		return (effectiveStats[skill.stat] ?? 0) + (character.skills[skillId] ?? 0) + penalty;
 	}
 
 	function attackWith(item: GearItem) {
@@ -176,6 +202,7 @@
 				deathSave={sheet.deathSave}
 				{deathSavePenalty}
 				onchange={(next) => update({ currentHp: next })}
+				ondamage={takeDamage}
 				ondeathsave={rollDeathSave}
 				onresetpenalty={() => update({ deathSavePenalty: 0 })}
 			/>
@@ -191,7 +218,7 @@
 				<div class="stats">
 					{#each ruleset.stats as s (s.id)}
 						{@const value = character.stats[s.id]}
-						{@const shown = s.id === 'MOVE' ? woundedMove(value, wound) : value}
+						{@const shown = s.id === 'MOVE' ? Math.min(effectiveStats.MOVE, woundedMove(effectiveStats.MOVE, wound)) : effectiveStats[s.id]}
 						<button type="button" class="stat" onclick={() => check(s.id, shown, 'stat')} title={s.name}>
 							<span class="stat-id">{s.id}</span>
 							<span class="stat-value" class:reduced={shown !== value}>{shown}</span>
@@ -235,12 +262,25 @@
 		</div>
 	</div>
 
+	<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
+
 	<GearPanel
 		{gear}
 		{attackBase}
 		onchange={(next) => update({ gear: next })}
 		onattack={attackWith}
 		ondamage={rollDamage}
+	/>
+
+	<ImprovementPanel
+		ip={ipOf(character.extra)}
+		ipLog={ipLogOf(character.extra)}
+		skills={ruleset.skills}
+		skillCategories={ruleset.skillCategories}
+		levels={character.skills}
+		roleAbility={role?.ability}
+		{roleRank}
+		onchange={improve}
 	/>
 
 	<RollLog characterId={character.id} />
