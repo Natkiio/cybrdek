@@ -7,7 +7,7 @@ copies have different resolutions. IDs are stable lowercase hyphenated slugs;
 
 Thick white divisions and coastlines were traced by hand. Smaller labelled areas
 without an enclosing border use approximate street edges (`boundary: 'inferred'`).
-Brookhaven is inferred around its named street. Newmile and Arbor End are included
+Brookhaven is inferred around its named street. Newmine and Amber Hill are included
 alongside the thirteen requested names. Smaller overlapping polygons win taps,
 so a neighbourhood inside a larger district can be selected independently.
 
