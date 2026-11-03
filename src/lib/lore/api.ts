@@ -44,12 +44,27 @@ export async function saveEntry(
 	const table = supabase().from('lore_entries');
 	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert(row)).select().single();
 	if (error) return { error: friendly(error.code, error.message) };
-	return { entry: data as LoreEntry };
+	const entry = data as LoreEntry;
+	// Keep this device's copy in step: a hidden entry must leave it at once.
+	writeCache(reconcileCache(readCache(), entry.id, entry));
+	return { entry };
 }
 
 export async function deleteEntry(id: string): Promise<string | null> {
 	const { error } = await supabase().from('lore_entries').delete().eq('id', id);
-	return error ? friendly(error.code, error.message) : null;
+	if (error) return friendly(error.code, error.message);
+	writeCache(reconcileCache(readCache(), id, null));
+	return null;
+}
+
+/**
+ * The cached list after one entry changed: replaced if still visible, dropped
+ * if hidden or deleted (`entry` null). Kept sorted by title like the server.
+ */
+export function reconcileCache(cache: LoreEntry[], id: string, entry: LoreEntry | null): LoreEntry[] {
+	const others = cache.filter((e) => e.id !== id);
+	if (!entry?.visible) return others;
+	return [...others, entry].sort((a, b) => a.title.localeCompare(b.title));
 }
 
 function friendly(code: string | undefined, message: string): string {

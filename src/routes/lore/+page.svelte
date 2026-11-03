@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import Panel from '#lib/components/Panel.svelte';
 	import { listEntries } from '#lib/lore/api.ts';
+	import { latestOnly } from '#lib/lore/latest.ts';
 	import { searchEntries } from '#lib/lore/links.ts';
 	import { LORE_TYPE_LABELS, LORE_TYPES, type LoreEntry, type LoreType } from '#lib/lore/types.ts';
 	import { gm } from '#lib/supabase/gm.svelte.ts';
@@ -14,8 +15,12 @@
 
 	const shown = $derived(searchEntries(entries, query, type));
 
+	const latest = latestOnly();
+
 	async function load() {
+		const current = latest.begin();
 		const result = await listEntries();
+		if (!current()) return; // a newer load (e.g. after sign-out) wins
 		entries = result.entries;
 		offline = result.offline;
 		loaded = true;
@@ -27,6 +32,8 @@
 	let lastGm: boolean | undefined;
 	$effect(() => {
 		const now = gm.isGm;
+		// Leaving GM mode: hide GM-only rows now, not when the reload finishes.
+		if (lastGm === true && !now) entries = entries.filter((e) => e.visible);
 		if (lastGm !== undefined && now !== lastGm) void load();
 		lastGm = now;
 	});
