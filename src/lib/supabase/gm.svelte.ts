@@ -15,26 +15,33 @@ export const gm = $state({
 });
 
 let started = false;
+// Bumped on every session change. A GM lookup that finishes after a newer
+// change (sign-out, another account) is stale and gets ignored.
+let generation = 0;
 
 /** Start tracking the session. Safe to call more than once. */
 export function startGmSession() {
 	if (started) return;
 	started = true;
-	const auth = supabase().auth;
-	auth.onAuthStateChange((_event, session) => {
-		gm.email = session?.user.email ?? null;
+	supabase().auth.onAuthStateChange((_event, session) => {
+		const email = session?.user.email ?? null;
+		const sameUser = email === gm.email && gm.ready;
+		gm.email = email;
+		// A different person (or nobody) is never the GM until checked again.
+		if (!sameUser) gm.isGm = false;
 		// Don't await inside the callback: supabase-js warns that it can deadlock.
-		void refreshGm();
+		void refreshGm(++generation);
 	});
 }
 
-async function refreshGm() {
+async function refreshGm(mine: number) {
 	if (!gm.email) {
 		gm.isGm = false;
 		gm.ready = true;
 		return;
 	}
 	const { data, error } = await supabase().rpc('is_gm');
+	if (mine !== generation) return; // the session changed while we waited
 	gm.isGm = !error && data === true;
 	gm.ready = true;
 }
