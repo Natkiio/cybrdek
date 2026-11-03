@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Panel from '#lib/components/Panel.svelte';
 	import CityMap from '#lib/components/map/CityMap.svelte';
 	import DistrictEditor from '#lib/components/map/DistrictEditor.svelte';
@@ -59,12 +60,15 @@
 		overrides = overrideRows;
 	}
 	$effect(() => {
+		// Only gm.isGm is a dependency; untrack the rest so writing them doesn't re-run this.
 		if (!gm.isGm) {
-			// Leaving GM mode: drop GM-only things from screen now.
-			entries = entries.filter((e) => e.visible);
-			pins = pins.filter((p) => p.visible);
-			draft = null;
-			tapMode = 'none';
+			untrack(() => {
+				// Leaving GM mode: drop GM-only things from screen now.
+				entries = entries.filter((e) => e.visible);
+				pins = pins.filter((p) => p.visible);
+				draft = null;
+				tapMode = 'none';
+			});
 		}
 		void load();
 	});
