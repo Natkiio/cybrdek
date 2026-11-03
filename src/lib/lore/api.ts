@@ -6,6 +6,7 @@ import { slugify } from './links.ts';
 import type { LoreDraft, LoreEntry } from './types.ts';
 
 const CACHE_KEY = 'cybrdek.lore.v1';
+const LIST_TIMEOUT_MS = 8000;
 
 export interface LoreList {
 	entries: LoreEntry[];
@@ -18,7 +19,16 @@ export interface LoreList {
  * never sits in a browser's storage after the GM signs out.
  */
 export async function listEntries(): Promise<LoreList> {
-	const { data, error } = await supabase().from('lore_entries').select('*').order('title');
+	// Known offline: don't wait. supabase-js retries a failed GET 3 times with
+	// 1 s, 2 s and 4 s waits, which looked like a stuck page.
+	if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+		return { entries: readCache(), offline: true };
+	}
+	const { data, error } = await supabase()
+		.from('lore_entries')
+		.select('*')
+		.order('title')
+		.abortSignal(AbortSignal.timeout(LIST_TIMEOUT_MS)); // bad signal: give up, use the cache
 	if (error || !data) return { entries: readCache(), offline: true };
 	const entries = data as LoreEntry[];
 	writeCache(entries.filter((e) => e.visible));
@@ -34,12 +44,27 @@ export async function saveEntry(
 	const table = supabase().from('lore_entries');
 	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert(row)).select().single();
 	if (error) return { error: friendly(error.code, error.message) };
-	return { entry: data as LoreEntry };
+	const entry = data as LoreEntry;
+	// Keep this device's copy in step: a hidden entry must leave it at once.
+	writeCache(reconcileCache(readCache(), entry.id, entry));
+	return { entry };
 }
 
 export async function deleteEntry(id: string): Promise<string | null> {
 	const { error } = await supabase().from('lore_entries').delete().eq('id', id);
-	return error ? friendly(error.code, error.message) : null;
+	if (error) return friendly(error.code, error.message);
+	writeCache(reconcileCache(readCache(), id, null));
+	return null;
+}
+
+/**
+ * The cached list after one entry changed: replaced if still visible, dropped
+ * if hidden or deleted (`entry` null). Kept sorted by title like the server.
+ */
+export function reconcileCache(cache: LoreEntry[], id: string, entry: LoreEntry | null): LoreEntry[] {
+	const others = cache.filter((e) => e.id !== id);
+	if (!entry?.visible) return others;
+	return [...others, entry].sort((a, b) => a.title.localeCompare(b.title));
 }
 
 function friendly(code: string | undefined, message: string): string {

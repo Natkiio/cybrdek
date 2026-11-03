@@ -8,8 +8,11 @@
 //   Pages: network first, so you always get the newest version when online.
 //          Offline, it serves the cached copy instead.
 //
-// Character pages (/characters/<id>) render entirely in the browser (ssr = false),
-// so one cached copy of that page works for every character.
+// Character pages (/characters/<id>) and lore pages (/lore/<entry>) render
+// entirely in the browser (ssr = false), so one cached copy of each works for
+// every character or entry. Lore text itself comes from Supabase (another
+// origin, never cached here); the lore pages keep their own on-device copy of
+// the entries players can see.
 // =============================================================================
 
 import { version } from '$app/env';
@@ -19,9 +22,18 @@ import { self } from '$app/service-worker';
 const CACHE = `cybrdek-${version}`;
 
 /** Pages to cache up front, so the app opens offline even on a fresh install. */
-const PAGES = ['/', '/characters', '/characters/new', '/dice', '/rules', '/map'];
+const PAGES = ['/', '/characters', '/characters/new', '/dice', '/rules', '/lore', '/map', '/gm'];
 /** Any /characters/<id> page offline is served from this one cached copy. */
 const CHARACTER_SHELL = '/characters/_offline';
+/** Any /lore/<entry> (or /lore/<entry>/edit) page offline uses this copy. */
+const LORE_SHELL = '/lore/_offline';
+
+/** Which cached shell serves an uncached page offline. */
+function offlineShell(pathname: string): string {
+	if (pathname.startsWith('/characters/')) return CHARACTER_SHELL;
+	if (pathname.startsWith('/lore/')) return LORE_SHELL;
+	return '/';
+}
 
 // Manifest paths can be relative. Normalize them to match request URL pathnames.
 // This also precaches PDF.js's emitted worker, fonts, CMaps and image decoders.
@@ -34,7 +46,7 @@ self.addEventListener('install', (event) => {
 	event.waitUntil(
 		(async () => {
 			const cache = await caches.open(CACHE);
-			await cache.addAll([...APP_FILES, ...PAGES, CHARACTER_SHELL]);
+			await cache.addAll([...APP_FILES, ...PAGES, CHARACTER_SHELL, LORE_SHELL]);
 			await self.skipWaiting(); // take over without waiting for old tabs to close
 		})()
 	);
@@ -84,9 +96,7 @@ async function respond(request: Request, url: URL): Promise<Response> {
 		if (cached) return cached;
 
 		if (request.mode === 'navigate') {
-			const fallback = url.pathname.startsWith('/characters/')
-				? await cache.match(CHARACTER_SHELL)
-				: await cache.match('/');
+			const fallback = await cache.match(offlineShell(url.pathname));
 			if (fallback) return fallback;
 		}
 		throw error;
