@@ -120,7 +120,7 @@ test('the GM renames a district; a tap while not placing still selects districts
 test('players see pins and lore links, but no GM tools', async ({ page }) => {
 	const fake: Fake = {
 		isGm: false,
-		pins: [{ id: 'p1', x: 2900, y: 900, label: "Topaz's Bar", lore_entry_id: 'e-topaz', visible: true }],
+		pins: [{ id: 'p1', x: 2900, y: 900, label: "Topaz's Bar", lore_entry_id: 'e-topaz', visible: true, category: 'bar' }],
 		posted: [],
 		districtWrites: []
 	};
@@ -134,4 +134,39 @@ test('players see pins and lore links, but no GM tools', async ({ page }) => {
 	await expect(page.getByText('Neon dive bar in Central Point.')).toBeVisible();
 	await expect(page.getByRole('link', { name: 'READ LORE →' })).toHaveAttribute('href', '/lore/topazs-bar');
 	await expect(page.getByText('EDIT PIN')).toHaveCount(0);
+});
+
+test('tapping a district opens its wards, with each place under its ward', async ({ page }) => {
+	const fake: Fake = {
+		isGm: false,
+		pins: [
+			// Inside the Nova Peak ward of West Ridge.
+			{ id: 'p1', x: 1070, y: 651, label: "Topaz's Bar", lore_entry_id: 'e-topaz', visible: true, category: 'bar' },
+			// In West Ridge but outside every ward.
+			{ id: 'p2', x: 1050, y: 390, label: 'Gecko’s flat', lore_entry_id: null, visible: true, category: 'home' },
+			// In another district entirely: must not appear.
+			{ id: 'p3', x: 3205, y: 210, label: 'Daynedale Diner', lore_entry_id: null, visible: true, category: 'food' }
+		],
+		posted: [],
+		districtWrites: []
+	};
+	await fakeSupabase(page, fake);
+	await page.goto('/map');
+	await page.getByText('CHOOSE A DISTRICT', { exact: false }).click();
+	await page.getByRole('button', { name: 'West Ridge', exact: true }).click();
+
+	const menu = page.getByRole('region', { name: 'West Ridge district' });
+	await expect(menu.getByRole('heading', { name: 'West Ridge', exact: true })).toBeVisible();
+	const nova = menu.locator('#ward-nova-peak');
+	await expect(nova.getByRole('heading', { name: /Nova Peak/ })).toBeVisible();
+	await expect(nova.getByRole('button', { name: /Bar \/ pub.*Topaz's Bar/ })).toBeVisible();
+	await expect(nova.getByRole('link', { name: 'LORE →' })).toHaveAttribute('href', '/lore/topazs-bar');
+	await expect(menu.getByRole('heading', { name: 'Elsewhere in West Ridge' })).toBeVisible();
+	await expect(menu.getByRole('button', { name: /Home \(NPC\).*Gecko/ })).toBeVisible();
+	await expect(menu.getByText('Daynedale Diner')).toHaveCount(0);
+
+	// Tapping a ward opens its district's menu with that ward picked out.
+	await page.getByRole('button', { name: 'Nova Peak', exact: true }).click();
+	await expect(page.getByRole('region', { name: 'West Ridge district' }).locator('#ward-nova-peak.focus')).toBeVisible();
+	if (process.env.MAP_SCREENSHOT) await page.screenshot({ path: process.env.MAP_SCREENSHOT.replace('.png', '-menu.png'), fullPage: true });
 });

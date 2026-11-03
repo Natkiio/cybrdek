@@ -3,9 +3,40 @@
 
 import { supabase } from '#lib/supabase/client.ts';
 import type { LoreEntry } from '#lib/lore/types.ts';
-import { MAP_HEIGHT, MAP_WIDTH } from './districts.ts';
+import { MAP_HEIGHT, MAP_WIDTH, type District } from './districts.ts';
+import { containsPoint } from './geometry.ts';
 
 export const PIN_LABEL_MAX = 80;
+
+/** Kinds of place a pin can be. Must match the check in 20261103150000_pin_category.sql. */
+export const PIN_CATEGORIES = [
+	'bar',
+	'club',
+	'shop',
+	'food',
+	'home',
+	'clinic',
+	'corp',
+	'gang',
+	'fixer',
+	'landmark',
+	'other'
+] as const;
+export type PinCategory = (typeof PIN_CATEGORIES)[number];
+
+export const PIN_CATEGORY_LABELS: Record<PinCategory, string> = {
+	bar: 'Bar / pub',
+	club: 'Club',
+	shop: 'Shop',
+	food: 'Food',
+	home: 'Home (NPC)',
+	clinic: 'Clinic / ripperdoc',
+	corp: 'Corp building',
+	gang: 'Gang turf',
+	fixer: 'Fixer spot',
+	landmark: 'Landmark',
+	other: 'Other'
+};
 
 export interface MapPin {
 	id: string;
@@ -14,6 +45,7 @@ export interface MapPin {
 	label: string;
 	lore_entry_id: string | null;
 	visible: boolean;
+	category: PinCategory;
 }
 
 export type PinDraft = Omit<MapPin, 'id'>;
@@ -75,7 +107,7 @@ export function pinLore(pin: MapPin, entries: readonly LoreEntry[]): LoreEntry |
 // ---- Supabase ---------------------------------------------------------------
 
 export async function listPins(): Promise<MapPin[]> {
-	const { data, error } = await supabase().from('map_pins').select('id,x,y,label,lore_entry_id,visible');
+	const { data, error } = await supabase().from('map_pins').select('id,x,y,label,lore_entry_id,visible,category');
 	return error || !data ? [] : (data as MapPin[]);
 }
 
@@ -88,7 +120,7 @@ export async function savePin(draft: PinDraft, id?: string): Promise<{ pin: MapP
 	const row = { ...draft, label: draft.label.trim(), ...clampToMap(draft.x, draft.y) };
 	const table = supabase().from('map_pins');
 	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert(row))
-		.select('id,x,y,label,lore_entry_id,visible')
+		.select('id,x,y,label,lore_entry_id,visible,category')
 		.single();
 	return error ? { error: error.message } : { pin: data as MapPin };
 }
@@ -103,4 +135,58 @@ export async function saveDistrictOverride(override: DistrictOverride): Promise<
 		.from('map_districts')
 		.upsert({ ...override, name: override.name?.trim() || null });
 	return error ? error.message : null;
+}
+
+// ---- the district menu: district → wards → places ----------------------------
+
+export interface WardPlaces {
+	ward: District;
+	places: MapPin[];
+}
+
+export interface DistrictPlaces {
+	district: District;
+	wards: WardPlaces[]; // every ward of the district, even empty ones
+	elsewhere: MapPin[]; // in the district but in no ward
+}
+
+const byLabel = (a: MapPin, b: MapPin) => a.label.localeCompare(b.label);
+
+/**
+ * Sort pins into a district's wards by where they sit on the map, so the GM
+ * never has to file a pin by hand. A pin in two overlapping wards goes to the
+ * smaller one (same rule as tapping the map).
+ */
+export function placesInDistrict(
+	district: District,
+	districts: readonly District[],
+	pins: readonly MapPin[]
+): DistrictPlaces {
+	const wards = districts.filter((d) => d.kind === 'ward' && d.parentId === district.id);
+	const area = (d: District) =>
+		Math.abs(d.polygon.reduce((sum, [x, y], i) => {
+			const [nx, ny] = d.polygon[(i + 1) % d.polygon.length];
+			return sum + x * ny - nx * y;
+		}, 0)) / 2;
+	const bySize = [...wards].sort((a, b) => area(a) - area(b));
+	const result = new Map(wards.map((w) => [w.id, [] as MapPin[]]));
+	const elsewhere: MapPin[] = [];
+	for (const pin of pins) {
+		const point = [pin.x, pin.y] as const;
+		const ward = bySize.find((w) => containsPoint(w.polygon, point));
+		if (ward) result.get(ward.id)!.push(pin);
+		else if (containsPoint(district.polygon, point)) elsewhere.push(pin);
+	}
+	return {
+		district,
+		wards: wards
+			.map((ward) => ({ ward, places: result.get(ward.id)!.sort(byLabel) }))
+			.sort((a, b) => a.ward.name.localeCompare(b.ward.name)),
+		elsewhere: elsewhere.sort(byLabel)
+	};
+}
+
+/** The district a district-or-ward belongs to (itself, or a ward's parent). */
+export function districtOf(area: District, districts: readonly District[]): District {
+	return area.kind === 'ward' ? (districts.find((d) => d.id === area.parentId) ?? area) : area;
 }

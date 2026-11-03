@@ -2,7 +2,13 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import LoreSelect from '#lib/components/map/LoreSelect.svelte';
 	import type { LoreEntry } from '#lib/lore/types.ts';
-	import { PIN_LABEL_MAX, validatePin, type PinDraft } from '#lib/map/pins.ts';
+	import {
+		PIN_CATEGORIES,
+		PIN_CATEGORY_LABELS,
+		PIN_LABEL_MAX,
+		validatePin,
+		type PinDraft
+	} from '#lib/map/pins.ts';
 
 	let {
 		draft = $bindable(),
@@ -50,6 +56,12 @@
 		<label>
 			<span>NAME</span>
 			<input required maxlength={PIN_LABEL_MAX} bind:value={draft.label} placeholder="e.g. Topaz's Bar" />
+		</label>
+		<label>
+			<span>KIND OF PLACE</span>
+			<select bind:value={draft.category}>
+				{#each PIN_CATEGORIES as c (c)}<option value={c}>{PIN_CATEGORY_LABELS[c]}</option>{/each}
+			</select>
 		</label>
 		<div onchange={pickedEntry} role="presentation">
 			<LoreSelect {entries} bind:value={draft.lore_entry_id} />
@@ -109,12 +121,14 @@
 		margin: 0.75rem 0 0;
 	}
 
+	select,
 	input:not([type='checkbox']) {
 		width: 100%;
 		min-width: 0;
 	}
 
 	input,
+	select,
 	button {
 		min-height: 44px;
 	}

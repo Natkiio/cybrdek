@@ -3,6 +3,7 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import CityMap from '#lib/components/map/CityMap.svelte';
 	import DistrictEditor from '#lib/components/map/DistrictEditor.svelte';
+	import DistrictMenu from '#lib/components/map/DistrictMenu.svelte';
 	import PinEditor from '#lib/components/map/PinEditor.svelte';
 	import { listEntries } from '#lib/lore/api.ts';
 	import { latestOnly } from '#lib/lore/latest.ts';
@@ -10,6 +11,8 @@
 	import { DISTRICTS, type District, type Point } from '#lib/map/districts.ts';
 	import {
 		deletePin,
+		districtOf,
+		placesInDistrict,
 		listDistrictOverrides,
 		listPins,
 		pinLore,
@@ -40,6 +43,10 @@
 		DISTRICTS.map((d) => ({ ...d, name: resolveDistrict(d, overrideFor(d.id), entries).name }))
 	);
 	const selectedDistrict = $derived(districts.find((d) => d.id === selectedDistrictId));
+	// The menu always shows a whole district; a tapped ward is highlighted in it.
+	const menuDistrict = $derived(selectedDistrict ? districtOf(selectedDistrict, districts) : undefined);
+	const menuPlaces = $derived(menuDistrict ? placesInDistrict(menuDistrict, districts, pins) : undefined);
+	const loreForArea = (area: District) => resolveDistrict(area, overrideFor(area.id), entries).lore;
 	const selectedPin = $derived(pins.find((p) => p.id === selectedPinId));
 	const selectedPinLore = $derived(selectedPin ? pinLore(selectedPin, entries) : null);
 	const shownPins = $derived(pins.filter((p) => p.id !== draftId));
@@ -77,7 +84,7 @@
 	function tapped(point: Point): boolean {
 		if (!gm.isGm || tapMode === 'none') return false;
 		if (tapMode === 'place') {
-			draft = { x: point[0], y: point[1], label: '', lore_entry_id: null, visible: false };
+			draft = { x: point[0], y: point[1], label: '', lore_entry_id: null, visible: false, category: 'other' };
 			draftId = undefined;
 		} else if (draft) {
 			draft = { ...draft, x: point[0], y: point[1] };
@@ -88,7 +95,6 @@
 
 	function openPin(pin: MapPin) {
 		selectedPinId = pin.id;
-		selectedDistrictId = undefined;
 		if (gm.isGm) {
 			const { id, ...rest } = pin;
 			draft = { ...rest };
@@ -190,7 +196,7 @@
 	overlay={pinMarkers}
 />
 
-{#if selectedPin && !draft}
+{#if selectedPin && !draft && !menuPlaces}
 	<Panel title="PLACE">
 		<p class="pin-name">{selectedPin.label}</p>
 		{#if selectedPinLore?.summary}<p class="dim">{selectedPinLore.summary}</p>{/if}
@@ -213,7 +219,25 @@
 			oncancel={closeDraft}
 		/>
 	{/key}
-{:else if gm.isGm && selectedDistrict}
+{/if}
+
+{#if menuPlaces}
+	<DistrictMenu
+		places={menuPlaces}
+		focusWardId={selectedDistrict?.kind === 'ward' ? selectedDistrict.id : undefined}
+		{selectedPinId}
+		isGm={gm.isGm}
+		loreFor={loreForArea}
+		pinLore={(pin) => pinLore(pin, entries)}
+		onpick={openPin}
+		onclose={() => {
+			selectedDistrictId = undefined;
+			selectedPinId = undefined;
+		}}
+	/>
+{/if}
+
+{#if gm.isGm && !draft && selectedDistrict}
 	{#key selectedDistrict.id}
 		<DistrictEditor
 			district={selectedDistrict}
