@@ -3,10 +3,8 @@
 
 import { supabase } from '#lib/supabase/client.ts';
 import type { LoreEntry } from '#lib/lore/types.ts';
+import { MAP_HEIGHT, MAP_WIDTH } from './districts.ts';
 
-/** Source map size in pixels. Pins and district shapes use these coordinates. */
-export const MAP_WIDTH = 3840;
-export const MAP_HEIGHT = 2160;
 export const PIN_LABEL_MAX = 80;
 
 export interface MapPin {

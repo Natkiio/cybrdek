@@ -5,13 +5,16 @@
 	import { constrain, districtAt, fitMap, fitScale, focusDistrict, mapPoint, MAX_ZOOM, resizeView, zoomAt, type Size, type Transform } from '#lib/map/geometry.ts';
 
 	export interface DistrictInfo { summary?: string; href?: string }
-	let { districts = DISTRICTS, districtInfo, onselect, overlay }: {
+	let { districts = DISTRICTS, districtInfo, onselect, ontap, overlay }: {
 		districts?: readonly District[];
 		/** The caller resolves lore and visibility. Undefined means no lore is available. */
 		districtInfo?: (district: District) => DistrictInfo | undefined;
 		onselect?: (district: District | undefined) => void;
-		/** Optional SVG in image coordinates. Set data-map-interactive on future pin controls. */
-		overlay?: Snippet;
+		/** A tap on the map, in image coordinates. Return true to handle it (no district select). */
+		ontap?: (point: Point) => boolean;
+		/** Optional SVG in image coordinates, given the current scale (screen px per image px).
+		 * Set data-map-interactive on pin controls. */
+		overlay?: Snippet<[number]>;
 	} = $props();
 
 	let viewport: HTMLDivElement;
@@ -76,7 +79,10 @@
 		const tapped = !cancelled && pointers.size === 1 && !gesture?.moved;
 		pointers.delete(event.pointerId);
 		if (viewport.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId);
-		if (tapped) select(districtAt(districts, mapPoint(local(event), view)));
+		if (tapped) {
+			const point = mapPoint(local(event), view);
+			if (!ontap?.(point)) select(districtAt(districts, point));
+		}
 		startGesture(true); // releasing one finger must not turn a pinch into a district tap
 		dragging = false;
 	}
@@ -130,7 +136,7 @@
 			{#each districts as district (district.id)}
 				<polygon points={district.polygon.map((p) => p.join(',')).join(' ')} class:selected={selectedId === district.id} />
 			{/each}
-			{@render overlay?.()}
+			{@render overlay?.(view.scale)}
 		</svg>
 	</div>
 	{#if imageError}<p class="error" role="alert">The map image could not load. Reconnect and reload this page.</p>{/if}

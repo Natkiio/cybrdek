@@ -12,6 +12,7 @@
 		{ href: '/', label: 'HOME' },
 		{ href: '/characters', label: 'CHARS' },
 		{ href: '/lore', label: 'LORE' },
+		{ href: '/map', label: 'MAP' },
 		{ href: '/dice', label: 'DICE' },
 		{ href: '/rules', label: 'RULES' }
 	];
