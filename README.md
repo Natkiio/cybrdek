@@ -54,3 +54,27 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Local rulebook reader
+
+The RULES tab accepts your own PDF (up to 250 MB). Its bytes, page text and search
+index are stored only in the browser's `cybrdek-rulebook` IndexedDB database,
+separately from character backups. Removing the book deletes that record. Clearing
+site data also removes it. There is no upload endpoint or shared copy.
+
+PDF.js receives local bytes and uses a bundled worker, fonts, CMaps and image
+decoders. The service worker precaches these assets for offline reading. Search
+uses whole words (all query words must occur on a page), ignoring case and accents.
+Page numbers refer to PDF pages, including covers. Image-only scans can be read,
+but OCR and password-protected files are not supported.
+
+Run the synthetic-PDF offline browser check against a production build:
+
+```sh
+npx playwright install chromium
+npm run test:rulebook
+```
+
+CI runs this check after type-checking, unit tests and building. The test generates
+an invented PDF in memory; never substitute a real rulebook. For a locally
+installed Chromium, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its executable path.

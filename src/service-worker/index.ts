@@ -23,7 +23,11 @@ const PAGES = ['/', '/characters', '/characters/new', '/dice', '/rules'];
 /** Any /characters/<id> page offline is served from this one cached copy. */
 const CHARACTER_SHELL = '/characters/_offline';
 
-const APP_FILES = [...immutable, ...assets].map((file) => file.path);
+// Manifest paths can be relative. Normalize them to match request URL pathnames.
+// This also precaches PDF.js's emitted worker, fonts, CMaps and image decoders.
+const APP_FILES = [...immutable, ...assets].map((file) =>
+	new URL(file.path, self.location.origin).pathname
+);
 
 self.addEventListener('install', (event) => {
 	event.waitUntil(

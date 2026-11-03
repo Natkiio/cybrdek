@@ -1,9 +1,7 @@
 <script lang="ts">
-	import Panel from '#lib/components/Panel.svelte';
+	import RulebookReader from '#lib/components/rules/RulebookReader.svelte';
 </script>
 
+<svelte:head><title>RULES // CYBRDEK</title></svelte:head>
 <h1>RULES DATABASE</h1>
-
-<Panel title="SEARCH">
-	<p class="dim">// TODO: searchable rules text + PDF.js viewer</p>
-</Panel>
+<RulebookReader />
