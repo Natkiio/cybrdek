@@ -19,15 +19,16 @@ import { self } from '$app/service-worker';
 const CACHE = `cybrdek-${version}`;
 
 /** Pages to cache up front, so the app opens offline even on a fresh install. */
-const PAGES = ['/', '/characters', '/characters/new', '/dice', '/rules'];
+const PAGES = ['/', '/characters', '/characters/new', '/dice', '/rules', '/map'];
 /** Any /characters/<id> page offline is served from this one cached copy. */
 const CHARACTER_SHELL = '/characters/_offline';
 
 // Manifest paths can be relative. Normalize them to match request URL pathnames.
 // This also precaches PDF.js's emitted worker, fonts, CMaps and image decoders.
+const MAP_DETAIL = '/maps/voyage-detail.webp';
 const APP_FILES = [...immutable, ...assets].map((file) =>
 	new URL(file.path, self.location.origin).pathname
-);
+).filter((path) => path !== MAP_DETAIL); // overview is enough for first-install offline use
 
 self.addEventListener('install', (event) => {
 	event.waitUntil(
@@ -65,7 +66,7 @@ async function respond(request: Request, url: URL): Promise<Response> {
 	const cache = await caches.open(CACHE);
 
 	// App files never change for a given version: cache first.
-	if (APP_FILES.includes(url.pathname)) {
+	if (APP_FILES.includes(url.pathname) || url.pathname === MAP_DETAIL) {
 		const cached = await cache.match(url.pathname);
 		if (cached) return cached;
 	}
@@ -73,7 +74,8 @@ async function respond(request: Request, url: URL): Promise<Response> {
 	// Everything else: network first, and keep a fresh copy of pages.
 	try {
 		const response = await fetch(request);
-		if (response.ok && request.mode === 'navigate') {
+		// The detail map is cached only when opened/zoomed, keeping phone installs small.
+		if (response.ok && (request.mode === 'navigate' || url.pathname === MAP_DETAIL)) {
 			await cache.put(request, response.clone());
 		}
 		return response;
