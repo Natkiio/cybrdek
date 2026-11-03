@@ -65,3 +65,21 @@ describe('map navigation', () => {
 		expect(resized.scale / fitScale(after)).toBeCloseTo(focused.scale / fitScale(phone));
 	});
 });
+
+describe('districts and wards (Nathan, 2026-11-03)', () => {
+	it('has exactly the 7 districts', async () => {
+		const { MAIN_DISTRICTS } = await import('./districts.ts');
+		expect(MAIN_DISTRICTS.map((d) => d.name).sort()).toEqual(
+			['Akiba', 'Bowetown', 'Central Point', 'Corp Sector', 'Daynedale', 'Eagelton', 'West Ridge']
+		);
+	});
+
+	it('gives every ward a parent that is a district', async () => {
+		const { DISTRICTS } = await import('./districts.ts');
+		const wards = DISTRICTS.filter((d) => d.kind === 'ward');
+		expect(wards.length).toBeGreaterThan(0);
+		for (const ward of wards) {
+			expect(DISTRICTS.find((d) => d.id === ward.parentId)?.kind, ward.name).toBe('district');
+		}
+	});
+});
