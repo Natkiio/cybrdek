@@ -35,7 +35,7 @@
 	function pickArmorType(id: string) {
 		const type = ARMOR_TYPES.find((t) => t.id === id);
 		if (!type) return;
-		draft = { ...armorFromType(type, draft.id, draft.location ?? 'body'), notes: draft.notes };
+		draft = { ...armorFromType(type, draft.id, draft.location === 'head' ? 'head' : 'body'), notes: draft.notes, equipped: draft.equipped };
 	}
 
 	function save(event: SubmitEvent) {
@@ -86,7 +86,8 @@
 	{:else if draft.kind === 'armor'}
 		<label>
 			<span>LOCATION</span>
-			<select bind:value={draft.location}>
+			<select bind:value={draft.location} disabled={draft.armorType === 'bodyweight-suit' || draft.name === 'Bodyweight Suit'}>
+				<option value="both" disabled>Head + body (Bodyweight Suit)</option>
 				<option value="body">Body</option>
 				<option value="head">Head</option>
 			</select>

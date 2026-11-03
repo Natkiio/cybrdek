@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { ArmorLocation } from '#lib/rulesets/red/gear.ts';
 	import Panel from '#lib/components/Panel.svelte';
 	import {
 		actionPenalty,
@@ -16,6 +17,7 @@
 		deathSave,
 		deathSavePenalty,
 		onchange,
+		ondamage,
 		ondeathsave,
 		onresetpenalty
 	}: {
@@ -25,10 +27,12 @@
 		deathSave: number;
 		deathSavePenalty: number;
 		onchange: (hp: number) => void;
+		ondamage: (amount: number, location: ArmorLocation) => void;
 		ondeathsave: () => void;
 		onresetpenalty: () => void;
 	} = $props();
 
+	let location = $state<ArmorLocation | 'bypass'>('body');
 	let amount = $state<number | null>(null);
 
 	const wound: WoundState = $derived(woundState(hp, maxHp));
@@ -42,7 +46,8 @@
 
 	function apply(sign: 1 | -1) {
 		if (!amount || amount < 0) return;
-		set(hp + sign * amount);
+		if (sign === -1 && location !== 'bypass') ondamage(amount, location);
+		else set(hp + sign * amount);
 		amount = null;
 	}
 </script>
@@ -65,6 +70,7 @@
 		<div class="mark" style:left="{(seriouslyWounded / maxHp) * 100}%" title="Seriously Wounded threshold"></div>
 	</div>
 
+	<p class="dim">Quick buttons adjust HP directly (ignore armor).</p>
 	<div class="quick">
 		<button type="button" onclick={() => set(hp - 5)}>−5</button>
 		<button type="button" onclick={() => set(hp - 1)}>−1</button>
@@ -72,6 +78,13 @@
 		<button type="button" onclick={() => set(hp + 5)}>+5</button>
 	</div>
 
+	<label class="damage-location">DAMAGE LOCATION
+		<select bind:value={location}>
+			<option value="body">Body (normal attack, subtract SP)</option>
+			<option value="head">Aimed head shot (subtract SP, then ×2)</option>
+			<option value="bypass">Ignore armor (direct HP damage)</option>
+		</select>
+	</label>
 	<div class="amount">
 		<input
 			type="number"
@@ -189,6 +202,8 @@
 		grid-template-columns: minmax(5rem, 1fr) auto auto auto;
 	}
 
+	.damage-location { display: grid; gap: 0.35rem; margin-top: 0.75rem; }
+	select { width: 100%; min-width: 0; min-height: 44px; background: var(--bg-2); color: var(--value); }
 	button,
 	input {
 		min-height: 44px;

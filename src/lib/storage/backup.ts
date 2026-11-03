@@ -1,3 +1,4 @@
+import { validArmorState } from '#lib/rulesets/red/armor.ts';
 import { isIp, isIpSpend } from '#lib/rulesets/red/improvement.ts';
 import type { Character } from '#lib/engine/types.ts';
 import { rulesets } from '#lib/rulesets/index.ts';
@@ -131,6 +132,15 @@ export function parseCharacterFile(text: string): ParseResult {
 			const skillCost = (id: string) => ruleset?.skills.find((skill) => skill.id === id)?.costMultiplier;
 			if (!Array.isArray(extra.ipLog) || !extra.ipLog.every((spend) => isIpSpend(spend, skillCost))) {
 				errors.push('Improvement Point history is damaged.');
+			}
+		}
+	}
+
+	// Gear stays in extra, so Dexie and version-1 backups preserve armor without a migration.
+	if (candidate.rulesetId === 'cyberpunk-red' && isPlainObject(extra) && Array.isArray(extra.gear)) {
+		for (const item of extra.gear) {
+			if (isPlainObject(item) && item.kind === 'armor' && !validArmorState(item)) {
+				errors.push('Armor must have a valid location, SP, penalty, equipment state and current SP.');
 			}
 		}
 	}
