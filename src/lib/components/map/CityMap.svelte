@@ -29,6 +29,8 @@
 	const detail = $derived(!detailFailed && (width > 700 || zoom > 1.8));
 	const selected = $derived(districts.find((d) => d.id === selectedId));
 	const info = $derived(selected ? districtInfo?.(selected) : undefined);
+	const mainDistricts = $derived(districts.filter((d) => d.kind === 'district'));
+	const parentName = (ward: District) => districts.find((d) => d.id === ward.parentId)?.name ?? 'a district';
 	let previousSize: Size | undefined;
 	const pointers = new Map<number, Point>();
 	let gesture: { view: Transform; center: Point; distance: number; moved: boolean } | undefined;
@@ -144,6 +146,7 @@
 		<aside class="popup" data-popup aria-label="Selected district" aria-live="polite">
 			<button class="close" type="button" aria-label="Close district popup" onclick={() => select(undefined)}>×</button>
 			<strong>{selected.name}</strong>
+			<span class="kind">{selected.kind === 'ward' ? `Ward of ${parentName(selected)}` : 'District'}</span>
 			{#if info?.summary}<p>{info.summary}</p>{/if}
 			{#if info?.href}<a href={info.href}>READ LORE →</a>{/if}
 		</aside>
@@ -151,10 +154,16 @@
 </div>
 
 <details class="districts">
-	<summary>CHOOSE A DISTRICT <span class="hint">({districts.length})</span></summary>
+	<summary>CHOOSE A DISTRICT <span class="hint">({mainDistricts.length} districts · {districts.length - mainDistricts.length} wards)</span></summary>
 	<div class="district-list">
-		{#each districts as district (district.id)}
-			<button type="button" aria-pressed={selectedId === district.id} onclick={() => select(district, true)}>{district.name}</button>
+		{#each mainDistricts as district (district.id)}
+			{@const wards = districts.filter((d) => d.parentId === district.id)}
+			<div class="group">
+				<button type="button" aria-pressed={selectedId === district.id} onclick={() => select(district, true)}>{district.name}</button>
+				{#each wards as ward (ward.id)}
+					<button type="button" class="ward" aria-pressed={selectedId === ward.id} onclick={() => select(ward, true)}>{ward.name}</button>
+				{/each}
+			</div>
 		{/each}
 	</div>
 </details>
@@ -183,6 +192,9 @@
 	.error { position: absolute; top: 0; left: 0; padding: 1rem; color: var(--red-soft); background: var(--bg-1); }
 	summary { min-height: 44px; cursor: pointer; padding: 0.75rem 0; color: var(--label); }
 	.district-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.4rem; }
-	.district-list button { text-align: left; }
+	.district-list button { text-align: left; width: 100%; }
+	.group { display: grid; gap: 0.3rem; align-content: start; }
+	.district-list .ward { min-height: 36px; padding-left: 1.4rem; font-size: 0.85em; color: var(--muted); }
+	.kind { display: block; font-family: var(--f-label); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--label); margin-top: 0.15rem; }
 	button[aria-pressed='true'] { color: var(--mint); border-color: var(--mint-dim); }
 </style>

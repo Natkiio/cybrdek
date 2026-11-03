@@ -114,6 +114,7 @@ test('the GM renames a district; a tap while not placing still selects districts
 	await expect.poll(() => fake.districtWrites.length).toBe(1);
 	expect(fake.districtWrites[0]).toMatchObject({ district_id: 'akiba', name: 'Araki', lore_entry_id: null });
 	await expect(page.getByRole('button', { name: 'Araki', exact: true })).toBeVisible();
+	if (process.env.MAP_SCREENSHOT) await page.screenshot({ path: process.env.MAP_SCREENSHOT.replace('.png', '-list.png'), fullPage: true });
 });
 
 test('players see pins and lore links, but no GM tools', async ({ page }) => {

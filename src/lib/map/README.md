@@ -7,7 +7,7 @@ copies have different resolutions. IDs are stable lowercase hyphenated slugs;
 
 Thick white divisions and coastlines were traced by hand. Smaller labelled areas
 without an enclosing border use approximate street edges (`boundary: 'inferred'`).
-District names were confirmed by Nathan (Corp Sector, Eagleton, Newpine, Amber
+District names were confirmed by Nathan (Corp Sector, Eagelton, Newpine, Amber
 Hill); Brookhaven and Arcadia are neighbourhood labels, not districts, so they
 are not traced. Smaller overlapping polygons win taps,
 so a neighbourhood inside a larger district can be selected independently.
