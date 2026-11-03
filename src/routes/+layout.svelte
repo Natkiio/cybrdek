@@ -1,7 +1,9 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '#lib/assets/favicon.svg';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { gm, startGmSession } from '#lib/supabase/gm.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -9,9 +11,12 @@
 	const nav = [
 		{ href: '/', label: 'HOME' },
 		{ href: '/characters', label: 'CHARS' },
+		{ href: '/lore', label: 'LORE' },
 		{ href: '/dice', label: 'DICE' },
 		{ href: '/rules', label: 'RULES' }
 	];
+
+	onMount(startGmSession);
 </script>
 
 <svelte:head>
@@ -23,8 +28,11 @@
 	<nav>
 		<span class="brand">CYBRDEK://</span>
 		{#each nav as item (item.href)}
-			<a href={item.href} class:active={page.url.pathname === item.href}>{item.label}</a>
+			<a href={item.href} class:active={item.href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(item.href)}>{item.label}</a>
 		{/each}
+		<a href="/gm" class="gm" class:active={page.url.pathname === '/gm'} class:on={gm.isGm}>
+			{gm.isGm ? 'GM MODE' : 'GM'}
+		</a>
 	</nav>
 
 	<main>
@@ -71,6 +79,17 @@
 	nav a:focus-visible {
 		color: var(--value);
 		border-color: var(--frame);
+	}
+
+	/* The GM link stays quiet until GM mode is on, then glows mint */
+	nav a.gm {
+		color: var(--faint);
+	}
+
+	nav a.gm.on {
+		color: var(--mint);
+		border-color: var(--mint-dim);
+		box-shadow: 0 0 10px var(--mint-glow);
 	}
 
 	/* The active page goes red, with a glow */
