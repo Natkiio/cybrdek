@@ -96,8 +96,8 @@ test('overview works offline before detail was ever loaded', async ({ page, cont
 	await context.setOffline(true);
 	await page.reload();
 	await expect(page.getByLabel('Map zoom')).toHaveText('100%');
-	await tapDistrict(page, 'Edgerton');
-	await expect(page.getByLabel('Selected district')).toContainText('Edgerton');
+	await tapDistrict(page, 'Eagleton');
+	await expect(page.getByLabel('Selected district')).toContainText('Eagleton');
 	await page.getByLabel('Close district popup').click();
 	await page.getByLabel('Zoom in', { exact: true }).click();
 	await page.getByLabel('Zoom in', { exact: true }).click();
