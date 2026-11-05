@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISTRICTS, MAP_HEIGHT, MAP_WIDTH } from './districts.ts';
+import { DISTRICTS, MAP_HEIGHT, MAP_WIDTH, VOYAGE_MAP } from './districts.ts';
 import { containsPoint, constrain, districtAt, fitMap, fitScale, focusDistrict, mapPoint, MAX_ZOOM, polygonArea, resizeView, zoomAt } from './geometry.ts';
 
 const phone = { width: 358, height: 480 };
@@ -30,39 +30,39 @@ describe('district traces', () => {
 
 describe('map navigation', () => {
 	it('fits the whole image and centers the short axis', () => {
-		const view = fitMap(phone);
+		const view = fitMap(phone, VOYAGE_MAP);
 		expect(view.x).toBe(0);
 		expect(view.y).toBeCloseTo((phone.height - MAP_HEIGHT * view.scale) / 2);
 		expect(view.scale).toBeCloseTo(phone.width / MAP_WIDTH);
 	});
 	it('zooms about the pointer without moving the underlying map coordinate', () => {
-		const view = constrain({ scale: fitScale(phone) * 3, x: -300, y: -100 }, phone);
+		const view = constrain({ scale: fitScale(phone, VOYAGE_MAP) * 3, x: -300, y: -100 }, phone, VOYAGE_MAP);
 		const anchor = [150, 200] as const;
 		const before = mapPoint(anchor, view);
-		const next = zoomAt(view, anchor, 1.5, phone);
+		const next = zoomAt(view, anchor, 1.5, phone, VOYAGE_MAP);
 		expect(mapPoint(anchor, next)[0]).toBeCloseTo(before[0]);
 		expect(mapPoint(anchor, next)[1]).toBeCloseTo(before[1]);
 	});
 	it('combines pinch centroid translation and scale', () => {
-		const view = constrain({ scale: fitScale(phone) * 3, x: -300, y: -100 }, phone);
+		const view = constrain({ scale: fitScale(phone, VOYAGE_MAP) * 3, x: -300, y: -100 }, phone, VOYAGE_MAP);
 		const point = mapPoint([150, 200], view);
-		const next = zoomAt(view, [150, 200], 1.2, phone, [180, 220]);
+		const next = zoomAt(view, [150, 200], 1.2, phone, VOYAGE_MAP, [180, 220]);
 		expect(mapPoint([180, 220], next)[0]).toBeCloseTo(point[0]);
 		expect(mapPoint([180, 220], next)[1]).toBeCloseTo(point[1]);
 	});
 	it('clamps zoom and pan rather than losing the map offscreen', () => {
-		const next = constrain({ x: 9999, y: -9999, scale: 9999 }, phone);
-		expect(next.scale).toBeCloseTo(fitScale(phone) * MAX_ZOOM);
+		const next = constrain({ x: 9999, y: -9999, scale: 9999 }, phone, VOYAGE_MAP);
+		expect(next.scale).toBeCloseTo(fitScale(phone, VOYAGE_MAP) * MAX_ZOOM);
 		expect(next.x).toBe(0);
 		expect(next.y).toBeCloseTo(phone.height - MAP_HEIGHT * next.scale);
-		expect(zoomAt(next, [100, 100], 0.00001, phone)).toEqual(fitMap(phone));
+		expect(zoomAt(next, [100, 100], 0.00001, phone, VOYAGE_MAP)).toEqual(fitMap(phone, VOYAGE_MAP));
 	});
 	it('focuses a chosen district and preserves relative zoom when the viewport resizes', () => {
-		const focused = focusDistrict(DISTRICTS[0], phone);
-		expect(focused.scale).toBeGreaterThan(fitScale(phone));
+		const focused = focusDistrict(DISTRICTS[0], phone, VOYAGE_MAP);
+		expect(focused.scale).toBeGreaterThan(fitScale(phone, VOYAGE_MAP));
 		const after = { width: 800, height: 600 };
-		const resized = resizeView(focused, phone, after);
-		expect(resized.scale / fitScale(after)).toBeCloseTo(focused.scale / fitScale(phone));
+		const resized = resizeView(focused, phone, after, VOYAGE_MAP);
+		expect(resized.scale / fitScale(after, VOYAGE_MAP)).toBeCloseTo(focused.scale / fitScale(phone, VOYAGE_MAP));
 	});
 });
 

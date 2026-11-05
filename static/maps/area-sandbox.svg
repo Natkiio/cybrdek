@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600">
+ <rect width="900" height="600" fill="#e8eded"/>
+ <g fill="none" stroke="#3c4444" stroke-width="4">
+  <rect x="45" y="45" width="810" height="510"/>
+  <path d="M45 245H365M435 245H855M300 45V245M600 45V245M45 405H365M435 405H855M300 405V555M600 405V555"/>
+ </g>
+ <g fill="#3c4444" font-family="monospace" font-size="22" text-anchor="middle">
+  <text x="170" y="150">ROOM 1</text><text x="450" y="150">ROOM 2</text><text x="735" y="150">ROOM 3</text>
+  <text x="450" y="330">MAIN HALL</text><text x="170" y="485">ROOM 4</text><text x="450" y="485">ROOM 5</text><text x="735" y="485">ROOM 6</text>
+ </g>
+</svg>
