@@ -29,14 +29,16 @@
 		{#if gm.isGm}
 			<p class="ok">GM MODE ACTIVE. You can edit campaign content.</p>
 		{:else}
-			<p class="dim">This account isn't a GM, so it can only read what players can see.</p>
+			<p class="dim">You're not a GM of this campaign, so you see what its players see.</p>
 		{/if}
+		<p><a href="/campaigns">YOUR CAMPAIGNS →</a></p>
 		<button type="button" onclick={signOut}>SIGN OUT</button>
 	</Panel>
 {:else}
 	<Panel title="SIGN IN">
 		<p class="dim">
-			Players don't need an account. The GM signs in with a one-time link sent by email.
+			You can read public campaigns without an account. To run your own campaign, or join one,
+			sign in with a one-time link sent by email.
 		</p>
 		<form onsubmit={send}>
 			<input

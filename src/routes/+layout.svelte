@@ -3,6 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { campaign } from '#lib/campaigns/current.svelte.ts';
 	import { gm, startGmSession } from '#lib/supabase/gm.svelte.ts';
 	import type { LayoutProps } from './$types';
 
@@ -33,7 +34,10 @@
 			<a href={item.href} class:active={item.href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(item.href)}>{item.label}</a>
 		{/each}
 		<a href="/gm" class="gm" class:active={page.url.pathname === '/gm'} class:on={gm.isGm}>
-			{gm.isGm ? 'GM MODE' : 'GM'}
+			{gm.isGm ? 'GM MODE' : gm.email ? 'SIGNED IN' : 'SIGN IN'}
+		</a>
+		<a href="/campaigns" class="campaign" class:active={page.url.pathname === '/campaigns'}>
+			CAMPAIGN: {campaign.name}
 		</a>
 	</nav>
 
@@ -103,6 +107,11 @@
 	nav a:focus-visible {
 		color: var(--value);
 		border-color: var(--frame);
+	}
+
+	.campaign {
+		flex-basis: 100%;
+		overflow-wrap: anywhere;
 	}
 
 	/* The GM link stays quiet until GM mode is on, then glows mint */

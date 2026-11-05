@@ -1,6 +1,7 @@
 // MP-1 (#39): GM pins and district overrides on the city map.
 // Pure helpers first (tested); Supabase calls at the bottom (browser only).
 
+import { campaign } from '#lib/campaigns/current.svelte.ts';
 import { supabase } from '#lib/supabase/client.ts';
 import type { LoreEntry } from '#lib/lore/types.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type District } from './districts.ts';
@@ -107,19 +108,19 @@ export function pinLore(pin: MapPin, entries: readonly LoreEntry[]): LoreEntry |
 // ---- Supabase ---------------------------------------------------------------
 
 export async function listPins(): Promise<MapPin[]> {
-	const { data, error } = await supabase().from('map_pins').select('id,x,y,label,lore_entry_id,visible,category');
+	const { data, error } = await supabase().from('map_pins').select('id,x,y,label,lore_entry_id,visible,category').eq('campaign_id', campaign.id);
 	return error || !data ? [] : (data as MapPin[]);
 }
 
 export async function listDistrictOverrides(): Promise<DistrictOverride[]> {
-	const { data, error } = await supabase().from('map_districts').select('district_id,name,lore_entry_id');
+	const { data, error } = await supabase().from('map_districts').select('district_id,name,lore_entry_id').eq('campaign_id', campaign.id);
 	return error || !data ? [] : (data as DistrictOverride[]);
 }
 
 export async function savePin(draft: PinDraft, id?: string): Promise<{ pin: MapPin } | { error: string }> {
 	const row = { ...draft, label: draft.label.trim(), ...clampToMap(draft.x, draft.y) };
 	const table = supabase().from('map_pins');
-	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert(row))
+	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert({ ...row, campaign_id: campaign.id }))
 		.select('id,x,y,label,lore_entry_id,visible,category')
 		.single();
 	return error ? { error: error.message } : { pin: data as MapPin };
@@ -133,7 +134,7 @@ export async function deletePin(id: string): Promise<string | null> {
 export async function saveDistrictOverride(override: DistrictOverride): Promise<string | null> {
 	const { error } = await supabase()
 		.from('map_districts')
-		.upsert({ ...override, name: override.name?.trim() || null });
+		.upsert({ ...override, name: override.name?.trim() || null, campaign_id: campaign.id }, { onConflict: 'campaign_id,district_id' });
 	return error ? error.message : null;
 }
 

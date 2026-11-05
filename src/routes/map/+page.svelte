@@ -23,6 +23,7 @@
 		type MapPin,
 		type PinDraft
 	} from '#lib/map/pins.ts';
+	import { campaign, VOYAGE_CITY_ID } from '#lib/campaigns/current.svelte.ts';
 	import { gm } from '#lib/supabase/gm.svelte.ts';
 
 	let entries = $state<LoreEntry[]>([]);
@@ -147,8 +148,14 @@
 	}
 </script>
 
-<svelte:head><title>VOYAGE CITY // CYBRDEK</title></svelte:head>
+<svelte:head><title>{campaign.name} MAP // CYBRDEK</title></svelte:head>
 
+{#if campaign.id !== VOYAGE_CITY_ID}
+	<h1>{campaign.name}</h1>
+	<Panel title="NO MAP YET">
+		<p class="dim">This campaign doesn't have a map yet. Map uploads are coming soon.</p>
+	</Panel>
+{:else}
 <div class="head">
 	<h1>VOYAGE CITY</h1>
 	{#if gm.isGm}
@@ -261,6 +268,8 @@
 			{/each}
 		</div>
 	</details>
+{/if}
+
 {/if}
 
 <style>

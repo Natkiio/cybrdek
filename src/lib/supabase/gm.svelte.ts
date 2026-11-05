@@ -3,14 +3,17 @@
 // A `.svelte.ts` module can hold runes, so `gm` is one shared reactive object:
 // any component that reads gm.isGm re-renders when it changes.
 //
-// isGm comes from the database function public.is_gm(). It only decides what
-// the UI shows; the real protection is row-level security on every table.
+// isGm comes from the database function public.is_campaign_gm(), for the
+// current campaign. It only decides what the UI shows; the real protection is
+// row-level security on every table.
 
+import { campaign } from '#lib/campaigns/current.svelte.ts';
 import { supabase } from './client.ts';
 
 export const gm = $state({
 	ready: false, // false until the first session check finishes
 	email: null as string | null,
+	userId: null as string | null,
 	isGm: false
 });
 
@@ -27,6 +30,7 @@ export function startGmSession() {
 		const email = session?.user.email ?? null;
 		const sameUser = email === gm.email && gm.ready;
 		gm.email = email;
+		gm.userId = session?.user.id ?? null;
 		// A different person (or nobody) is never the GM until checked again.
 		if (!sameUser) gm.isGm = false;
 		// Don't await inside the callback: supabase-js warns that it can deadlock.
@@ -40,17 +44,17 @@ async function refreshGm(mine: number) {
 		gm.ready = true;
 		return;
 	}
-	const { data, error } = await supabase().rpc('is_gm');
+	const { data, error } = await supabase().rpc('is_campaign_gm', { campaign: campaign.id });
 	if (mine !== generation) return; // the session changed while we waited
 	gm.isGm = !error && data === true;
 	gm.ready = true;
 }
 
-/** Email a magic sign-in link that comes back to /gm. */
-export async function sendMagicLink(email: string): Promise<string | null> {
+/** Email a magic sign-in link that comes back to `path` (default /gm). */
+export async function sendMagicLink(email: string, path = '/gm'): Promise<string | null> {
 	const { error } = await supabase().auth.signInWithOtp({
 		email: email.trim(),
-		options: { emailRedirectTo: `${location.origin}/gm` }
+		options: { emailRedirectTo: `${location.origin}${path}` }
 	});
 	return error ? error.message : null;
 }

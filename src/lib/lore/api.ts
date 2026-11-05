@@ -1,11 +1,14 @@
 // Reading and writing lore entries through Supabase (browser only).
 // Row-level security decides what each person gets; this file just asks.
 
+import { campaign, VOYAGE_CITY_ID } from '#lib/campaigns/current.svelte.ts';
 import { supabase } from '#lib/supabase/client.ts';
 import { slugify } from './links.ts';
 import type { LoreDraft, LoreEntry } from './types.ts';
 
-const CACHE_KEY = 'cybrdek.lore.v1';
+// Each campaign has its own offline copy. Voyage City keeps the original key,
+// so copies already saved on players' phones carry on working.
+const cacheKey = () => (campaign.id === VOYAGE_CITY_ID ? 'cybrdek.lore.v1' : `cybrdek.lore.v1:${campaign.id}`);
 const LIST_TIMEOUT_MS = 8000;
 
 export interface LoreList {
@@ -27,6 +30,7 @@ export async function listEntries(): Promise<LoreList> {
 	const { data, error } = await supabase()
 		.from('lore_entries')
 		.select('*')
+		.eq('campaign_id', campaign.id)
 		.order('title')
 		.abortSignal(AbortSignal.timeout(LIST_TIMEOUT_MS)); // bad signal: give up, use the cache
 	if (error || !data) return { entries: readCache(), offline: true };
@@ -42,7 +46,9 @@ export async function saveEntry(
 ): Promise<{ entry: LoreEntry } | { error: string }> {
 	const row = { ...draft, title: draft.title.trim(), slug: slugify(draft.title) };
 	const table = supabase().from('lore_entries');
-	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert(row)).select().single();
+	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert({ ...row, campaign_id: campaign.id }))
+		.select()
+		.single();
 	if (error) return { error: friendly(error.code, error.message) };
 	const entry = data as LoreEntry;
 	// Keep this device's copy in step: a hidden entry must leave it at once.
@@ -75,7 +81,7 @@ function friendly(code: string | undefined, message: string): string {
 
 function readCache(): LoreEntry[] {
 	try {
-		const parsed: unknown = JSON.parse(localStorage.getItem(CACHE_KEY) ?? '[]');
+		const parsed: unknown = JSON.parse(localStorage.getItem(cacheKey()) ?? '[]');
 		return Array.isArray(parsed) ? (parsed as LoreEntry[]).filter((e) => e?.visible === true) : [];
 	} catch {
 		return [];
@@ -84,7 +90,7 @@ function readCache(): LoreEntry[] {
 
 function writeCache(entries: LoreEntry[]) {
 	try {
-		localStorage.setItem(CACHE_KEY, JSON.stringify(entries));
+		localStorage.setItem(cacheKey(), JSON.stringify(entries));
 	} catch {
 		// Storage full or blocked: the wiki still works online.
 	}
