@@ -60,7 +60,7 @@ export async function listEntries(): Promise<LoreList> {
 		.abortSignal(AbortSignal.timeout(LIST_TIMEOUT_MS)); // bad signal: give up, use the cache
 	if (error || !data) return { entries: readCache(key), offline: true };
 	const entries = data as LoreEntry[];
-	writeCache(key, entries.filter((e) => e.visible));
+	await updateCache(key, () => entries.filter((e) => e.visible));
 	return { entries, offline: false };
 }
 
@@ -69,6 +69,7 @@ export async function saveEntry(
 	draft: LoreDraft,
 	id?: string
 ): Promise<{ entry: LoreEntry } | { error: string }> {
+	const key = await cacheKey();
 	const row = { ...draft, title: draft.title.trim(), slug: slugify(draft.title) };
 	const table = supabase().from('lore_entries');
 	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert({ ...row, campaign_id: campaign.id }))
@@ -77,16 +78,15 @@ export async function saveEntry(
 	if (error) return { error: friendly(error.code, error.message) };
 	const entry = data as LoreEntry;
 	// Keep this device's copy in step: a hidden entry must leave it at once.
-	const key = await cacheKey();
-	writeCache(key, reconcileCache(readCache(key), entry.id, entry));
+	await updateCache(key, (cache) => reconcileCache(cache, entry.id, entry));
 	return { entry };
 }
 
 export async function deleteEntry(id: string): Promise<string | null> {
+	const key = await cacheKey();
 	const { error } = await supabase().from('lore_entries').delete().eq('id', id);
 	if (error) return friendly(error.code, error.message);
-	const key = await cacheKey();
-	writeCache(key, reconcileCache(readCache(key), id, null));
+	await updateCache(key, (cache) => reconcileCache(cache, id, null));
 	return null;
 }
 
@@ -104,6 +104,15 @@ function friendly(code: string | undefined, message: string): string {
 	if (code === '23505') return 'An entry with that title already exists.';
 	if (code === '42501' || code === 'PGRST116') return "Only the GM can do that. Are you signed in?";
 	return message;
+}
+
+/**
+ * Change the copy at `key`, taken before the request started. If the account
+ * or campaign changed while we waited, drop the update: it must not land in
+ * the next reader's copy, or bring back one that sign-out removed.
+ */
+async function updateCache(key: string | null, change: (cache: LoreEntry[]) => LoreEntry[]) {
+	if (key === (await cacheKey())) writeCache(key, change(readCache(key)));
 }
 
 function readCache(key: string | null): LoreEntry[] {
