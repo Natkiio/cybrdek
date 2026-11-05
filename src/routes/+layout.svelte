@@ -40,6 +40,14 @@
 	<main>
 		{@render children()}
 	</main>
+
+	<!-- Wording from R. Talsorian Games' Homebrew Content Policy. Keep it on every page. -->
+	<footer>
+		Cybrdek is unofficial content provided under the
+		<a href="https://rtalsoriangames.com/homebrew-content-policy/" rel="noreferrer">Homebrew Content Policy</a>
+		of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials
+		that are the property of R. Talsorian Games and its licensees.
+	</footer>
 </div>
 
 <style>
@@ -47,6 +55,20 @@
 		max-width: 960px;
 		margin: 0 auto;
 		padding: 1rem;
+	}
+
+	footer {
+		margin-top: 2rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid var(--frame-dim);
+		color: var(--muted);
+		font-size: 0.75rem;
+		line-height: 1.5;
+	}
+
+	footer a {
+		color: var(--label);
+		text-decoration: underline;
 	}
 
 	nav {
