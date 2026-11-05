@@ -167,6 +167,48 @@ describe('private campaign offline copies (Codex review of #63)', () => {
 		expect((await listEntries()).entries).toEqual([]);
 	});
 
+	describe('when the account changes during a request (Codex review of #67)', () => {
+		const later = entry('l', 'Written by A');
+		const tick = () => new Promise((resolve) => setTimeout(resolve));
+		const privateKeys = () => [...store.keys()].filter((k) => k.startsWith('cybrdek.lore.v1:'));
+
+		it("keeps a slow save out of the next account's copy", async () => {
+			let finish = (_: unknown) => {};
+			writeResult = new Promise((resolve) => (finish = resolve)) as never;
+			const saving = saveEntry({ title: 'Written by A', type: 'other', summary: '', body: '', visible: true });
+			await tick();
+			sessionUser = 'player-b';
+			finish({ data: later, error: null });
+			await saving;
+			offline();
+			expect((await listEntries()).entries).toEqual([]);
+		});
+
+		it('a slow delete leaves the next account alone', async () => {
+			sessionUser = 'player-b';
+			listResult = { data: [later], error: null };
+			await listEntries();
+			sessionUser = 'player-a';
+			const deleting = deleteEntry('l');
+			sessionUser = 'player-b';
+			await deleting;
+			offline();
+			expect((await listEntries()).entries).toEqual([later]);
+		});
+
+		it('a slow read cannot bring back a copy that sign-out removed', async () => {
+			let finish = (_: unknown) => {};
+			listResult = new Promise((resolve) => (finish = resolve)) as never;
+			const reading = listEntries();
+			await tick();
+			sessionUser = null;
+			clearPrivateCaches();
+			finish({ data: [secret], error: null });
+			await reading;
+			expect(privateKeys()).toEqual([]);
+		});
+	});
+
 	it('clearing removes private copies and leaves public Voyage City', async () => {
 		store.set('cybrdek.lore.v1', '[]');
 		clearPrivateCaches();
