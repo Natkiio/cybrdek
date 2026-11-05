@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Size } from '#lib/map/types.ts';
 	import Panel from '#lib/components/Panel.svelte';
 	import LoreSelect from '#lib/components/map/LoreSelect.svelte';
 	import type { LoreEntry } from '#lib/lore/types.ts';
@@ -12,6 +13,7 @@
 
 	let {
 		draft = $bindable(),
+		map,
 		isNew,
 		entries,
 		moving,
@@ -23,6 +25,7 @@
 		oncancel
 	}: {
 		draft: PinDraft;
+		map: Size;
 		isNew: boolean;
 		entries: readonly LoreEntry[];
 		moving: boolean;
@@ -36,7 +39,7 @@
 
 	let confirmingDelete = $state(false);
 	let tried = $state(false);
-	const problems = $derived(validatePin(draft));
+	const problems = $derived(validatePin(draft, map));
 	const linked = $derived(entries.find((e) => e.id === draft.lore_entry_id));
 
 	function submit(event: SubmitEvent) {
