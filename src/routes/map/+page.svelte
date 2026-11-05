@@ -8,7 +8,7 @@
 	import { listEntries } from '#lib/lore/api.ts';
 	import { latestOnly } from '#lib/lore/latest.ts';
 	import type { LoreEntry } from '#lib/lore/types.ts';
-	import { DISTRICTS, type District, type Point } from '#lib/map/districts.ts';
+	import { VOYAGE_MAP, DISTRICTS, type District, type Point } from '#lib/map/districts.ts';
 	import {
 		deletePin,
 		districtOf,
@@ -106,7 +106,7 @@
 	async function saveDraft() {
 		if (!draft) return;
 		busy = true;
-		const result = await savePin(draft, draftId);
+		const result = await savePin(draft, draftId, VOYAGE_MAP);
 		busy = false;
 		if ('error' in result) {
 			error = result.error;
@@ -186,7 +186,8 @@
 {/snippet}
 
 <CityMap
-	{districts}
+	map={VOYAGE_MAP}
+	areas={districts}
 	{districtInfo}
 	onselect={(d) => {
 		selectedDistrictId = d?.id;
@@ -207,6 +208,7 @@
 {#if gm.isGm && draft}
 	{#key draftId ?? 'new'}
 		<PinEditor
+			map={VOYAGE_MAP}
 			bind:draft
 			isNew={!draftId}
 			{entries}

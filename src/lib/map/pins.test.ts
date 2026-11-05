@@ -1,3 +1,4 @@
+import { VOYAGE_MAP } from './districts.ts';
 import { describe, expect, it } from 'vitest';
 import type { LoreEntry } from '#lib/lore/types.ts';
 import type { District } from './districts.ts';
@@ -55,16 +56,16 @@ describe('pins', () => {
 	});
 
 	it('keeps pins on the 3840 × 2160 map', () => {
-		expect(clampToMap(-5, 99999)).toEqual({ x: 0, y: 2160 });
-		expect(clampToMap(Number.NaN, 100)).toEqual({ x: 0, y: 100 });
+		expect(clampToMap(-5, 99999, VOYAGE_MAP)).toEqual({ x: 0, y: 2160 });
+		expect(clampToMap(Number.NaN, 100, VOYAGE_MAP)).toEqual({ x: 0, y: 100 });
 	});
 
 	it('validates the name and position', () => {
 		const { id: _id, ...draft } = pin;
-		expect(validatePin(draft)).toEqual([]);
-		expect(validatePin({ ...draft, label: ' ' })).toEqual(['Give the pin a name.']);
-		expect(validatePin({ ...draft, x: 4000 })).toEqual(['The pin must be on the map.']);
-		expect(validatePin({ ...draft, label: 'x'.repeat(81) })).toHaveLength(1);
+		expect(validatePin(draft, VOYAGE_MAP)).toEqual([]);
+		expect(validatePin({ ...draft, label: ' ' }, VOYAGE_MAP)).toEqual(['Give the pin a name.']);
+		expect(validatePin({ ...draft, x: 4000 }, VOYAGE_MAP)).toEqual(['The pin must be on the map.']);
+		expect(validatePin({ ...draft, label: 'x'.repeat(81) }, VOYAGE_MAP)).toHaveLength(1);
 	});
 });
 

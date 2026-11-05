@@ -3,7 +3,7 @@
 
 import { supabase } from '#lib/supabase/client.ts';
 import type { LoreEntry } from '#lib/lore/types.ts';
-import { MAP_HEIGHT, MAP_WIDTH, type District } from './districts.ts';
+import { clampPoint, pointOnMap, type MapArea as District, type Size } from './types.ts';
 import { containsPoint } from './geometry.ts';
 
 export const PIN_LABEL_MAX = 80;
@@ -64,18 +64,18 @@ export interface DistrictLike {
 }
 
 /** Keep a point on the map image. */
-export function clampToMap(x: number, y: number): { x: number; y: number } {
-	const clamp = (n: number, max: number) => Math.min(max, Math.max(0, Number.isFinite(n) ? n : 0));
-	return { x: clamp(x, MAP_WIDTH), y: clamp(y, MAP_HEIGHT) };
+export function clampToMap(x: number, y: number, map: Size): { x: number; y: number } {
+	const [cx, cy] = clampPoint([x, y], map);
+	return { x: cx, y: cy };
 }
 
 /** Problems with a pin draft, in plain words. Empty = OK to save. */
-export function validatePin(draft: PinDraft): string[] {
+export function validatePin(draft: PinDraft, map: Size): string[] {
 	const problems: string[] = [];
 	const label = draft.label.trim();
 	if (!label) problems.push('Give the pin a name.');
 	else if (label.length > PIN_LABEL_MAX) problems.push(`Keep the name under ${PIN_LABEL_MAX} characters.`);
-	if (!(draft.x >= 0 && draft.x <= MAP_WIDTH && draft.y >= 0 && draft.y <= MAP_HEIGHT)) {
+	if (!pointOnMap([draft.x, draft.y], map)) {
 		problems.push('The pin must be on the map.');
 	}
 	return problems;
@@ -116,8 +116,8 @@ export async function listDistrictOverrides(): Promise<DistrictOverride[]> {
 	return error || !data ? [] : (data as DistrictOverride[]);
 }
 
-export async function savePin(draft: PinDraft, id?: string): Promise<{ pin: MapPin } | { error: string }> {
-	const row = { ...draft, label: draft.label.trim(), ...clampToMap(draft.x, draft.y) };
+export async function savePin(draft: PinDraft, id: string | undefined, map: Size): Promise<{ pin: MapPin } | { error: string }> {
+	const row = { ...draft, label: draft.label.trim(), ...clampToMap(draft.x, draft.y, map) };
 	const table = supabase().from('map_pins');
 	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert(row))
 		.select('id,x,y,label,lore_entry_id,visible,category')

@@ -2,28 +2,26 @@ import { slugify } from '#lib/lore/links.ts';
 
 export const MAP_WIDTH = 3840;
 export const MAP_HEIGHT = 2160;
-export type Point = readonly [x: number, y: number];
+import type { MapDefinition, MapArea, Point } from './types.ts';
+// Compatibility names for Voyage's existing menus and campaign integration.
+export type { MapArea as District, Point } from './types.ts';
+type District = MapArea;
 
-export interface District {
-	id: string;
-	name: string;
-	loreSlug: string;
-	/** Coordinates in the original 3840 × 2160 image, independent of the WebP resolution. */
-	polygon: readonly Point[];
-	label: Point;
-	boundary: 'marked' | 'inferred';
-	/** Voyage City has 7 districts; wards are named areas inside a district. */
-	kind: 'district' | 'ward';
-	/** For a ward: the id of the district it belongs to. */
-	parentId?: string;
-}
+export const VOYAGE_MAP: MapDefinition = {
+	name: 'Voyage City', width: MAP_WIDTH, height: MAP_HEIGHT,
+	imageUrl: '/maps/voyage-overview.webp', detailImageUrl: '/maps/voyage-detail.webp',
+	alt: 'Voyage City street map in red and black'
+};
 
 // Traced from Nathan's The_City_of_Voyage.jpg. Thick white lines define the main
 // divisions. Coastlines close the land shapes. Smaller named neighbourhoods have
 // no drawn enclosing boundary: their street-edge extents are explicitly inferred.
 // Smaller shapes win hit-testing so neighbourhoods inside a district stay tappable.
 const district = (name: string, label: Point, polygon: readonly Point[], boundary: District['boundary'] = 'inferred'): District => ({
-	id: slugify(name), name, loreSlug: slugify(name), polygon, label, boundary, kind: 'district'
+	id: slugify(name), name, loreSlug: slugify(name),
+	// SVG closes polygons itself; omit a repeated final copy of the first vertex.
+	polygon: polygon.at(-1)?.[0] === polygon[0][0] && polygon.at(-1)?.[1] === polygon[0][1] ? polygon.slice(0, -1) : polygon,
+	label, boundary, kind: 'district'
 });
 
 /** Ward → the district it belongs to (Nathan, 2026-11-03: 7 districts, the rest are wards). */
