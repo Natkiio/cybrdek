@@ -11,7 +11,7 @@
 //   combatant's armor is just gear. An NPC's SP becomes a head and a body item.
 // =============================================================================
 
-import { armoredStats, wornSp } from '#lib/rulesets/red/armor.ts';
+import { armoredStats, validArmorState, wornSp } from '#lib/rulesets/red/armor.ts';
 import { gearOf, type ArmorLocation, type GearItem } from '#lib/rulesets/red/gear.ts';
 import { derivedStats } from '#lib/rulesets/red/derived.ts';
 import { clampHp, takeArmoredDamage } from '#lib/rulesets/red/wounds.ts';
@@ -114,12 +114,30 @@ export function orderQueue(combatants: readonly Combatant[], die: Die): Combatan
 	);
 }
 
+/**
+ * Settle one initiative value. Only those still tied roll again, so a tie of
+ * any size finishes (11 people can't all roll different numbers on a d10), and
+ * an order already settled is never reshuffled. `tiebreak` ends up as the rank.
+ */
 function settleTie(group: Combatant[], die: Die): Combatant[] {
-	if (group.length === 1 || new Set(group.map((c) => c.tiebreak)).size === group.length) return group;
-	let rolled = group;
-	do rolled = group.map((c) => ({ ...c, tiebreak: die() }));
-	while (new Set(rolled.map((c) => c.tiebreak)).size < rolled.length);
-	return rolled;
+	if (group.length === 1) return group;
+	const buckets = new Map<number, Combatant[]>();
+	for (const c of group) buckets.set(c.tiebreak, [...(buckets.get(c.tiebreak) ?? []), c]);
+	const order = [...buckets.entries()]
+		.sort(([a], [b]) => b - a)
+		.flatMap(([, tied]) => rollOff(tied, die));
+	return order.map((c, i) => ({ ...c, tiebreak: order.length - i }));
+}
+
+/** Everyone rolls; higher goes first; anyone who matched rolls off again. */
+function rollOff(tied: Combatant[], die: Die): Combatant[] {
+	if (tied.length === 1) return tied;
+	const byRoll = new Map<number, Combatant[]>();
+	for (const c of tied) {
+		const roll = die();
+		byRoll.set(roll, [...(byRoll.get(roll) ?? []), c]);
+	}
+	return [...byRoll.entries()].sort(([a], [b]) => b - a).flatMap(([, again]) => rollOff(again, die));
 }
 
 /** Roll for anyone without initiative, build the queue and start Round 1. */
@@ -219,6 +237,8 @@ export function parseEncounter(value: unknown): Encounter {
 	if (typeof value !== 'object' || value === null) return newEncounter();
 	const v = value as Partial<Encounter>;
 	if (!Array.isArray(v.combatants) || !v.combatants.every(isCombatant)) return newEncounter();
+	// Duplicate ids can't be told apart, and Svelte's keyed list can't render them.
+	if (new Set(v.combatants.map((c) => c.id)).size !== v.combatants.length) return newEncounter();
 	const started = v.started === true && Number.isInteger(v.round) && (v.round as number) >= 1;
 	const current = v.combatants.some((c) => c.id === v.currentId) ? (v.currentId as string) : null;
 	if (started && !current) return { ...newEncounter(), combatants: v.combatants };
@@ -238,6 +258,14 @@ function isCombatant(value: unknown): value is Combatant {
 		whole(c.tiebreak) &&
 		(c.initiative === null || whole(c.initiative)) &&
 		Array.isArray(c.gear) &&
+		c.gear.every(isGear) &&
 		typeof c.out === 'boolean'
 	);
+}
+
+function isGear(value: unknown): boolean {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+	const g = value as Record<string, unknown>;
+	if (typeof g.id !== 'string' || typeof g.kind !== 'string') return false;
+	return g.kind !== 'armor' || validArmorState(g);
 }
