@@ -1,3 +1,4 @@
+import { validInjuries } from '#lib/rulesets/red/injuries.ts';
 import { validArmorState } from '#lib/rulesets/red/armor.ts';
 import { validCyberware } from '#lib/rulesets/red/cyberware.ts';
 import { isIp, isIpSpend } from '#lib/rulesets/red/improvement.ts';
@@ -128,6 +129,9 @@ export function parseCharacterFile(text: string): ParseResult {
 		}
 		if ('humanity' in extra && !Number.isInteger(extra.humanity)) {
 			errors.push('Humanity must be a whole number.');
+		}
+		if (candidate.rulesetId === 'cyberpunk-red' && 'criticalInjuries' in extra && !validInjuries(extra.criticalInjuries)) {
+			errors.push('Critical Injuries must contain unique body/head results from 2 to 12.');
 		}
 		if ('ip' in extra && !isIp(extra.ip)) {
 			errors.push('Improvement Points must be a whole number of 0 or more.');

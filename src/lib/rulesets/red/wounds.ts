@@ -1,3 +1,4 @@
+import { ATTACK_RULES, type DamageOptions } from './attacks.ts';
 import { damageThroughArmor } from './armor.ts';
 import type { ArmorLocation, GearItem } from './gear.ts';
 // =============================================================================
@@ -65,9 +66,17 @@ export function resolveDeathSave(die: number, penalty: number, body: number): De
 
 /** Core pp. 170, 186: armor first; aimed head hits double damage that penetrates. */
 export function takeArmoredDamage(
-	hp: number, maxHp: number, gear: GearItem[], damage: number, location: ArmorLocation
+	hp: number, maxHp: number, gear: GearItem[], damage: number, location: ArmorLocation, options: DamageOptions = {}
 ) {
-	const result = damageThroughArmor(gear, damage, location);
-	const hpDamage = result.penetrating * (location === 'head' ? 2 : 1);
-	return { ...result, hpDamage, hp: clampHp(hp - hpDamage, maxHp) };
+	const rule = ATTACK_RULES[options.attackType ?? 'ranged'];
+	const result = damageThroughArmor(gear, damage, location, options);
+	const multiplier = location === 'head' && rule.armor !== 'bypass' ? options.headMultiplier ?? 2 : 1;
+	const hpDamage = result.penetrating * multiplier;
+	const remaining = hp - hpDamage;
+	// Core pp. 177, 346, 349: preserve the distinct Choke/Rubber and Stun thresholds.
+	// A zero-HP target is never healed by applying more damage.
+	const stopped = rule.floor === 'rubber' ? hp > 1 && remaining < 0
+		: rule.floor === 'stun' && hp > 0 && remaining < 1;
+	const unconscious = Boolean(stopped && options.attackType !== 'rubber');
+	return { ...result, hpDamage, unconscious, hp: stopped ? 1 : clampHp(remaining, maxHp) };
 }

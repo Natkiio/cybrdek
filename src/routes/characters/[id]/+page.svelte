@@ -6,7 +6,10 @@
 	import CyberwarePanel from '#lib/components/sheet/CyberwarePanel.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
+	import { headMultiplierOf, type DamageOptions } from '#lib/rulesets/red/attacks.ts';
 	import { armoredStats } from '#lib/rulesets/red/armor.ts';
+	import CriticalInjuries from '#lib/components/sheet/CriticalInjuries.svelte';
+	import { injuriesOf, injuryModifiers } from '#lib/rulesets/red/injuries.ts';
 	import HpTracker from '#lib/components/sheet/HpTracker.svelte';
 	import ImprovementPanel from '#lib/components/sheet/ImprovementPanel.svelte';
 	import { roll, rollDie, skillCheck, type RollResult } from '#lib/engine/dice.ts';
@@ -37,9 +40,11 @@
 		crit: boolean;
 		fumble: boolean;
 		note?: string;
+		damageCritical?: boolean;
 	} | null>(null);
 	let lastDeathSave = $state<DeathSaveResult | null>(null);
 	let saveError = $state('');
+	let damageNotice = $state('');
 
 	onMount(async () => {
 		character = await getCharacter(page.params.id ?? '');
@@ -54,9 +59,11 @@
 	const maxHp = $derived(sheet?.hp ?? 0);
 	// Old characters have no currentHp yet: treat them as unhurt.
 	const hp = $derived(clampHp(Number(character?.extra.currentHp ?? maxHp), maxHp));
-	const deathSavePenalty = $derived(Number(character?.extra.deathSavePenalty ?? 0));
+	const injuries = $derived(injuriesOf(character?.extra ?? {}));
+	const injuryMods = $derived(injuryModifiers(injuries));
+	const deathSavePenalty = $derived(Number(character?.extra.deathSavePenalty ?? 0) + injuryMods.deathSave);
 	const wound = $derived(woundState(hp, maxHp));
-	const penalty = $derived(actionPenalty(wound));
+	const penalty = $derived(actionPenalty(wound) + injuryMods.actions);
 	const gear = $derived(character ? gearOf(character.extra) : []);
 
 	const cyberware = $derived(character ? cyberwareOf(character.extra) : []);
@@ -67,8 +74,9 @@
 		EMP: effectiveEmp(character?.stats.EMP ?? 0, humanity)
 	});
 
-	function takeDamage(amount: number, location: ArmorLocation) {
-		const result = takeArmoredDamage(hp, maxHp, gear, amount, location);
+	function takeDamage(amount: number, location: ArmorLocation, options: DamageOptions = {}) {
+		const result = takeArmoredDamage(hp, maxHp, gear, amount, location, { ...options, headMultiplier: headMultiplierOf(character?.extra ?? {}) });
+		damageNotice = result.unconscious ? 'Target is unconscious (Core pp. 177, 349). Record this condition at the table.' : '';
 		void update({ currentHp: result.hp, gear: result.gear });
 	}
 
@@ -147,7 +155,8 @@
 			result,
 			crit,
 			fumble: false,
-			note: crit ? 'CRITICAL INJURY · +5 bonus damage' : undefined
+			note: crit ? 'CRITICAL INJURY · roll for target below' : undefined,
+			damageCritical: crit
 		};
 	}
 
@@ -161,7 +170,7 @@
 			kind: 'free',
 			result: { rolls: [save.die], modifier: save.penalty, total: save.total }
 		});
-		void update({ deathSavePenalty: deathSavePenalty + 1 });
+		void update({ deathSavePenalty: Number(character.extra.deathSavePenalty ?? 0) + 1 });
 	}
 
 	function signed(n: number) {
@@ -209,11 +218,14 @@
 				seriouslyWounded={sheet.seriouslyWounded}
 				deathSave={sheet.deathSave}
 				{deathSavePenalty}
+				baseDeathSavePenalty={injuryMods.deathSave}
 				onchange={(next) => update({ currentHp: next })}
 				ondamage={takeDamage}
 				ondeathsave={rollDeathSave}
 				onresetpenalty={() => update({ deathSavePenalty: 0 })}
 			/>
+			<CriticalInjuries {injuries} {hp} {maxHp} characterId={character.id} offered={lastRoll?.damageCritical ?? false} onchange={update} />
+			{#if damageNotice}<p role="status">{damageNotice}</p>{/if}
 			{#if lastDeathSave && wound === 'mortally'}
 				<p class="death-result" class:fail={!lastDeathSave.survived}>
 					Death Save: {lastDeathSave.die} + {lastDeathSave.penalty} = {lastDeathSave.total} vs BODY {lastDeathSave.body}
@@ -222,11 +234,11 @@
 			{/if}
 
 			<Panel title="STATS">
-				<p class="hint dim">Tap to roll d10 + STAT{penalty ? ` (${penalty} wounds)` : ''}.</p>
+				<p class="hint dim">Tap to roll d10 + STAT{penalty ? ` (${penalty} wounds/injuries)` : ''}.</p>
 				<div class="stats">
 					{#each ruleset.stats as s (s.id)}
 						{@const value = character.stats[s.id]}
-						{@const shown = s.id === 'MOVE' ? Math.min(effectiveStats.MOVE, woundedMove(effectiveStats.MOVE, wound)) : effectiveStats[s.id]}
+						{@const shown = s.id === 'MOVE' ? Math.min(effectiveStats.MOVE, Math.max(1, woundedMove(effectiveStats.MOVE, wound) + injuryMods.move)) : effectiveStats[s.id]}
 						<button type="button" class="stat" onclick={() => check(s.id, shown, 'stat')} title={s.name}>
 							<span class="stat-id">{s.id}</span>
 							<span class="stat-value" class:reduced={shown !== value}>{shown}</span>

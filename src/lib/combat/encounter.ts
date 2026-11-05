@@ -11,6 +11,7 @@
 //   combatant's armor is just gear. An NPC's SP becomes a head and a body item.
 // =============================================================================
 
+import { headMultiplierOf } from '#lib/rulesets/red/attacks.ts';
 import { armoredStats, validArmorState, wornSp } from '#lib/rulesets/red/armor.ts';
 import { gearOf, type ArmorLocation, type GearItem } from '#lib/rulesets/red/gear.ts';
 import { derivedStats } from '#lib/rulesets/red/derived.ts';
@@ -31,6 +32,8 @@ export interface Combatant {
 	tiebreak: number; // re-roll that settles equal initiative; higher goes first
 	hp: number;
 	maxHp: number;
+	/** Snapshot of the saved character’s Cracked Skull effect; absent in older encounters. */
+	headMultiplier?: 2 | 3;
 	gear: GearItem[];
 	out: boolean; // knocked out or fled: skipped in the queue
 }
@@ -89,6 +92,7 @@ export function makePc(id: string, character: Character): Combatant {
 		initiative: null,
 		tiebreak: 0,
 		hp: clampHp(Number(character.extra.currentHp ?? maxHp), maxHp),
+		headMultiplier: headMultiplierOf(character.extra),
 		maxHp,
 		gear,
 		out: false
@@ -221,7 +225,7 @@ export type HitLocation = ArmorLocation | 'direct';
 export function damage(encounter: Encounter, id: string, amount: number, location: HitLocation): Encounter {
 	return update(encounter, id, (c) => {
 		if (location === 'direct') return { ...c, hp: clampHp(c.hp - amount, c.maxHp) };
-		const result = takeArmoredDamage(c.hp, c.maxHp, c.gear, amount, location);
+		const result = takeArmoredDamage(c.hp, c.maxHp, c.gear, amount, location, { headMultiplier: c.headMultiplier });
 		return { ...c, hp: result.hp, gear: result.gear };
 	});
 }
@@ -256,6 +260,7 @@ function isCombatant(value: unknown): value is Combatant {
 		whole(c.hp) &&
 		whole(c.maxHp) &&
 		whole(c.tiebreak) &&
+		(c.headMultiplier === undefined || c.headMultiplier === 2 || c.headMultiplier === 3) &&
 		(c.initiative === null || whole(c.initiative)) &&
 		Array.isArray(c.gear) &&
 		c.gear.every(isGear) &&
