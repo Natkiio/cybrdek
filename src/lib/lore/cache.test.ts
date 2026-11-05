@@ -1,16 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LoreEntry } from './types.ts';
 
 // In-memory localStorage plus a fake Supabase that answers what we tell it.
 const store = new Map<string, string>();
 vi.stubGlobal('localStorage', {
+	get length() {
+		return store.size;
+	},
+	key: (i: number) => [...store.keys()][i] ?? null,
 	getItem: (k: string) => store.get(k) ?? null,
-	setItem: (k: string, v: string) => void store.set(k, v)
+	setItem: (k: string, v: string) => void store.set(k, v),
+	removeItem: (k: string) => void store.delete(k)
 });
 vi.stubGlobal('navigator', { onLine: true });
 
 let listResult: { data: LoreEntry[] | null; error: unknown };
 let writeResult: { data: LoreEntry | null; error: unknown };
+let sessionUser: string | null = null;
 
 vi.mock('#lib/supabase/client.ts', () => {
 	const chain = (result: () => unknown) => {
@@ -23,6 +29,10 @@ vi.mock('#lib/supabase/client.ts', () => {
 	};
 	return {
 		supabase: () => ({
+			auth: {
+				getSession: () =>
+					Promise.resolve({ data: { session: sessionUser ? { user: { id: sessionUser } } : null } })
+			},
 			from: () => ({
 				select: () => chain(() => listResult),
 				insert: () => chain(() => writeResult),
@@ -33,7 +43,8 @@ vi.mock('#lib/supabase/client.ts', () => {
 	};
 });
 
-const { deleteEntry, listEntries, reconcileCache, saveEntry } = await import('./api.ts');
+const { clearPrivateCaches, deleteEntry, listEntries, reconcileCache, saveEntry } = await import('./api.ts');
+const { campaign, VOYAGE_CITY_ID } = await import('#lib/campaigns/current.svelte.ts');
 const { latestOnly } = await import('./latest.ts');
 
 const entry = (id: string, title: string, visible = true): LoreEntry => ({
@@ -98,5 +109,76 @@ describe('latestOnly', () => {
 		const playerRead = latest.begin();
 		expect(playerRead()).toBe(true);
 		expect(gmRead()).toBe(false); // finishing late, it must be thrown away
+	});
+});
+
+describe('private campaign offline copies (Codex review of #63)', () => {
+	const offline = () => vi.stubGlobal('navigator', { onLine: false });
+	const secret = entry('s', 'Members only');
+
+	beforeEach(async () => {
+		store.clear();
+		vi.stubGlobal('navigator', { onLine: true });
+		campaign.id = 'private-campaign';
+		sessionUser = 'player-a';
+		listResult = { data: [secret], error: null };
+		await listEntries(); // player A reads it online, which saves a copy
+	});
+
+	afterEach(() => {
+		campaign.id = VOYAGE_CITY_ID;
+		sessionUser = null;
+		vi.stubGlobal('navigator', { onLine: true });
+	});
+
+	it('gives the account that saved it its copy offline', async () => {
+		offline();
+		expect((await listEntries()).entries).toEqual([secret]);
+	});
+
+	it('gives nothing to someone signed out', async () => {
+		sessionUser = null;
+		offline();
+		expect((await listEntries()).entries).toEqual([]);
+	});
+
+	it('gives nothing to a different account on the device', async () => {
+		sessionUser = 'player-b';
+		offline();
+		expect((await listEntries()).entries).toEqual([]);
+	});
+
+	it('gives nothing when the network fails, not only when known offline', async () => {
+		sessionUser = null;
+		listResult = { data: null, error: { message: 'down' } };
+		expect((await listEntries()).entries).toEqual([]);
+	});
+
+	it('saves no copy for someone signed out', async () => {
+		store.clear();
+		sessionUser = null;
+		await listEntries();
+		expect(store.size).toBe(0);
+	});
+
+	it('keeps one campaign out of another', async () => {
+		campaign.id = 'other-campaign';
+		offline();
+		expect((await listEntries()).entries).toEqual([]);
+	});
+
+	it('clearing removes private copies and leaves public Voyage City', async () => {
+		store.set('cybrdek.lore.v1', '[]');
+		clearPrivateCaches();
+		expect([...store.keys()]).toEqual(['cybrdek.lore.v1']);
+	});
+
+	it('Voyage City stays readable signed out', async () => {
+		campaign.id = VOYAGE_CITY_ID;
+		sessionUser = null;
+		listResult = { data: [secret], error: null };
+		await listEntries();
+		offline();
+		expect((await listEntries()).entries).toEqual([secret]);
 	});
 });

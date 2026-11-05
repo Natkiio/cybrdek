@@ -28,7 +28,7 @@ async function fakeSupabase(page: Page, fake: Fake) {
 		const url = new URL(req.url());
 		const json = (body: unknown, status = 200) =>
 			route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-		if (url.pathname.endsWith('/rpc/is_gm')) return json(fake.isGm);
+		if (url.pathname.endsWith('/rpc/is_campaign_gm')) return json(fake.isGm);
 		if (url.pathname.endsWith('/lore_entries')) return json([topaz]);
 		if (url.pathname.endsWith('/map_districts')) {
 			if (req.method() === 'GET') return json([]);
