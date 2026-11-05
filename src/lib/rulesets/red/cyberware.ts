@@ -170,7 +170,7 @@ export const CYBERWARE: readonly CyberwareDef[] = [
 	external('Subdermal Pocket', 'Clinic', 100, 3, '1d6'),
 
 	arm('Cyberarm', 'Hospital', 500, 7, '2d6', { holds: 4, hosts: undefined }),
-	arm('Standard Hand', 'Clinic', 100, 2, 'half', { meatLimb: true }),
+	arm('Standard Hand', 'Clinic', 100, 2, 'half', { meatLimb: true, slots: 0 }),
 	arm('Big Knucks', 'Clinic', 100, 3, '1d6', { meatLimb: true }),
 	arm('Cyberdeck', 'Clinic', 500, 3, '1d6', { slots: 3 }),
 	arm('Grapple Hand', 'Clinic', 100, 3, '1d6'),
@@ -190,7 +190,7 @@ export const CYBERWARE: readonly CyberwareDef[] = [
 	arm('Wolvers', 'Clinic', 500, 7, '2d6', { meatLimb: true }),
 
 	leg('Cyberleg', 'Hospital', 100, 3, '1d6', { holds: 3, hosts: undefined }),
-	leg('Standard Foot', 'Clinic', 100, 2, 'half', { meatLimb: true }),
+	leg('Standard Foot', 'Clinic', 100, 2, 'half', { meatLimb: true, slots: 0 }),
 	leg('Grip Foot', 'Clinic', 500, 3, '1d6', { paired: true }),
 	leg('Jump Booster', 'Clinic', 500, 3, '1d6', { paired: true, slots: 2 }),
 	leg('Skate Foot', 'Clinic', 500, 3, '1d6', { paired: true }),
@@ -201,11 +201,11 @@ export const CYBERWARE: readonly CyberwareDef[] = [
 	limb('Realskinn™ Covering', 'Mall', 500, 0, 'none', { slots: 0 }),
 	limb('Superchrome® Covering', 'Mall', 1000, 0, 'none', { slots: 0 }),
 
-	borg('Artificial Shoulder Mount', 'Hospital', 1000, 14, '4d6'),
-	borg('Implanted Linear Frame ß (Beta)', 'Hospital', 5000, 14, '4d6'),
-	borg('Implanted Linear Frame ∑ (Sigma)', 'Hospital', 1000, 14, '4d6'),
-	borg('MultiOptic Mount', 'Hospital', 1000, 14, '4d6'),
-	borg('Sensor Array', 'Clinic', 1000, 14, '4d6', { needs: 'cyberaudio-suite' })
+	borg('Artificial Shoulder Mount', 'Hospital', 1000, 14, '4d6', { unique: 'artificial-shoulder-mount' }),
+	borg('Implanted Linear Frame ß (Beta)', 'Hospital', 5000, 14, '4d6', { needs: 'grafted-muscle-and-bone-lace' }),
+	borg('Implanted Linear Frame ∑ (Sigma)', 'Hospital', 1000, 14, '4d6', { needs: 'grafted-muscle-and-bone-lace' }),
+	borg('MultiOptic Mount', 'Hospital', 1000, 14, '4d6', { unique: 'multioptic-mount' }),
+	borg('Sensor Array', 'Clinic', 1000, 14, '4d6', { needs: 'cyberaudio-suite', unique: 'sensor-array' })
 ];
 
 const DEFS = new Map(CYBERWARE.map((d) => [d.id, d]));
@@ -233,9 +233,35 @@ export function rollHumanityLoss(dice: HlDice, d6: () => number): number {
 	return sum(Number(dice[0]));
 }
 
+/** A Sensor Array adds 5 Cyberaudio Option Slots to the suite (Core p. 367). */
+const SENSOR_ARRAY_SLOTS = 5;
+
+/** How many of a body part you can have, and what a Mount adds (Core p. 367). */
+const BODY_LIMITS: Record<string, { base: number; mount?: string; extra?: number }> = {
+	cybereye: { base: 2, mount: 'multioptic-mount', extra: 5 },
+	cyberarm: { base: 2, mount: 'artificial-shoulder-mount', extra: 2 },
+	cyberleg: { base: 2 }
+};
+
+const count = (installed: readonly InstalledCyberware[], defId: string) =>
+	installed.filter((i) => i.defId === defId).length;
+
+function bodyLimit(installed: readonly InstalledCyberware[], defId: string, without?: string): number {
+	const limit = BODY_LIMITS[defId];
+	if (!limit) return Infinity;
+	const mounted = limit.mount && limit.mount !== without && count(installed, limit.mount) > 0;
+	return limit.base + (mounted ? (limit.extra ?? 0) : 0);
+}
+
+function holdsOf(installed: readonly InstalledCyberware[], host: InstalledCyberware): number {
+	const holds = cyberwareDef(host.defId)?.holds ?? 0;
+	const boosted = host.defId === 'cyberaudio-suite' && count(installed, 'sensor-array') > 0;
+	return holds + (boosted ? SENSOR_ARRAY_SLOTS : 0);
+}
+
 /** Slots free in an installed foundation. */
 export function freeSlots(installed: readonly InstalledCyberware[], host: InstalledCyberware): number {
-	const holds = cyberwareDef(host.defId)?.holds ?? 0;
+	const holds = holdsOf(installed, host);
 	const used = installed
 		.filter((i) => i.hostId === host.id)
 		.reduce((n, i) => n + slotsUsedBy(cyberwareDef(i.defId) as CyberwareDef), 0);
@@ -269,6 +295,11 @@ export function installProblem(
 	if (def.unique && installed.some((i) => cyberwareDef(i.defId)?.unique === def.unique)) {
 		return def.unique === 'speedware' ? 'Only 1 piece of Speedware can be installed.' : `Only one ${def.name} can be installed.`;
 	}
+	if (count(installed, def.id) >= bodyLimit(installed, def.id)) {
+		const mount = BODY_LIMITS[def.id].mount;
+		const more = mount && !has(mount) ? ` ${cyberwareDef(mount)?.name} allows more.` : '';
+		return `No room for another ${def.name}.${more}`;
+	}
 	if (def.needs && !has(def.needs)) return `Needs ${cyberwareDef(def.needs)?.name} first.`;
 	if (POOLED.includes(def.category) && freePoolSlots(installed, def.category) < slotsUsedBy(def)) {
 		return `No ${CYBERWARE_CATEGORY_LABELS[def.category]} slots left (7 max).`;
@@ -295,6 +326,17 @@ export function removeProblem(installed: readonly InstalledCyberware[], piece: I
 	const inside = installed.filter((i) => i.hostId === piece.id).length;
 	if (inside) return `Remove the ${inside} ${inside === 1 ? 'option' : 'options'} inside it first.`;
 	const def = cyberwareDef(piece.defId);
+	// Taking a Mount or Sensor Array away mustn't strand what depends on the room it gave.
+	for (const [part, limit] of Object.entries(BODY_LIMITS)) {
+		if (limit.mount === piece.defId && count(installed, part) > bodyLimit(installed, part, piece.defId)) {
+			return `Remove the extra ${cyberwareDef(part)?.name}s first.`;
+		}
+	}
+	if (piece.defId === 'sensor-array') {
+		const rest = installed.filter((i) => i.id !== piece.id);
+		const suite = rest.find((i) => i.defId === 'cyberaudio-suite');
+		if (suite && freeSlots(rest, suite) < 0) return 'Remove the extra Cyberaudio options first.';
+	}
 	const dependent = installed.find((i) => i.id !== piece.id && cyberwareDef(i.defId)?.needs === piece.defId);
 	const lastOfKind = installed.filter((i) => i.defId === piece.defId).length === 1;
 	if (dependent && lastOfKind) return `${cyberwareDef(dependent.defId)?.name} needs ${def?.name}.`;
@@ -350,19 +392,30 @@ export function humanityOf(extra: Record<string, unknown>, emp: number): number 
 	return Number.isInteger(extra.humanity) ? (extra.humanity as number) : emp * 10;
 }
 
-/** Check saved cyberware: known pieces, unique ids, hosts that exist. */
+/**
+ * Check saved cyberware: known pieces, unique ids, and every option in a real
+ * host of the right type with room for it. The allowed host types only ever
+ * point at foundations, so a valid list can't contain a loop.
+ */
 export function validCyberware(value: unknown): value is InstalledCyberware[] {
 	if (!Array.isArray(value)) return false;
-	const ids = new Set(value.map((i) => i?.id));
-	if (ids.size !== value.length) return false;
-	return value.every(
+	const byId = new Map(value.map((i) => [i?.id, i]));
+	if (byId.size !== value.length) return false;
+	const wellFormed = value.every(
 		(i) =>
 			typeof i === 'object' &&
 			i !== null &&
 			typeof i.id === 'string' &&
 			DEFS.has(i.defId) &&
 			Number.isInteger(i.hl) &&
-			i.hl >= 0 &&
-			(i.hostId === undefined || (i.hostId !== i.id && ids.has(i.hostId)))
+			i.hl >= 0
 	);
+	if (!wellFormed) return false;
+	const list = value as InstalledCyberware[];
+	return list.every((i) => {
+		const def = DEFS.get(i.defId) as CyberwareDef;
+		if (i.hostId === undefined) return !def.hosts || def.meatLimb === true;
+		const host = byId.get(i.hostId);
+		return Boolean(host) && host !== i && def.hosts?.includes(host.defId) === true && freeSlots(list, host) >= 0;
+	});
 }

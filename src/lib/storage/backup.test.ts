@@ -131,6 +131,16 @@ describe('cyberware in backups', () => {
 	it('rejects damaged cyberware and Humanity', () => {
 		const set = (key: string, value: unknown) =>
 			parseCharacterFile(fileWith((file) => ((file.character as Record<string, Record<string, unknown>>).extra[key] = value)));
+		const looped = set('cyberware', [
+			{ id: 'a', defId: 'cyberarm', hostId: 'b', hl: 7 },
+			{ id: 'b', defId: 'cyberarm', hostId: 'a', hl: 7 }
+		]);
+		const wrongHost = set('cyberware', [
+			{ id: 'a', defId: 'biomonitor', hl: 0 },
+			{ id: 'b', defId: 'kerenzikov', hostId: 'a', hl: 14 }
+		]);
+		expect(looped.ok).toBe(false);
+		expect(wrongHost.ok).toBe(false);
 		const cyber = set('cyberware', [{ id: 'a', defId: 'not-real', hl: 7 }]);
 		const humanity = set('humanity', 'lots');
 		expect(cyber.ok).toBe(false);

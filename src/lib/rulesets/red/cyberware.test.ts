@@ -138,6 +138,44 @@ describe('installProblem', () => {
 		expect(possibleHosts(chipped, def('skill-chip'))).toEqual([]);
 	});
 
+	it('Standard Hand and Foot take no slot, even in a full limb (Codex, #57 review)', () => {
+		const arm = piece('cyberarm');
+		const hand = piece('standard-hand', arm.id);
+		expect(freeSlots([arm, hand], arm)).toBe(4);
+		const full = [arm, piece('popup-shield', arm.id), piece('grapple-hand', arm.id)];
+		expect(installProblem(full, def('standard-hand'), [arm.id])).toBeNull();
+		const leg = piece('cyberleg');
+		expect(freeSlots([leg, piece('standard-foot', leg.id)], leg)).toBe(3);
+	});
+
+	it('a Sensor Array gives the suite 5 more slots, and only one fits', () => {
+		const suite = piece('cyberaudio-suite');
+		const array = piece('sensor-array');
+		expect(freeSlots([suite], suite)).toBe(3);
+		expect(freeSlots([suite, array], suite)).toBe(8);
+		expect(installProblem([suite, array], def('sensor-array'))).toContain('Only one');
+	});
+
+	it('allows one of each Mount', () => {
+		expect(installProblem([piece('multioptic-mount')], def('multioptic-mount'))).toContain('Only one');
+		expect(installProblem([piece('artificial-shoulder-mount')], def('artificial-shoulder-mount'))).toContain('Only one');
+	});
+
+	it('limits eyes, arms and legs, with Mounts adding more', () => {
+		const eyes = [piece('cybereye'), piece('cybereye')];
+		expect(installProblem(eyes, def('cybereye'))).toContain('MultiOptic Mount allows more');
+		expect(installProblem([...eyes, piece('multioptic-mount')], def('cybereye'))).toBeNull();
+		const arms = [piece('cyberarm'), piece('cyberarm')];
+		expect(installProblem(arms, def('cyberarm'))).toContain('No room');
+		expect(installProblem([...arms, piece('artificial-shoulder-mount')], def('cyberarm'))).toBeNull();
+		expect(installProblem([piece('cyberleg'), piece('cyberleg')], def('cyberleg'))).toContain('No room');
+	});
+
+	it('Linear Frames need Grafted Muscle and Bone Lace', () => {
+		expect(installProblem([], def('implanted-linear-frame-sigma'))).toContain('Grafted Muscle');
+		expect(installProblem([piece('grafted-muscle-and-bone-lace')], def('implanted-linear-frame-sigma'))).toBeNull();
+	});
+
 	it('coverings take no slot', () => {
 		const leg = piece('cyberleg');
 		const full = [leg, piece('jump-booster', leg.id), piece('talon-foot', leg.id)];
@@ -152,6 +190,22 @@ describe('removeProblem', () => {
 		const lens = piece('chyron', eye.id);
 		expect(removeProblem([eye, lens], eye)).toContain('1 option');
 		expect(removeProblem([eye, lens], lens)).toBeNull();
+	});
+
+	it('keeps a Sensor Array while the suite is using its extra slots', () => {
+		const suite = piece('cyberaudio-suite');
+		const array = piece('sensor-array');
+		const three = ['bug-detector', 'level-damper', 'radar-detector'].map((id) => piece(id, suite.id));
+		expect(removeProblem([suite, array, ...three], array)).toBeNull();
+		const four = [...three, piece('homing-tracer', suite.id)];
+		expect(removeProblem([suite, array, ...four], array)).toContain('extra Cyberaudio');
+	});
+
+	it('keeps a Mount while extra eyes depend on it', () => {
+		const mount = piece('multioptic-mount');
+		const eyes = [piece('cybereye'), piece('cybereye'), piece('cybereye')];
+		expect(removeProblem([mount, ...eyes], mount)).toContain('extra Cybereyes');
+		expect(removeProblem([mount, ...eyes.slice(1)], mount)).toBeNull();
 	});
 
 	it('protects something that needs this piece', () => {
@@ -209,11 +263,19 @@ describe('saved data', () => {
 	it.each([
 		['not a list', 'x'],
 		['unknown piece', [{ id: 'a', defId: 'nope', hl: 1 }]],
-		['duplicate ids', [{ id: 'a', defId: 'chyron', hl: 1 }, { id: 'a', defId: 'chyron', hl: 1 }]],
+		['duplicate ids', [{ id: 'a', defId: 'biomonitor', hl: 0 }, { id: 'a', defId: 'biomonitor', hl: 0 }]],
 		['missing host', [{ id: 'a', defId: 'chyron', hostId: 'gone', hl: 1 }]],
-		['self host', [{ id: 'a', defId: 'chyron', hostId: 'a', hl: 1 }]],
-		['bad HL', [{ id: 'a', defId: 'chyron', hl: -1 }]],
-		['null entry', [null]]
+		['self host', [{ id: 'a', defId: 'cybereye', hostId: 'a', hl: 1 }]],
+		['bad HL', [{ id: 'a', defId: 'biomonitor', hl: -1 }]],
+		['null entry', [null]],
+		['a host loop', [{ id: 'a', defId: 'cyberarm', hostId: 'b', hl: 7 }, { id: 'b', defId: 'cyberarm', hostId: 'a', hl: 7 }]],
+		['the wrong host type', [{ id: 'a', defId: 'biomonitor', hl: 0 }, { id: 'b', defId: 'kerenzikov', hostId: 'a', hl: 14 }]],
+		['an option with no host', [{ id: 'a', defId: 'kerenzikov', hl: 14 }]],
+		['an overfull host', [
+			{ id: 'a', defId: 'cybereye', hl: 7 },
+			{ id: 'b', defId: 'dartgun', hostId: 'a', hl: 2 },
+			{ id: 'c', defId: 'chyron', hostId: 'a', hl: 2 }
+		]]
 	])('rejects %s', (_name, value) => {
 		expect(validCyberware(value)).toBe(false);
 		expect(cyberwareOf({ cyberware: value })).toEqual([]);
