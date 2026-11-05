@@ -85,7 +85,7 @@
 				<input type="number" inputmode="numeric" min="0" placeholder="amount" aria-label="Amount for {combatant.name}" bind:value={amount} />
 				<select aria-label="Hit location for {combatant.name}" bind:value={location}>
 					<option value="body">Body (subtract SP)</option>
-					<option value="head">Aimed head shot (SP, then ×2)</option>
+					<option value="head">Aimed head shot (SP, then ×{combatant.headMultiplier ?? 2})</option>
 					<option value="direct">Ignore armor</option>
 				</select>
 			</div>

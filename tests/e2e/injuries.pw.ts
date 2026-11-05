@@ -45,7 +45,7 @@ test('Critical Injuries: target rolls, receiving, duplicate rerolls, persistence
 	await expect(page.getByRole('button', { name: 'REROLL INJURY RECEIVED' })).toBeVisible();
 	await expect(page.locator('.current')).toHaveText('35');
 	await page.getByRole('button', { name: 'DISMISS INJURY ROLL' }).click();
-	await page.getByLabel('DAMAGE LOCATION').selectOption('bypass');
+	await page.getByLabel('Attack type').selectOption('direct');
 	await page.getByLabel('Damage or healing amount').fill('35');
 	await page.getByRole('button', { name: 'DAMAGE', exact: true }).first().click();
 	await expect(page.getByText('Penalty now: +1.', { exact: false })).toBeVisible();

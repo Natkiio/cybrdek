@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { ATTACK_RULES, type AttackType, type DamageOptions } from '#lib/rulesets/red/attacks.ts';
 	import type { ArmorLocation } from '#lib/rulesets/red/gear.ts';
 	import Panel from '#lib/components/Panel.svelte';
 	import {
@@ -29,12 +30,13 @@
 		deathSavePenalty: number;
 		baseDeathSavePenalty?: number;
 		onchange: (hp: number) => void;
-		ondamage: (amount: number, location: ArmorLocation) => void;
+		ondamage: (amount: number, location: ArmorLocation, options?: DamageOptions) => void;
 		ondeathsave: () => void;
 		onresetpenalty: () => void;
 	} = $props();
 
-	let location = $state<ArmorLocation | 'bypass'>('body');
+	let location = $state<ArmorLocation>('body');
+	let attackType = $state<AttackType>('ranged');
 	let amount = $state<number | null>(null);
 
 	const wound: WoundState = $derived(woundState(hp, maxHp));
@@ -48,7 +50,7 @@
 
 	function apply(sign: 1 | -1) {
 		if (!amount || amount < 0) return;
-		if (sign === -1 && location !== 'bypass') ondamage(amount, location);
+		if (sign === -1) ondamage(amount, location, { attackType });
 		else set(hp + sign * amount);
 		amount = null;
 	}
@@ -80,11 +82,18 @@
 		<button type="button" onclick={() => set(hp + 5)}>+5</button>
 	</div>
 
+	<label class="damage-location">ATTACK TYPE
+		<select aria-label="Attack type" bind:value={attackType}>
+			{#each Object.entries(ATTACK_RULES) as [id, rule] (id)}
+				<option value={id}>{rule.label}</option>
+			{/each}
+		</select>
+	</label>
+	<p class="dim">{ATTACK_RULES[attackType].hint}</p>
 	<label class="damage-location">DAMAGE LOCATION
-		<select bind:value={location}>
-			<option value="body">Body (normal attack, subtract SP)</option>
-			<option value="head">Aimed head shot (subtract SP, then ×2)</option>
-			<option value="bypass">Ignore armor (direct HP damage)</option>
+		<select aria-label="Damage location" bind:value={location} disabled={ATTACK_RULES[attackType].armor === 'bypass'}>
+			<option value="body">Body</option>
+			<option value="head">Head (aimed hit, multiply after SP)</option>
 		</select>
 	</label>
 	<div class="amount">

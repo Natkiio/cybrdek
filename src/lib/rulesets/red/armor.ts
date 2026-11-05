@@ -1,3 +1,4 @@
+import { ATTACK_RULES, type DamageOptions } from './attacks.ts';
 import type { ArmorLocation, GearItem } from './gear.ts';
 
 export function isBodyweightSuit(item: GearItem): boolean {
@@ -44,14 +45,19 @@ export function armoredStats(stats: Record<string, number>, gear: GearItem[]): R
 }
 
 /** Core p. 186: only penetrating hits ablate, and every worn layer at that location ablates. */
-export function damageThroughArmor(gear: GearItem[], damage: number, location: ArmorLocation) {
-	const sp = wornSp(gear)[location];
-	const penetrating = Math.max(0, Math.round(damage) - sp);
+export function damageThroughArmor(
+	gear: GearItem[], damage: number, location: ArmorLocation, options: DamageOptions = {}
+) {
+	const rule = ATTACK_RULES[options.attackType ?? 'ranged'];
+	const worn = wornSp(gear)[location];
+	const sp = rule.armor === 'bypass' ? 0 : rule.armor === 'half' ? Math.ceil(worn / 2) : worn;
+	const amount = Number.isFinite(damage) ? Math.max(0, Math.round(damage)) : 0;
+	const penetrating = Math.max(0, amount - sp);
 	return {
 		sp,
 		penetrating,
-		gear: penetrating > 0 ? gear.map((g) => g.equipped !== false && covers(g, location)
-			? { ...g, currentSp: { ...g.currentSp, [location]: Math.max(0, currentSp(g, location) - 1) } }
+		gear: penetrating > 0 && rule.ablation > 0 ? gear.map((g) => g.equipped !== false && covers(g, location)
+			? { ...g, currentSp: { ...g.currentSp, [location]: Math.max(0, currentSp(g, location) - rule.ablation) } }
 			: g) : gear
 	};
 }

@@ -5,6 +5,7 @@
 	import RollLog from '#lib/components/RollLog.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
+	import { headMultiplierOf, type DamageOptions } from '#lib/rulesets/red/attacks.ts';
 	import { armoredStats } from '#lib/rulesets/red/armor.ts';
 	import CriticalInjuries from '#lib/components/sheet/CriticalInjuries.svelte';
 	import { injuriesOf, injuryModifiers } from '#lib/rulesets/red/injuries.ts';
@@ -41,6 +42,7 @@
 	} | null>(null);
 	let lastDeathSave = $state<DeathSaveResult | null>(null);
 	let saveError = $state('');
+	let damageNotice = $state('');
 
 	onMount(async () => {
 		character = await getCharacter(page.params.id ?? '');
@@ -64,11 +66,10 @@
 
 	const effectiveStats = $derived(armoredStats(character?.stats ?? {}, gear));
 
-	function takeDamage(amount: number, location: ArmorLocation) {
-		const result = takeArmoredDamage(hp, maxHp, gear, amount, location);
-		// Core p. 188: Cracked Skull changes penetrating head damage to ×3.
-		const hpDamage = result.penetrating * (location === 'head' ? injuryMods.headMultiplier : 1);
-		void update({ currentHp: clampHp(hp - hpDamage, maxHp), gear: result.gear });
+	function takeDamage(amount: number, location: ArmorLocation, options: DamageOptions = {}) {
+		const result = takeArmoredDamage(hp, maxHp, gear, amount, location, { ...options, headMultiplier: headMultiplierOf(character?.extra ?? {}) });
+		damageNotice = result.unconscious ? 'Target is unconscious (Core pp. 177, 349). Record this condition at the table.' : '';
+		void update({ currentHp: result.hp, gear: result.gear });
 	}
 
 	const skillGroups = $derived.by(() => {
@@ -216,6 +217,7 @@
 				onresetpenalty={() => update({ deathSavePenalty: 0 })}
 			/>
 			<CriticalInjuries {injuries} {hp} {maxHp} characterId={character.id} offered={lastRoll?.damageCritical ?? false} onchange={update} />
+			{#if damageNotice}<p role="status">{damageNotice}</p>{/if}
 			{#if lastDeathSave && wound === 'mortally'}
 				<p class="death-result" class:fail={!lastDeathSave.survived}>
 					Death Save: {lastDeathSave.die} + {lastDeathSave.penalty} = {lastDeathSave.total} vs BODY {lastDeathSave.body}
