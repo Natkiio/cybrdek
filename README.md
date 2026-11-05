@@ -130,6 +130,16 @@ No Cyberpunk RED rulebook PDFs or extracted rule text are distributed with this 
 
 Changes go through feature branches and pull requests, with CI required before merging. Feature work and bugs are tracked in [GitHub Issues](https://github.com/Natkiio/cybrdek/issues).
 
+## Licence
+
+The source code is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). If you run a modified version as a service, you must share its source code with its users.
+
+This licence covers the code only. It does not cover:
+
+- the Voyage City map images in `static/maps/`, which remain the property of their author, with all rights reserved;
+- material belonging to R. Talsorian Games and its licensees (see below);
+- third-party dependencies and fonts, which keep their own licences.
+
 ## Unofficial content
 
 Cybrdek is unofficial content provided under the [Homebrew Content Policy](https://rtalsoriangames.com/homebrew-content-policy/) of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.
