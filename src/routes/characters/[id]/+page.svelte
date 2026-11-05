@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Panel from '#lib/components/Panel.svelte';
 	import RollLog from '#lib/components/RollLog.svelte';
+	import CyberwarePanel from '#lib/components/sheet/CyberwarePanel.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
 	import { headMultiplierOf, type DamageOptions } from '#lib/rulesets/red/attacks.ts';
@@ -15,6 +16,7 @@
 	import type { Character } from '#lib/engine/types.ts';
 	import { logRoll, type RollKind } from '#lib/rolls/log.svelte.ts';
 	import { rulesets } from '#lib/rulesets/index.ts';
+	import { cyberwareOf, effectiveEmp, humanityOf, maxHumanity } from '#lib/rulesets/red/cyberware.ts';
 	import { derivedStats } from '#lib/rulesets/red/derived.ts';
 	import { ipLogOf, ipOf, type ImprovementChange } from '#lib/rulesets/red/improvement.ts';
 	import { gearOf, isDamageCrit, parseDamage, type ArmorLocation, type GearItem } from '#lib/rulesets/red/gear.ts';
@@ -64,7 +66,13 @@
 	const penalty = $derived(actionPenalty(wound) + injuryMods.actions);
 	const gear = $derived(character ? gearOf(character.extra) : []);
 
-	const effectiveStats = $derived(armoredStats(character?.stats ?? {}, gear));
+	const cyberware = $derived(character ? cyberwareOf(character.extra) : []);
+	const humanity = $derived(humanityOf(character?.extra ?? {}, character?.stats.EMP ?? 0));
+	// Armor lowers REF/DEX/MOVE; lost Humanity lowers EMP. Base STATs stay as they were.
+	const effectiveStats: Record<string, number> = $derived({
+		...armoredStats(character?.stats ?? {}, gear),
+		EMP: effectiveEmp(character?.stats.EMP ?? 0, humanity)
+	});
 
 	function takeDamage(amount: number, location: ArmorLocation, options: DamageOptions = {}) {
 		const result = takeArmoredDamage(hp, maxHp, gear, amount, location, { ...options, headMultiplier: headMultiplierOf(character?.extra ?? {}) });
@@ -238,7 +246,7 @@
 					{/each}
 				</div>
 				<dl class="derived">
-					<div><dt>HUMANITY</dt><dd>{sheet.humanity}</dd></div>
+					<div><dt>HUMANITY</dt><dd>{humanity}/{maxHumanity(character.stats.EMP, cyberware)}</dd></div>
 					<div><dt>DEATH SAVE</dt><dd>{sheet.deathSave}</dd></div>
 					<div><dt>SERIOUSLY WOUNDED</dt><dd>{sheet.seriouslyWounded}</dd></div>
 				</dl>
@@ -282,6 +290,13 @@
 		onchange={(next) => update({ gear: next })}
 		onattack={attackWith}
 		ondamage={rollDamage}
+	/>
+
+	<CyberwarePanel
+		installed={cyberware}
+		{humanity}
+		baseEmp={character.stats.EMP}
+		onchange={(change) => update(change)}
 	/>
 
 	<ImprovementPanel

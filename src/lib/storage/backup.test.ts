@@ -120,6 +120,36 @@ it('rejects invalid imported armor state but accepts legacy armor', () => {
 	}
 });
 
+describe('cyberware in backups', () => {
+	it('keeps cyberware and Humanity', () => {
+		const original = character();
+		original.extra.humanity = 41;
+		original.extra.cyberware = [{ id: 'a', defId: 'neural-link', hl: 7 }];
+		expect(parseCharacterFile(exportCharacter(original))).toEqual({ ok: true, character: original });
+	});
+
+	it('rejects damaged cyberware and Humanity', () => {
+		const set = (key: string, value: unknown) =>
+			parseCharacterFile(fileWith((file) => ((file.character as Record<string, Record<string, unknown>>).extra[key] = value)));
+		const looped = set('cyberware', [
+			{ id: 'a', defId: 'cyberarm', hostId: 'b', hl: 7 },
+			{ id: 'b', defId: 'cyberarm', hostId: 'a', hl: 7 }
+		]);
+		const wrongHost = set('cyberware', [
+			{ id: 'a', defId: 'biomonitor', hl: 0 },
+			{ id: 'b', defId: 'kerenzikov', hostId: 'a', hl: 14 }
+		]);
+		expect(looped.ok).toBe(false);
+		expect(wrongHost.ok).toBe(false);
+		const cyber = set('cyberware', [{ id: 'a', defId: 'not-real', hl: 7 }]);
+		const humanity = set('humanity', 'lots');
+		expect(cyber.ok).toBe(false);
+		expect(humanity.ok).toBe(false);
+		if (!cyber.ok) expect(cyber.errors).toContain('Installed cyberware is damaged.');
+		if (!humanity.ok) expect(humanity.errors).toContain('Humanity must be a whole number.');
+	});
+});
+
 it('round-trips Critical Injuries while keeping old backups compatible', () => {
  const original = character();
  expect(parseCharacterFile(exportCharacter(original)).ok).toBe(true);

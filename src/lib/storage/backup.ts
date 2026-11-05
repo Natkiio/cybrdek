@@ -1,5 +1,6 @@
 import { validInjuries } from '#lib/rulesets/red/injuries.ts';
 import { validArmorState } from '#lib/rulesets/red/armor.ts';
+import { validCyberware } from '#lib/rulesets/red/cyberware.ts';
 import { isIp, isIpSpend } from '#lib/rulesets/red/improvement.ts';
 import type { Character } from '#lib/engine/types.ts';
 import { rulesets } from '#lib/rulesets/index.ts';
@@ -123,6 +124,12 @@ export function parseCharacterFile(text: string): ParseResult {
 		errors.push(`Unknown role: ${extra.role}.`);
 	}
 	if (isPlainObject(extra)) {
+		if ('cyberware' in extra && !validCyberware(extra.cyberware)) {
+			errors.push('Installed cyberware is damaged.');
+		}
+		if ('humanity' in extra && !Number.isInteger(extra.humanity)) {
+			errors.push('Humanity must be a whole number.');
+		}
 		if (candidate.rulesetId === 'cyberpunk-red' && 'criticalInjuries' in extra && !validInjuries(extra.criticalInjuries)) {
 			errors.push('Critical Injuries must contain unique body/head results from 2 to 12.');
 		}
