@@ -22,7 +22,7 @@ import { self } from '$app/service-worker';
 const CACHE = `cybrdek-${version}`;
 
 /** Pages to cache up front, so the app opens offline even on a fresh install. */
-const PAGES = ['/', '/characters', '/characters/new', '/dice', '/rules', '/lore', '/map', '/gm'];
+const PAGES = ['/', '/characters', '/characters/new', '/dice', '/rules', '/lore', '/map', '/combat', '/gm'];
 /** Any /characters/<id> page offline is served from this one cached copy. */
 const CHARACTER_SHELL = '/characters/_offline';
 /** Any /lore/<entry> (or /lore/<entry>/edit) page offline uses this copy. */
