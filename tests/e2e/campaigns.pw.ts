@@ -57,6 +57,9 @@ async function fakeSupabase(page: Page, fake: Fake) {
 
 async function signedIn(page: Page) {
 	await page.addInitScript((ref) => {
+		// Once per tab, so a reload after signing out stays signed out.
+		if (sessionStorage.getItem('test-signed-in')) return;
+		sessionStorage.setItem('test-signed-in', '1');
 		const now = Math.floor(Date.now() / 1000);
 		localStorage.setItem(
 			`sb-${ref}-auth-token`,
@@ -140,4 +143,34 @@ test('an invite link: asks you to sign in, then joins and switches', async ({ pa
 	await expect(page.getByRole('link', { name: 'CAMPAIGN: Friend Game' })).toBeVisible();
 	expect(fake.joined).toEqual(['abc123']);
 	await context.clearCookies();
+});
+
+test('private lore: leaves the screen and the device when a player signs out', async ({ page, context }) => {
+	const fake = fresh();
+	await fakeSupabase(page, fake);
+	// Player, not GM, so gm.isGm stays false the whole way through.
+	const secret = { id: 's1', campaign_id: MINE, slug: 'members-only', title: 'Members Only', type: 'other', summary: '', body: '', visible: true, created_at: '', updated_at: '' };
+	let member = true;
+	await context.route(/lore_entries/, (route) =>
+		route.fulfill({ contentType: 'application/json', body: JSON.stringify(member ? [secret] : []) })
+	);
+	await signedIn(page);
+	await page.addInitScript(
+		([id]) => localStorage.setItem('cybrdek:campaign', JSON.stringify({ id, name: 'Friend Game' })),
+		[MINE]
+	);
+	await page.goto('/lore');
+	await expect(page.getByText('Members Only')).toBeVisible();
+	const privateCopies = () =>
+		page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('cybrdek.lore.v1:')));
+	expect(await privateCopies()).toHaveLength(1);
+
+	// Sign out in a second tab: this tab has to notice by itself.
+	member = false;
+	const other = await context.newPage();
+	await other.goto('/gm');
+	await other.getByRole('button', { name: 'SIGN OUT' }).click();
+	await expect(page.getByText('Members Only')).toHaveCount(0);
+	expect(await privateCopies()).toEqual([]);
+	await other.close();
 });

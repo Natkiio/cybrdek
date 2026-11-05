@@ -7,7 +7,8 @@
 // current campaign. It only decides what the UI shows; the real protection is
 // row-level security on every table.
 
-import { campaign } from '#lib/campaigns/current.svelte.ts';
+import { campaign, VOYAGE_CITY_ID } from '#lib/campaigns/current.svelte.ts';
+import { clearPrivateCaches } from '#lib/lore/api.ts';
 import { supabase } from './client.ts';
 
 export const gm = $state({
@@ -21,16 +22,27 @@ let started = false;
 // Bumped on every session change. A GM lookup that finishes after a newer
 // change (sign-out, another account) is stale and gets ignored.
 let generation = 0;
+// The account this page loaded for: undefined until the first session event.
+let pageUser: string | null | undefined;
 
 /** Start tracking the session. Safe to call more than once. */
 export function startGmSession() {
 	if (started) return;
 	started = true;
 	supabase().auth.onAuthStateChange((_event, session) => {
+		const userId = session?.user.id ?? null;
+		// A private campaign's pages hold what this account was allowed to see,
+		// and gm.isGm can stay false from one player to the next. So when the
+		// account changes, here or in another tab, start every page clean.
+		if (pageUser !== undefined && userId !== pageUser && campaign.id !== VOYAGE_CITY_ID) {
+			location.reload();
+			return;
+		}
+		pageUser = userId;
 		const email = session?.user.email ?? null;
 		const sameUser = email === gm.email && gm.ready;
 		gm.email = email;
-		gm.userId = session?.user.id ?? null;
+		gm.userId = userId;
 		// A different person (or nobody) is never the GM until checked again.
 		if (!sameUser) gm.isGm = false;
 		// Don't await inside the callback: supabase-js warns that it can deadlock.
@@ -60,5 +72,6 @@ export async function sendMagicLink(email: string, path = '/gm'): Promise<string
 }
 
 export async function signOut() {
+	clearPrivateCaches(); // first: signing out reloads private campaign pages
 	await supabase().auth.signOut();
 }
