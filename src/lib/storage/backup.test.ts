@@ -119,3 +119,16 @@ it('rejects invalid imported armor state but accepts legacy armor', () => {
 		expect(parseCharacterFile(exportCharacter(original)).ok).toBe(false);
 	}
 });
+
+it('round-trips Critical Injuries while keeping old backups compatible', () => {
+ const original = character();
+ expect(parseCharacterFile(exportCharacter(original)).ok).toBe(true);
+ original.extra.criticalInjuries = [{ location: 'head', roll: 3 }, { location: 'body', roll: 8 }];
+ expect(parseCharacterFile(exportCharacter(original))).toEqual({ ok: true, character: original });
+});
+
+it.each([null, {}, [null], [{ location: 'leg', roll: 2 }], [{ location: 'head', roll: 99 }], [{ location: 'head', roll: 5 }, { location: 'head', roll: 5 }]])('rejects malformed Critical Injuries on import: %j', (injuries) => {
+ const original = character();
+ original.extra.criticalInjuries = injuries;
+ expect(parseCharacterFile(exportCharacter(original)).ok).toBe(false);
+});

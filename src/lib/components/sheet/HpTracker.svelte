@@ -16,6 +16,7 @@
 		seriouslyWounded,
 		deathSave,
 		deathSavePenalty,
+		baseDeathSavePenalty = 0,
 		onchange,
 		ondamage,
 		ondeathsave,
@@ -26,6 +27,7 @@
 		seriouslyWounded: number;
 		deathSave: number;
 		deathSavePenalty: number;
+		baseDeathSavePenalty?: number;
 		onchange: (hp: number) => void;
 		ondamage: (amount: number, location: ArmorLocation) => void;
 		ondeathsave: () => void;
@@ -107,9 +109,9 @@
 			</p>
 			<button type="button" class="damage" onclick={ondeathsave}>ROLL DEATH SAVE</button>
 		</div>
-	{:else if deathSavePenalty > 0}
+	{:else if deathSavePenalty > baseDeathSavePenalty}
 		<p class="dim">
-			Death Save penalty +{deathSavePenalty}. It resets once you're stabilized.
+			Death Save penalty +{deathSavePenalty}. Stabilization resets it to the injury base (+{baseDeathSavePenalty}).
 			<button type="button" class="link" onclick={onresetpenalty}>RESET</button>
 		</p>
 	{/if}
