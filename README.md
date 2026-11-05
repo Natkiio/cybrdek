@@ -129,3 +129,7 @@ No Cyberpunk RED rulebook PDFs or extracted rule text are distributed with this 
 ## Development workflow
 
 Changes go through feature branches and pull requests, with CI required before merging. Feature work and bugs are tracked in [GitHub Issues](https://github.com/Natkiio/cybrdek/issues).
+
+## Unofficial content
+
+Cybrdek is unofficial content provided under the [Homebrew Content Policy](https://rtalsoriangames.com/homebrew-content-policy/) of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.
