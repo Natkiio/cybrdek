@@ -71,6 +71,31 @@ export async function sendMagicLink(email: string, path = '/gm'): Promise<string
 	return error ? error.message : null;
 }
 
+function friendly(error: { code?: string; message: string } | null): string | null {
+	if (!error) return null;
+	if (error.code === 'invalid_credentials') return 'Wrong email or password.';
+	if (error.code === 'user_already_exists') return 'That email already has an account. Sign in instead.';
+	return error.message;
+}
+
+/** Sign in with a password. Returns a readable error, or null. */
+export async function signIn(email: string, password: string): Promise<string | null> {
+	const { error } = await supabase().auth.signInWithPassword({ email: email.trim(), password });
+	return friendly(error);
+}
+
+/** Create an account. Email confirmation is off, so this signs in straight away. */
+export async function signUp(email: string, password: string): Promise<string | null> {
+	const { error } = await supabase().auth.signUp({ email: email.trim(), password });
+	return friendly(error);
+}
+
+/** Set or change the signed-in account's password. */
+export async function changePassword(password: string): Promise<string | null> {
+	const { error } = await supabase().auth.updateUser({ password });
+	return friendly(error);
+}
+
 export async function signOut() {
 	clearPrivateCaches(); // first: signing out reloads private campaign pages
 	await supabase().auth.signOut();

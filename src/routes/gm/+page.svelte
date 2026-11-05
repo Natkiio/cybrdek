@@ -1,17 +1,17 @@
 <script lang="ts">
+	import AccountForm from '#lib/components/account/AccountForm.svelte';
 	import Panel from '#lib/components/Panel.svelte';
-	import { gm, sendMagicLink, signOut } from '#lib/supabase/gm.svelte.ts';
+	import { changePassword, gm, signOut } from '#lib/supabase/gm.svelte.ts';
 
-	let email = $state('');
-	let status = $state<'idle' | 'sending' | 'sent'>('idle');
+	let password = $state('');
+	let saved = $state(false);
 	let error = $state('');
 
-	async function send(event: SubmitEvent) {
+	async function save(event: SubmitEvent) {
 		event.preventDefault();
-		if (!email.trim()) return;
-		status = 'sending';
-		error = (await sendMagicLink(email)) ?? '';
-		status = error ? 'idle' : 'sent';
+		error = (await changePassword(password)) ?? '';
+		saved = !error;
+		if (saved) password = '';
 	}
 </script>
 
@@ -32,31 +32,29 @@
 			<p class="dim">You're not a GM of this campaign, so you see what its players see.</p>
 		{/if}
 		<p><a href="/campaigns">YOUR CAMPAIGNS →</a></p>
-		<button type="button" onclick={signOut}>SIGN OUT</button>
+		<form onsubmit={save}>
+			<input
+				type="password"
+				autocomplete="new-password"
+				required
+				minlength="8"
+				placeholder="New password (8+ characters)"
+				aria-label="New password"
+				bind:value={password}
+			/>
+			<button type="submit">SET PASSWORD</button>
+		</form>
+		{#if saved}<p class="ok" aria-live="polite">Password saved.</p>{/if}
+		{#if error}<p class="error" role="alert">{error}</p>{/if}
+		<p><button type="button" onclick={signOut}>SIGN OUT</button></p>
 	</Panel>
 {:else}
 	<Panel title="SIGN IN">
 		<p class="dim">
 			You can read public campaigns without an account. To run your own campaign, or join one,
-			sign in with a one-time link sent by email.
+			sign in or create an account.
 		</p>
-		<form onsubmit={send}>
-			<input
-				type="email"
-				autocomplete="email"
-				required
-				placeholder="you@example.com"
-				aria-label="Email"
-				bind:value={email}
-			/>
-			<button type="submit" disabled={status === 'sending'}>
-				{status === 'sending' ? 'SENDING…' : 'SEND LINK'}
-			</button>
-		</form>
-		{#if status === 'sent'}
-			<p class="ok" aria-live="polite">Link sent. Open the email on this device to sign in.</p>
-		{/if}
-		{#if error}<p class="error" aria-live="polite">{error}</p>{/if}
+		<AccountForm emailLink />
 	</Panel>
 {/if}
 
