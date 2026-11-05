@@ -5,6 +5,7 @@
 	import RollLog from '#lib/components/RollLog.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
+	import { headMultiplierOf, type DamageOptions } from '#lib/rulesets/red/attacks.ts';
 	import { armoredStats } from '#lib/rulesets/red/armor.ts';
 	import HpTracker from '#lib/components/sheet/HpTracker.svelte';
 	import ImprovementPanel from '#lib/components/sheet/ImprovementPanel.svelte';
@@ -38,6 +39,7 @@
 	} | null>(null);
 	let lastDeathSave = $state<DeathSaveResult | null>(null);
 	let saveError = $state('');
+	let damageNotice = $state('');
 
 	onMount(async () => {
 		character = await getCharacter(page.params.id ?? '');
@@ -59,8 +61,9 @@
 
 	const effectiveStats = $derived(armoredStats(character?.stats ?? {}, gear));
 
-	function takeDamage(amount: number, location: ArmorLocation) {
-		const result = takeArmoredDamage(hp, maxHp, gear, amount, location);
+	function takeDamage(amount: number, location: ArmorLocation, options: DamageOptions = {}) {
+		const result = takeArmoredDamage(hp, maxHp, gear, amount, location, { ...options, headMultiplier: headMultiplierOf(character?.extra ?? {}) });
+		damageNotice = result.unconscious ? 'Target is unconscious (Core pp. 177, 349). Record this condition at the table.' : '';
 		void update({ currentHp: result.hp, gear: result.gear });
 	}
 
@@ -206,6 +209,7 @@
 				ondeathsave={rollDeathSave}
 				onresetpenalty={() => update({ deathSavePenalty: 0 })}
 			/>
+			{#if damageNotice}<p role="status">{damageNotice}</p>{/if}
 			{#if lastDeathSave && wound === 'mortally'}
 				<p class="death-result" class:fail={!lastDeathSave.survived}>
 					Death Save: {lastDeathSave.die} + {lastDeathSave.penalty} = {lastDeathSave.total} vs BODY {lastDeathSave.body}

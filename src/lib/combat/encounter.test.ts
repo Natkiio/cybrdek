@@ -247,3 +247,23 @@ describe('parseEncounter', () => {
 		expect(parseEncounter({ ...e, currentId: 'gone' })).toMatchObject({ started: false, round: 0 });
 	});
 });
+
+
+it('snapshots Cracked Skull from a saved PC and uses the shared ×3 head path', () => {
+ const character: Character = { id: 'skull', name: 'Skull', rulesetId: 'cyberpunk-red',
+  stats: Object.fromEntries(rulesets[0].stats.map((s) => [s.id, 6])), skills: {},
+  extra: { criticalInjuries: [{ location: 'head', roll: 9 }], gear: [
+   { id: 'helmet', kind: 'armor', name: 'Helmet', location: 'head', sp: 11 }
+  ] }
+ };
+ const pc = makePc('pc', character);
+ expect(pc.headMultiplier).toBe(3);
+ const encounter = { ...newEncounter(), combatants: [pc] };
+ const restored = parseEncounter(JSON.parse(JSON.stringify(encounter)));
+ expect(damage(restored, pc.id, 15, 'head').combatants[0].hp).toBe(28);
+ expect(damage(restored, pc.id, 15, 'body').combatants[0].hp).toBe(25);
+ expect(damage(restored, pc.id, 5, 'direct').combatants[0].hp).toBe(35);
+ expect(parseEncounter({ ...encounter, combatants: [{ ...pc, headMultiplier: 99 }] }).combatants).toEqual([]);
+ delete pc.headMultiplier;
+ expect(damage(parseEncounter({ ...encounter, combatants: [pc] }), pc.id, 15, 'head').combatants[0].hp).toBe(32);
+});
