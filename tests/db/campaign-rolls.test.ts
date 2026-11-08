@@ -1,6 +1,7 @@
 // Row-level security tests, on real Postgres (PGlite) with our real migrations.
 // A small stand-in provides the Supabase parts migrations rely on.
 import { readdirSync, readFileSync } from 'node:fs';
+import { rollExpression } from '../../src/lib/engine/notation.ts';
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -62,6 +63,18 @@ describe('campaign dice log RLS', () => {
 		expect((await post(PLAYER)).error).toBeNull();
 		const read = await as(GM, 'select user_id, roller_name, label, result from public.campaign_rolls');
 		expect(read.rows).toEqual([{ user_id: PLAYER, roller_name: 'player', label: 'Handgun', result: { rolls: [7], modifier: 8, total: 15 } }]);
+	});
+	it('accepts the free roller maximum of 200 dice, including long normalized expressions', async () => {
+		const outcome = rollExpression(Array.from({ length: 200 }, () => 'd1000').join('+'));
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(outcome.result.rolls).toHaveLength(200);
+		expect(outcome.expression.length).toBeGreaterThan(500);
+		const posted = await as(PLAYER, `insert into public.campaign_rolls
+			(id, campaign_id, user_id, rolled_at, label, kind, result)
+			values (gen_random_uuid(), $1, $2, now(), $3, 'free', $4)`,
+			[VOYAGE, PLAYER, outcome.expression, JSON.stringify(outcome.result)]);
+		expect(posted.error).toBeNull();
 	});
 	it('public campaign rolls are private to members, even for another campaign GM', async () => {
 		for (const user of [STRANGER, RIVAL]) {

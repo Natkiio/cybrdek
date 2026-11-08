@@ -10,12 +10,12 @@ create table public.campaign_rolls (
 	created_at timestamptz not null default clock_timestamp(),
 	rolled_at timestamptz not null,
 	character_id text,
-	label text not null check (char_length(label) between 1 and 500),
+	label text not null check (char_length(label) between 1 and 2000),
 	kind text not null check (kind in ('skill', 'stat', 'damage', 'free')),
 	result jsonb not null check (
 		jsonb_typeof(result) = 'object'
 		and jsonb_typeof(result->'rolls') = 'array'
-		and jsonb_array_length(result->'rolls') between 1 and 100
+		and jsonb_array_length(result->'rolls') between 1 and 200
 		and jsonb_typeof(result->'modifier') = 'number'
 		and jsonb_typeof(result->'total') = 'number'
 		and result ?& array['rolls', 'modifier', 'total']
