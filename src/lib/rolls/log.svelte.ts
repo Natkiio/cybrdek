@@ -1,3 +1,4 @@
+import { shareRoll } from './campaign.svelte.ts';
 import type { RollResult } from '#lib/engine/dice.ts';
 import {
 	capRolls,
@@ -53,6 +54,7 @@ export function logRoll(entry: Omit<RollEntry, 'id' | 'at'>): RollEntry {
 	const newEntry: RollEntry = { ...entry, id: crypto.randomUUID(), at: Date.now() };
 	rolls = capRolls([newEntry, ...rolls]);
 	saveRolls();
+	shareRoll(newEntry);
 	return newEntry;
 }
 
