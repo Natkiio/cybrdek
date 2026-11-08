@@ -187,3 +187,44 @@ describe('past versions', () => {
 		expect(r.error).toBe('42501');
 	});
 });
+
+describe('placing a character in a campaign', () => {
+	const place = (user: string | null, id: string, campaign: string | null) =>
+		as(user, `select public.set_character_campaign($1, $2::uuid)`, [id, campaign]);
+	const gmSees = async (name: string) => names(await read(GM)).includes(name);
+
+	it('a member places their own, and the GM can then read it; taking it out hides it again', async () => {
+		await save(PLAYER, 'placed', 'Placed One', 1000);
+		expect(await gmSees('Placed One')).toBe(false);
+		expect((await place(PLAYER, 'placed', campaignId)).error).toBeNull();
+		expect(await gmSees('Placed One')).toBe(true);
+		expect((await place(PLAYER, 'placed', null)).error).toBeNull();
+		expect(await gmSees('Placed One')).toBe(false);
+	});
+
+	it("can't place it in a campaign they haven't joined", async () => {
+		await save(RIVAL, 'r2', 'Outsider', 1000);
+		expect((await place(RIVAL, 'r2', campaignId)).error).toBe('42501');
+		expect(await gmSees('Outsider')).toBe(false);
+	});
+
+	it("can't place someone else's character, even as the GM", async () => {
+		await save(PLAYER, 'mine', 'Mine Alone', 1000);
+		expect((await place(GM, 'mine', campaignId)).error).toBe('P0002');
+		expect(await gmSees('Mine Alone')).toBe(false);
+	});
+
+	it("can't place a deleted character, and signed out can't place anything", async () => {
+		await save(PLAYER, 'gone', 'Gone', 1000, 1000);
+		expect((await place(PLAYER, 'gone', campaignId)).error).toBe('P0002');
+		expect((await place(null, 'mine', campaignId)).error).toBe('42501');
+	});
+
+	it('a later save keeps it in the campaign', async () => {
+		await save(PLAYER, 'keep', 'Keeps Place', 1000);
+		await place(PLAYER, 'keep', campaignId);
+		await save(PLAYER, 'keep', 'Keeps Place Edited', 2000);
+		expect(await gmSees('Keeps Place Edited')).toBe(true);
+	});
+});
+
