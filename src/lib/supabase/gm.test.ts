@@ -6,6 +6,9 @@ type Listener = (event: string, session: { user: { email: string } } | null) => 
 let listener: Listener;
 let pending: Array<(isGm: boolean) => void>;
 
+// Character sync has its own tests, and needs a browser.
+vi.mock('#lib/sync/characters.svelte.ts', () => ({ setSyncUser: vi.fn(), syncCharacters: vi.fn() }));
+
 vi.mock('./client.ts', () => ({
 	supabase: () => ({
 		auth: { onAuthStateChange: (fn: Listener) => (listener = fn) },
