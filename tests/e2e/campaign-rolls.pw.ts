@@ -87,7 +87,7 @@ test('member rolls post to the campaign, and a Realtime insert appears without n
 	expect(fake.filters.every(f => f === `eq.${CAMPAIGN}`)).toBe(true);
 	await expect(page.getByLabel('HIDE MY NEXT ROLLS (GM ONLY)')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'CLEAR', exact: true })).toHaveCount(0);
-	await page.screenshot({ path: '/private/tmp/cybrdek-campaign-rolls-mobile.png', fullPage: true });
+	await page.screenshot({ path: test.info().outputPath('campaign-rolls-mobile.png'), fullPage: true });
 });
 
 test('offline roll stays on device and retries after reload without changing its identity', async ({ page }) => {
