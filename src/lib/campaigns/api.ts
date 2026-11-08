@@ -54,3 +54,16 @@ export async function inviteCode(campaignId: string): Promise<string | null> {
 	const { data } = await supabase().from('campaign_invites').select('code').eq('campaign_id', campaignId).maybeSingle();
 	return (data as { code: string } | null)?.code ?? null;
 }
+
+/** The current member's chosen name at this table; null when not a member. */
+export async function campaignDisplayName(campaignId: string, userId: string): Promise<string | null> {
+	const { data, error } = await supabase().from('campaign_members').select('display_name')
+		.eq('campaign_id', campaignId).eq('user_id', userId).maybeSingle();
+	return !error && data ? data.display_name ?? 'Player' : null;
+}
+
+/** Membership and identity are checked by the database function. */
+export async function setCampaignDisplayName(campaignId: string, name: string): Promise<string | null> {
+	const { error } = await supabase().rpc('set_campaign_display_name', { campaign: campaignId, member_name: name.trim() });
+	return error ? 'Could not save your name. Check your connection and campaign membership.' : null;
+}

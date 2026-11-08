@@ -62,7 +62,7 @@ describe('campaign dice log RLS', () => {
 	it('members post and read rolls with their identity and result', async () => {
 		expect((await post(PLAYER)).error).toBeNull();
 		const read = await as(GM, 'select user_id, roller_name, label, result from public.campaign_rolls');
-		expect(read.rows).toEqual([{ user_id: PLAYER, roller_name: 'player', label: 'Handgun', result: { rolls: [7], modifier: 8, total: 15 } }]);
+		expect(read.rows).toEqual([{ user_id: PLAYER, roller_name: 'Player', label: 'Handgun', result: { rolls: [7], modifier: 8, total: 15 } }]);
 	});
 	it('accepts the free roller maximum of 200 dice, including long normalized expressions', async () => {
 		const outcome = rollExpression(Array.from({ length: 200 }, () => 'd1000').join('+'));
@@ -87,6 +87,26 @@ describe('campaign dice log RLS', () => {
 	it('cannot impersonate another member, including as the GM', async () => {
 		expect((await post(PLAYER, VOYAGE, GM)).error).toBe('42501');
 		expect((await post(GM, VOYAGE, PLAYER)).error).toBe('42501');
+	});
+	it('members set only their own campaign display name, with no email-derived fallback', async () => {
+		expect((await as(PLAYER, `select public.set_campaign_display_name($1, $2)`, [VOYAGE, '  Vex  '])).error).toBeNull();
+		const made = await post(PLAYER);
+		expect(made.error).toBeNull();
+		const named = await as(GM, `select roller_name from public.campaign_rolls where id = $1`, [made.rows[0].id]);
+		expect(named.rows).toEqual([{ roller_name: 'Vex' }]);
+		// A GM calling the function changes only their own name, never a player's.
+		await as(GM, `select public.set_campaign_display_name($1, $2)`, [VOYAGE, 'Game Master']);
+		expect((await as(PLAYER, `select display_name from public.campaign_members where user_id = $1`, [PLAYER])).rows).toEqual([{ display_name: 'Vex' }]);
+		expect((await as(PLAYER, `update public.campaign_members set display_name = 'Forged' where user_id = $1`, [GM])).error).toBe('42501');
+	});
+	it('rejects display-name changes across campaigns, by nonmembers and by signed-out users', async () => {
+		for (const user of [RIVAL, STRANGER, null]) {
+			expect((await as(user, `select public.set_campaign_display_name($1, 'Intruder')`, [VOYAGE])).error).toBe('42501');
+		}
+		expect((await as(PLAYER, `select public.set_campaign_display_name($1, 'Intruder')`, [rivalCampaign])).error).toBe('42501');
+		for (const name of ['   ', 'x'.repeat(81)]) {
+			expect((await as(PLAYER, `select public.set_campaign_display_name($1, $2)`, [VOYAGE, name])).error).toBe('23514');
+		}
 	});
 	it('does not let clients spoof the server-derived roller name', async () => {
 		expect((await as(PLAYER, `insert into public.campaign_rolls (id, campaign_id, user_id, roller_name, rolled_at, label, kind, result)

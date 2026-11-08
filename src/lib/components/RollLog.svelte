@@ -42,6 +42,7 @@
 		{/if}
 	{/if}
 	{#if gm.userId && sharedRolls.status}<p class="empty" role="status">{sharedRolls.status}</p>{/if}
+	{#if sharedRolls.rejected}<p class="empty" role="status">{sharedRolls.rejected} roll(s) could not be shared. They remain in the device log.</p>{/if}
 	{#if sharedRolls.pending}<p class="empty">{sharedRolls.pending} campaign roll(s) waiting to send.</p>{/if}
 	{#if entries.length === 0}
 		<p class="empty">No rolls yet.</p>

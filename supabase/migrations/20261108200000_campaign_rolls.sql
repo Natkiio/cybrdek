@@ -1,10 +1,27 @@
 -- #71. Defaults: members see rolls at all times; GMs may hide rolls.
 -- Change these policies (and rolls/settings.ts) if those decisions change.
+-- Names are chosen per campaign, never derived from login details.
+alter table public.campaign_members add column display_name text not null default 'Player'
+	check (char_length(btrim(display_name)) between 1 and 80);
+
+create function public.set_campaign_display_name(campaign uuid, member_name text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+	update public.campaign_members set display_name = btrim(member_name)
+	where campaign_id = campaign and user_id = (select auth.uid());
+	if not found then
+		raise exception 'Join this campaign before choosing a display name' using errcode = '42501';
+	end if;
+end;
+$$;
+revoke all on function public.set_campaign_display_name(uuid, text) from public;
+grant execute on function public.set_campaign_display_name(uuid, text) to authenticated;
+
 create table public.campaign_rolls (
 	id uuid primary key,
 	campaign_id uuid not null references public.campaigns(id) on delete cascade,
 	user_id uuid not null references auth.users(id) on delete cascade,
-	-- Filled by the insert trigger from the authenticated account, never the payload.
+	-- Filled by the insert trigger from campaign membership, never the payload.
 	roller_name text not null,
 	sequence bigint generated always as identity,
 	created_at timestamptz not null default clock_timestamp(),
@@ -45,8 +62,10 @@ grant usage on sequence public.campaign_rolls_sequence_seq to authenticated;
 create function public.lock_campaign_rolls() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-	select coalesce(nullif(pg_catalog.split_part(email, '@', 1), ''), 'Player')
-	into new.roller_name from auth.users where id = new.user_id;
+	new.roller_name := coalesce((
+		select display_name from public.campaign_members
+		where campaign_id = new.campaign_id and user_id = new.user_id
+	), 'Player');
 	perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(new.campaign_id::text, 71));
 	return new;
 end;

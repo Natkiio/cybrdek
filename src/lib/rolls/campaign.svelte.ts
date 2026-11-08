@@ -8,10 +8,14 @@ export interface CampaignRoll extends RollEntry {
 	hidden: boolean;
 }
 interface PendingRoll extends CampaignRoll { campaignId: string }
+// Intentionally retained on sign-out so offline rolls survive until their owner
+// returns. Only its original account and campaign can render or send those entries.
+// Someone with access to this device can inspect localStorage,
+// including hidden-roll labels. Shared remote history is never cached.
 const QUEUE_KEY = 'cybrdek:pending-rolls';
 export const sharedRolls = $state({
 	entries: [] as CampaignRoll[], member: false, hidden: false,
-	status: '', pending: 0, pendingEntries: [] as CampaignRoll[]
+	status: '', rejected: 0, pending: 0, pendingEntries: [] as CampaignRoll[]
 });
 let enqueue: ((entry: RollEntry) => void) | undefined;
 
@@ -43,6 +47,7 @@ export function startCampaignRolls(campaignId: string, userId: string | null) {
 	sharedRolls.pending = 0;
 	sharedRolls.pendingEntries = [];
 	sharedRolls.status = '';
+	sharedRolls.rejected = 0;
 	enqueue = undefined;
 	if (!userId) return;
 
@@ -100,13 +105,25 @@ export function startCampaignRolls(campaignId: string, userId: string | null) {
 		try {
 			for (const entry of queue.filter(mine)) {
 				if (!active) return;
-				const { error } = await client.from('campaign_rolls').upsert({
+				const { error, status } = await client.from('campaign_rolls').upsert({
 					id: entry.id, campaign_id: campaignId, user_id: userId,
 					rolled_at: new Date(entry.at).toISOString(), character_id: entry.characterId ?? null,
 					label: entry.label, kind: entry.kind, result: entry.result, hidden: entry.hidden
 				}, { onConflict: 'id', ignoreDuplicates: true });
 				if (!active) return;
 				if (error) {
+					// Validation/permission errors cannot succeed unchanged. Leave the
+					// device roll intact and let later valid rolls through. Network,
+					// server errors, timeouts and throttling remain queued for retry.
+					const permanent = /^(22|23)/.test(error.code) || error.code === '42501'
+						|| (status >= 400 && status < 500 && status !== 408 && status !== 429);
+					if (permanent) {
+						sharedRolls.rejected++;
+						queue = queue.filter((r) => r.id !== entry.id);
+						saveQueue(queue);
+						count();
+						continue;
+					}
 					failed = true;
 					sharedRolls.status = 'Roll saved on device; campaign post will retry.';
 					return;

@@ -5,6 +5,7 @@ const fake = vi.hoisted(() => ({
 	posts: [] as Record<string, unknown>[],
 	change: () => {}, status: (_status: string) => {},
 	membership: undefined as undefined | Promise<{ data: boolean; error: null }>,
+	reject: {} as Record<string, { code: string; status: number }>,
 	removed: vi.fn()
 }));
 vi.mock('#lib/supabase/client.ts', () => ({ supabase: () => ({
@@ -13,7 +14,8 @@ vi.mock('#lib/supabase/client.ts', () => ({ supabase: () => ({
 		select: () => ({ eq: () => ({ order: () => ({ limit: () => Promise.resolve({ data: fake.rows, error: null }) }) }) }),
 		upsert: async (row: Record<string, unknown>) => {
 			fake.posts.push(row);
-			return { error: fake.fail ? { message: 'offline' } : null };
+			const rejection = fake.reject[row.id as string];
+			return { error: rejection ? { code: rejection.code, message: 'rejected' } : fake.fail ? { message: 'offline' } : null, status: rejection?.status ?? (fake.fail ? 0 : 201) };
 		}
 	}),
 	channel: () => ({ on: (_event: unknown, _filter: unknown, callback: () => void) => {
@@ -31,6 +33,7 @@ let stop: (() => void) | undefined;
 
 beforeEach(() => {
 	vi.resetModules();
+	fake.reject = {};
 	fake.member = true; fake.rows = []; fake.posts = []; fake.fail = false; fake.membership = undefined;
 	const storage = new Map<string, string>();
 	vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
@@ -112,6 +115,39 @@ describe('campaign roll lifecycle', () => {
 		expect(m.sharedRolls.pendingEntries[0].id).toBe('roll-104');
 		expect(m.sharedRolls.pendingEntries.at(-1)?.id).toBe('roll-5');
 	});
+	it.each([['42501', 403], ['23514', 400], ['PGRST102', 400]] as const)(
+		'drops permanent %s rejection and sends the valid roll behind it', async (code, status) => {
+			const m = await import('./campaign.svelte.ts');
+			const local = await import('./log.svelte.ts');
+			stop = m.startCampaignRolls('campaign-a', 'player-a'); await settle();
+			fake.fail = true;
+			const bad = local.logRoll({ label: 'Rejected offline roll', kind: 'skill', result: roll().result });
+			const good = local.logRoll({ label: 'Valid offline roll', kind: 'skill', result: roll().result });
+			await settle();
+			fake.fail = false; fake.posts = []; fake.reject[bad.id] = { code, status };
+			fake.status('SUBSCRIBED'); await settle();
+			expect(fake.posts.map(r => r.id)).toEqual([bad.id, good.id]);
+			expect(m.sharedRolls.pending).toBe(0);
+			expect(m.sharedRolls.rejected).toBe(1);
+			expect(local.getRolls().map(r => r.id)).toContain(bad.id);
+			expect(JSON.parse(localStorage.getItem('cybrdek:pending-rolls')!)).toEqual([]);
+			fake.posts = []; fake.status('SUBSCRIBED'); await settle();
+			expect(fake.posts).toEqual([]);
+		}
+	);
+	it.each([['server', 503], ['timeout', 408], ['rate_limit', 429]] as const)(
+		'keeps retryable %s failures queued', async (code, status) => {
+			const m = await import('./campaign.svelte.ts');
+			stop = m.startCampaignRolls('campaign-a', 'player-a'); await settle();
+			fake.reject['retry-me'] = { code, status };
+			m.shareRoll(roll('retry-me')); await settle();
+			expect(m.sharedRolls.pending).toBe(1);
+			expect(m.sharedRolls.rejected).toBe(0);
+			fake.reject = {}; fake.status('SUBSCRIBED'); await settle();
+			expect(m.sharedRolls.pending).toBe(0);
+			expect(fake.posts).toHaveLength(2);
+		}
+	);
 	it('clears private history when membership is removed' , async () => {
 		const m = await import('./campaign.svelte.ts'); fake.rows = [row()];
 		stop = m.startCampaignRolls('campaign-a', 'player-a'); await settle();

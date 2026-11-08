@@ -9,6 +9,7 @@ async function setup(page: Page, isGm = false) {
 	const posts: Record<string, unknown>[] = [];
 	const filters: string[] = [];
 	let offline = false;
+	let displayName = 'Player';
 	let socket: WebSocketRoute | undefined;
 	let topic = '';
 	let joinRef: string | null = null;
@@ -29,6 +30,14 @@ async function setup(page: Page, isGm = false) {
 		const json = (body: unknown) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
 		if (url.pathname.endsWith('/rpc/is_campaign_gm')) return json(isGm);
 		if (url.pathname.endsWith('/rpc/is_campaign_member')) return json(true);
+		if (url.pathname.endsWith('/rpc/set_campaign_display_name')) {
+			displayName = JSON.parse(req.postData()!).member_name;
+			return json(null);
+		}
+		if (url.pathname.endsWith('/campaign_members')) {
+			return json([{ campaign_id: CAMPAIGN, role: isGm ? 'gm' : 'player', display_name: displayName }]);
+		}
+		if (url.pathname.endsWith('/campaigns')) return json([{ id: CAMPAIGN, name: 'Voyage City', is_public: true }]);
 		if (url.pathname.endsWith('/campaign_rolls')) {
 			if (req.method() === 'GET') {
 				filters.push(url.searchParams.get('campaign_id') ?? '');
@@ -37,7 +46,7 @@ async function setup(page: Page, isGm = false) {
 			if (offline) return route.abort();
 			const row = JSON.parse(req.postData()!);
 			posts.push(row);
-			if (!rows.some(r => r.id === row.id)) rows.unshift({ ...row, sequence: rows.length + 1 });
+			if (!rows.some(r => r.id === row.id)) rows.unshift({ ...row, roller_name: displayName, sequence: rows.length + 1 });
 			return route.fulfill({ status: 201, body: '' });
 		}
 		return json([]);
@@ -132,4 +141,19 @@ test('anonymous rolling works after an offline reload and never queues a campaig
 	await expect(page.getByRole('button', { name: 'CAMPAIGN', exact: true })).toHaveCount(0);
 	expect(await page.evaluate(() => localStorage.getItem('cybrdek:pending-rolls'))).toBeNull();
 	await context.setOffline(false);
+});
+
+
+test('a member chooses their campaign display name before rolling', async ({ page }) => {
+	const fake = await setup(page);
+	await page.goto('/campaigns');
+	await expect(page.getByLabel('Campaign display name')).toHaveValue('Player');
+	await page.getByLabel('Campaign display name').fill('Vex');
+	await page.getByRole('button', { name: 'SAVE NAME', exact: true }).click();
+	await expect(page.getByRole('status')).toContainText('Name saved.');
+	await page.goto('/dice');
+	await page.getByRole('button', { name: 'd6', exact: true }).click();
+	await expect.poll(() => fake.posts.length).toBe(1);
+	expect(fake.rows[0].roller_name).toBe('Vex');
+	expect(fake.posts[0]).not.toHaveProperty('roller_name');
 });
