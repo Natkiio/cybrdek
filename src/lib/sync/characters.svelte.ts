@@ -27,10 +27,16 @@ export const characterSync = $state({
 });
 
 let user: string | undefined;
+// Goes up whenever the signed-in account changes. Work started for an older
+// generation stops at its next step and writes nothing.
+let generation = 0;
 let running = false;
 let again = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let listening = false;
+
+/** Thrown when the account changed mid-sync: the old run just stops. */
+class Superseded extends Error {}
 
 /** A cloud row is only used if it's a character the app can really open. */
 function validated(row: RemoteRow): Character | undefined {
@@ -42,53 +48,74 @@ function validated(row: RemoteRow): Character | undefined {
 	}
 }
 
-async function syncOnce(account: string): Promise<boolean> {
+type Pass = { retry: boolean };
+
+/**
+ * One sync for `account`. Both cloud calls name the account, and the server
+ * refuses them if the session is someone else's (the session can change
+ * before we hear about it). Every device write also rechecks `current`.
+ */
+async function syncOnce(account: string, current: () => boolean): Promise<Pass> {
 	const { data, error } = await supabase()
-		.from('characters')
-		.select('id, data, updated_at, deleted_at')
-		.eq('user_id', account)
+		.rpc('my_characters', { owner: account })
 		.abortSignal(AbortSignal.timeout(TIMEOUT_MS));
+	if (!current()) throw new Superseded();
 	if (error || !data) throw new Error(error?.message ?? 'No reply from the cloud.');
 
 	const local = await syncRows(account);
-	const seen = new Map(local.map((row) => [row.id, row.updatedAt]));
+	if (!current()) throw new Superseded();
+	const seen = new Map(local.map((row) => [row.id, row.rev]));
 	const plan = planSync(local, data as RemoteRow[]);
 	let changed = false;
 	let skipped = 0;
-	let rejected = false;
+	let retry = false;
 
 	for (const row of plan.pull) {
 		const character = validated(row);
 		if (!character) skipped++;
-		else if (await applyRemote(account, row, character, seen.get(row.id))) changed = true;
+		else if (await applyRemote(account, row, character, seen.get(row.id), current)) changed = true;
+		else retry = true; // edited here meanwhile: plan again
 	}
 	for (const id of plan.drop) {
-		if (await dropRow(account, id, seen.get(id))) changed = true;
+		if (await dropRow(account, id, seen.get(id), current)) changed = true;
+		else retry = true;
 	}
 	for (const { id, savedAt } of plan.push) {
-		const row = await rowToPush(id);
-		if (!row) continue;
+		const sentRev = seen.get(id);
+		const row = await rowToPush(account, id, sentRev);
+		if (!current()) throw new Superseded();
+		if (!row) {
+			retry = true; // changed since the plan: its new time decides, next pass
+			continue;
+		}
 		const { data: stored, error: saveError } = await supabase()
 			.rpc('save_character', {
+				owner: account,
 				character_id: id,
 				character_data: row.data,
 				saved_at: savedAt,
 				removed_at: row.deletedAt ?? null
 			})
 			.abortSignal(AbortSignal.timeout(TIMEOUT_MS));
+		if (!current()) throw new Superseded();
 		if (saveError) throw new Error(saveError.message);
-		if (typeof stored === 'number') await markPushed(id, row.updatedAt, stored);
-		else rejected = true; // a newer save got there first: the next pass brings it down
+		if (typeof stored === 'number') await markPushed(account, id, sentRev, stored, current);
+		else retry = true; // a newer save got there first: the next pass brings it down
 	}
 
+	if (!current()) throw new Superseded();
 	if (changed) characterSync.revision++;
 	characterSync.message = skipped ? `${skipped} saved character${skipped === 1 ? '' : 's'} could not be read.` : '';
-	return rejected;
+	return { retry };
 }
+
+const MAX_PASSES = 3;
 
 /** Run a sync now. Calls made during one run once more afterwards. */
 export async function syncCharacters(): Promise<void> {
 	const account = user;
+	const mine = generation;
+	const current = () => mine === generation;
 	if (!account) {
 		characterSync.status = 'off';
 		return;
@@ -104,19 +131,18 @@ export async function syncCharacters(): Promise<void> {
 	running = true;
 	characterSync.status = 'syncing';
 	try {
-		const rejected = await syncOnce(account);
-		// A save lost a race: one more pass collects the winner.
-		if (rejected) await syncOnce(account);
-		if (account === user) characterSync.status = 'synced';
+		// A lost race or an edit mid-sync: plan again with what's there now.
+		for (let pass = 1; (await syncOnce(account, current)).retry && pass < MAX_PASSES; pass++);
+		if (current()) characterSync.status = 'synced';
 	} catch (e) {
-		if (account === user) {
+		if (current() && !(e instanceof Superseded)) {
 			characterSync.status = isOffline() ? 'offline' : 'error';
 			characterSync.message = e instanceof Error ? e.message : String(e);
 		}
 	} finally {
 		running = false;
 	}
-	if (again) {
+	if (again || !current()) {
 		again = false;
 		await syncCharacters();
 	}
@@ -134,6 +160,8 @@ function schedule(delay: number) {
 export function setSyncUser(next: string | undefined) {
 	if (listening && next === user) return; // e.g. a token refresh: same person
 	user = next;
+	const mine = ++generation;
+	const current = () => mine === generation;
 	if (!listening) {
 		listening = true;
 		onCharacterChange(() => schedule(SAVE_DELAY_MS));
@@ -145,7 +173,9 @@ export function setSyncUser(next: string | undefined) {
 	characterSync.status = next ? 'syncing' : 'off';
 	characterSync.message = '';
 	setTimeout(() => {
-		void forgetOtherAccounts(next).then(() => {
+		if (!current()) return; // the account changed again before this ran
+		void forgetOtherAccounts(next, current).then(() => {
+			if (!current()) return;
 			characterSync.revision++;
 			return syncCharacters();
 		});

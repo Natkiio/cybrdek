@@ -89,8 +89,16 @@ grant update (data, updated_at, deleted_at) on public.characters to authenticate
 -- can't lock out their other devices: the time is capped at now. Returns the
 -- time stored, or null if a newer save was already there.
 create function public.save_character(
-	character_id text, character_data jsonb, saved_at bigint, removed_at bigint default null
-) returns bigint language sql security invoker set search_path = '' as $$
+	owner uuid, character_id text, character_data jsonb, saved_at bigint, removed_at bigint default null
+) returns bigint language plpgsql security invoker set search_path = '' as $$
+declare
+	stored bigint;
+begin
+	-- The device names the account it is saving for. If the session changed
+	-- under it (someone else signed in), the save is refused, not misfiled.
+	if owner is distinct from auth.uid() then
+		raise exception 'This save is for a different account.' using errcode = '42501';
+	end if;
 	insert into public.characters as c (id, data, updated_at, deleted_at)
 	values (
 		character_id, character_data,
@@ -99,7 +107,26 @@ create function public.save_character(
 	)
 	on conflict (user_id, id) do update
 	set data = excluded.data, updated_at = excluded.updated_at, deleted_at = excluded.deleted_at
-	returning c.updated_at;
+	returning c.updated_at into stored;
+	return stored;
+end;
 $$;
-revoke all on function public.save_character(text, jsonb, bigint, bigint) from public;
-grant execute on function public.save_character(text, jsonb, bigint, bigint) to authenticated;
+revoke all on function public.save_character(uuid, text, jsonb, bigint, bigint) from public;
+grant execute on function public.save_character(uuid, text, jsonb, bigint, bigint) to authenticated;
+
+-- A player's own characters, for sync. Like save_character, it refuses when
+-- the session is not the account the device asked for, so a reply meant for
+-- one account can never be applied to another's copies.
+create function public.my_characters(owner uuid)
+returns table (id text, data jsonb, updated_at bigint, deleted_at bigint)
+language plpgsql stable security invoker set search_path = '' as $$
+begin
+	if owner is distinct from auth.uid() then
+		raise exception 'This list is for a different account.' using errcode = '42501';
+	end if;
+	return query
+		select c.id, c.data, c.updated_at, c.deleted_at from public.characters c where c.user_id = owner;
+end;
+$$;
+revoke all on function public.my_characters(uuid) from public;
+grant execute on function public.my_characters(uuid) to authenticated;
