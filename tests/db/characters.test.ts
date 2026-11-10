@@ -2,6 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { SUPABASE_DEFAULT_GRANTS } from './supabase-defaults.ts';
 
 const GM = '10000000-0000-4000-8000-000000000001';
 const PLAYER = '10000000-0000-4000-8000-000000000002';
@@ -46,6 +47,7 @@ beforeAll(async () => {
 			('${GM}', 'gm@example.com'), ('${PLAYER}', 'player@example.com'),
 			('${TEAMMATE}', 'teammate@example.com'), ('${RIVAL}', 'rival@example.com');
 	`);
+	await db.exec(SUPABASE_DEFAULT_GRANTS);
 	const dir = 'supabase/migrations';
 	for (const file of readdirSync(dir).sort()) {
 		if (file.includes('_campaigns')) await db.exec(`insert into public.gms (email) values ('gm@example.com');`);
@@ -254,3 +256,32 @@ describe('placing a character in a campaign', () => {
 	});
 });
 
+
+describe('API grants (Supabase opens new objects by default)', () => {
+	const ANON_FUNCTIONS = ['can_read_campaign', 'is_campaign_gm', 'is_campaign_member', 'is_gm'];
+
+	it('people signed out can call only the read checks that policies use', async () => {
+		const r = await db.query<{ proname: string }>(`
+			select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+			where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') order by 1`);
+		expect(r.rows.map((x) => x.proname)).toEqual(ANON_FUNCTIONS);
+	});
+
+	it('signed-out users hold no write rights on any table', async () => {
+		const r = await db.query<{ relname: string }>(`
+			select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+			where n.nspname = 'public' and c.relkind = 'r'
+			and (has_table_privilege('anon', c.oid, 'INSERT') or has_table_privilege('anon', c.oid, 'UPDATE')
+				or has_table_privilege('anon', c.oid, 'DELETE') or has_table_privilege('anon', c.oid, 'TRUNCATE'))`);
+		expect(r.rows).toEqual([]);
+	});
+
+	it("a GM can rename a campaign but not publish it; a player can't pick a campaign without the check", async () => {
+		const campaign = await as(GM, `update public.campaigns set is_public = true where id = '${campaignId}'`);
+		expect(campaign.error).toBe('42501');
+		const renamed = await as(GM, `update public.campaigns set name = 'Renamed' where id = '${campaignId}'`);
+		expect(renamed.error).toBeNull();
+		const placed = await as(PLAYER, `update public.characters set campaign_id = '${campaignId}' where id = 'p1'`);
+		expect(placed.error).toBe('42501');
+	});
+});
