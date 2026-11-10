@@ -108,7 +108,7 @@ describe('deleting', () => {
 		const [row] = await raw();
 		expect(row).toMatchObject({ dirty: true });
 		expect(row.deletedAt).toBeTypeOf('number');
-		await store.markPushed('a', row.updatedAt as number, 5);
+		await store.markPushed('u1', 'a', row.rev as string, 5, () => true);
 		expect(await raw()).toEqual([]);
 	});
 });
@@ -117,10 +117,10 @@ describe('sync bookkeeping', () => {
 	it('an edit made during a push stays waiting to sync', async () => {
 		user = 'u1';
 		await store.saveCharacter(sheet('a'));
-		const sent = (await raw())[0].updatedAt as number;
-		await store.markPushed('a', sent - 1, 42);
+		const sent = (await raw())[0].rev as string;
+		await store.markPushed('u1', 'a', 'an older revision', 42, () => true);
 		expect((await raw())[0]).toMatchObject({ dirty: true, remoteAt: 42 });
-		await store.markPushed('a', sent, 42);
+		await store.markPushed('u1', 'a', sent, 42, () => true);
 		expect((await raw())[0]).toMatchObject({ dirty: false, remoteAt: 42 });
 	});
 
@@ -128,7 +128,7 @@ describe('sync bookkeeping', () => {
 		user = 'u1';
 		await store.saveCharacter(sheet('a', 'Fresh edit'));
 		const remote = { id: 'a', data: {}, updated_at: 9, deleted_at: null };
-		expect(await store.applyRemote('u1', remote, sheet('a', 'Cloud'), 1)).toBe(false);
+		expect(await store.applyRemote('u1', remote, sheet('a', 'Cloud'), 'an older revision', () => true)).toBe(false);
 		expect(await names()).toEqual(['Fresh edit']);
 	});
 
@@ -136,7 +136,7 @@ describe('sync bookkeeping', () => {
 		await store.saveCharacter(sheet('a', 'Device copy'));
 		user = 'u1';
 		const remote = { id: 'a', data: {}, updated_at: 9, deleted_at: null };
-		expect(await store.applyRemote('u1', remote, sheet('a', 'Cloud copy'))).toBe(true);
+		expect(await store.applyRemote('u1', remote, sheet('a', 'Cloud copy'), undefined, () => true)).toBe(true);
 		expect(await names()).toEqual(['Cloud copy', 'Device copy']);
 		expect((await store.getCharacter('a'))?.name).toBe('Cloud copy');
 	});
@@ -156,7 +156,7 @@ describe('sync bookkeeping', () => {
 		await store.saveCharacter(sheet('unsynced'));
 		await store.saveCharacter(sheet('synced'));
 		const row = (await raw()).find((r) => r.id === 'synced')!;
-		await store.markPushed('synced', row.updatedAt as number, 1);
+		await store.markPushed('u1', 'synced', row.rev as string, 1, () => true);
 		await store.forgetOtherAccounts(undefined);
 		expect((await raw()).map((r) => r.id)).toEqual(['unsynced']);
 	});

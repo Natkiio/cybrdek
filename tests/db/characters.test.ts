@@ -25,8 +25,9 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 }
 
 const sheet = (name: string) => JSON.stringify({ id: 'x', name });
-const save = (user: string | null, id: string, name: string, at: number, removed: number | null = null) =>
-	as(user, `select public.save_character($1, $2::jsonb, $3::bigint, $4::bigint) as stored`, [id, sheet(name), at, removed]);
+// `owner` is the account the device thinks it is saving for; normally the same person.
+const save = (user: string | null, id: string, name: string, at: number, removed: number | null = null, owner = user) =>
+	as(user, `select public.save_character($1::uuid, $2, $3::jsonb, $4::bigint, $5::bigint) as stored`, [owner, id, sheet(name), at, removed]);
 const names = (r: { rows: Record<string, unknown>[] }) =>
 	r.rows.map((x) => (x.data as { name: string }).name).sort();
 const read = (user: string | null) => as(user, `select data from public.characters`);
@@ -128,15 +129,40 @@ describe('who can write a character', () => {
 		expect((await as(PLAYER, `update public.characters set campaign_id = null`)).error).toBe('42501');
 	});
 
+	it("refuses a save meant for another account, so a session switch can't misfile it", async () => {
+		const r = await save(TEAMMATE, 'switched', 'From player', 1000, null, PLAYER);
+		expect(r.error).toBe('42501');
+		expect(names(await read(TEAMMATE))).not.toContain('From player');
+		expect(names(await read(PLAYER))).not.toContain('From player');
+	});
+
 	it('someone signed out can\'t save', async () => {
 		expect((await save(null, 'n1', 'Nobody', 1000)).error).toBe('42501');
 	});
 
 	it('refuses a character that is not an object, or is huge', async () => {
-		const notObject = await as(PLAYER, `select public.save_character('bad', '[1]'::jsonb, 1000)`);
+		const notObject = await as(PLAYER, `select public.save_character('${PLAYER}', 'bad', '[1]'::jsonb, 1000)`);
 		expect(notObject.error).toBe('23514');
 		const huge = await save(PLAYER, 'big', 'x'.repeat(200001), 1000);
 		expect(huge.error).toBe('23514');
+	});
+});
+
+describe('the sync list', () => {
+	const list = (user: string | null, owner: string | null) =>
+		as(user, `select id, data from public.my_characters($1::uuid)`, [owner]);
+
+	it("gives a player only their own characters, even ones in a campaign", async () => {
+		const mine = await list(PLAYER, PLAYER);
+		expect(mine.error).toBeNull();
+		expect(mine.rows.length).toBeGreaterThan(0);
+		expect(names(mine)).toEqual(names(await as(PLAYER, `select data from public.characters where user_id = '${PLAYER}'`)));
+	});
+
+	it("refuses when the session isn't the account asked for, including the GM", async () => {
+		expect((await list(TEAMMATE, PLAYER)).error).toBe('42501');
+		expect((await list(GM, PLAYER)).error).toBe('42501');
+		expect((await list(null, PLAYER)).error).toBe('42501');
 	});
 });
 

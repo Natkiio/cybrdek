@@ -44,11 +44,15 @@ async function device(browser: Browser, baseURL: string | undefined, cloud: Clou
 		const who = req.headers().authorization?.match(/token-(\w+)/)?.[1];
 		const json = (value: unknown, status = 200) =>
 			route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
-		if (path.endsWith('/rest/v1/characters')) {
+		// Like the real functions, both refuse a request for someone else's account.
+		const forSomeoneElse = () => JSON.parse(req.postData() ?? '{}').owner !== who;
+		if (path.endsWith('/rpc/my_characters')) {
+			if (forSomeoneElse()) return json({ code: '42501', message: 'This list is for a different account.' }, 403);
 			cloud.reads++;
 			return json(cloud.rows.filter((r) => r.user === who).map(({ user: _u, ...row }) => row));
 		}
 		if (path.endsWith('/rpc/save_character')) {
+			if (forSomeoneElse()) return json({ code: '42501', message: 'This save is for a different account.' }, 403);
 			const body = JSON.parse(req.postData() ?? '{}');
 			const existing = cloud.of(who ?? '', body.character_id);
 			if (existing && body.saved_at < existing.updated_at) return json(null);
