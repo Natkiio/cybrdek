@@ -145,3 +145,21 @@ it('an edit in the same millisecond as the one sent stays waiting to sync', asyn
 	expect((await store.syncRows('a'))[0].dirty).toBe(true);
 	expect((await store.getCharacter('x'))?.name).toBe('Not sent, same millisecond');
 });
+
+it('a sync requested while one runs resolves only once a character saved meanwhile has gone up', async () => {
+	const store = await import('#lib/storage/characters.ts');
+	let reply!: (value: { data: unknown[]; error: null }) => void;
+	fake.read = new Promise((resolve) => (reply = resolve));
+	const sync = await import('./characters.svelte.ts');
+	sync.setSyncUser('a');
+	const first = sync.syncCharacters(); // held at the cloud list
+	await store.saveCharacter(sheet('new', 'Made a moment ago'));
+	let done = false;
+	const second = sync.syncCharacters().then(() => (done = true));
+	await Promise.resolve();
+	expect(done).toBe(false);
+	fake.read = undefined;
+	reply({ data: [], error: null });
+	await Promise.all([first, second]);
+	expect(fake.posts.map((p) => p.payload.character_id)).toContain('new');
+});

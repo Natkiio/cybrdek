@@ -30,7 +30,7 @@ let user: string | undefined;
 // Goes up whenever the signed-in account changes. Work started for an older
 // generation stops at its next step and writes nothing.
 let generation = 0;
-let running = false;
+let active: Promise<void> | undefined; // the sync running now, if any
 let again = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let listening = false;
@@ -111,24 +111,40 @@ async function syncOnce(account: string, current: () => boolean): Promise<Pass> 
 
 const MAX_PASSES = 3;
 
-/** Run a sync now. Calls made during one run once more afterwards. */
-export async function syncCharacters(): Promise<void> {
+/**
+ * Run a sync now and resolve when this device is up to date: if one is
+ * already running, the returned promise waits for it and for one more pass,
+ * so a character saved just before the call has gone up when it resolves.
+ */
+export function syncCharacters(): Promise<void> {
+	if (active) {
+		again = true;
+		return active;
+	}
+	active = (async () => {
+		try {
+			do again = false;
+			while ((await runSync()) || again);
+		} finally {
+			active = undefined;
+		}
+	})();
+	return active;
+}
+
+/** One sync for whoever is signed in. True if the account changed during it. */
+async function runSync(): Promise<boolean> {
 	const account = user;
 	const mine = generation;
 	const current = () => mine === generation;
 	if (!account) {
 		characterSync.status = 'off';
-		return;
-	}
-	if (running) {
-		again = true;
-		return;
+		return false;
 	}
 	if (isOffline()) {
 		characterSync.status = 'offline';
-		return;
+		return false;
 	}
-	running = true;
 	characterSync.status = 'syncing';
 	try {
 		// A lost race or an edit mid-sync: plan again with what's there now.
@@ -139,13 +155,8 @@ export async function syncCharacters(): Promise<void> {
 			characterSync.status = isOffline() ? 'offline' : 'error';
 			characterSync.message = e instanceof Error ? e.message : String(e);
 		}
-	} finally {
-		running = false;
 	}
-	if (again || !current()) {
-		again = false;
-		await syncCharacters();
-	}
+	return !current();
 }
 
 function schedule(delay: number) {
