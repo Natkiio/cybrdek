@@ -9,6 +9,7 @@
 
 import { campaign, VOYAGE_CITY_ID } from '#lib/campaigns/current.svelte.ts';
 import { clearPrivateCaches } from '#lib/lore/api.ts';
+import { setSyncUser, syncCharacters } from '#lib/sync/characters.svelte.ts';
 import { supabase } from './client.ts';
 
 export const gm = $state({
@@ -39,6 +40,7 @@ export function startGmSession() {
 			return;
 		}
 		pageUser = userId;
+		setSyncUser(userId ?? undefined);
 		const email = session?.user.email ?? null;
 		const sameUser = email === gm.email && gm.ready;
 		gm.email = email;
@@ -97,6 +99,7 @@ export async function changePassword(password: string): Promise<string | null> {
 }
 
 export async function signOut() {
+	await syncCharacters(); // last chance to save edits to the cloud
 	clearPrivateCaches(); // first: signing out reloads private campaign pages
 	await supabase().auth.signOut();
 }
