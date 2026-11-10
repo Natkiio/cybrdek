@@ -139,7 +139,7 @@ test('an invite link: asks you to sign in, then joins and switches', async ({ pa
 
 	await signedIn(page);
 	await page.goto('/join/abc123');
-	await expect(page).toHaveURL(/\/lore$/);
+	await expect(page).toHaveURL(/\/campaigns$/);
 	await expect(page.getByRole('link', { name: 'CAMPAIGN: Friend Game' })).toBeVisible();
 	expect(fake.joined).toEqual(['abc123']);
 	await context.clearCookies();

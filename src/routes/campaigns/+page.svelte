@@ -1,4 +1,6 @@
 <script lang="ts">
+	import MyCharacterPanel from '#lib/components/campaigns/MyCharacterPanel.svelte';
+	import PartyPanel from '#lib/components/campaigns/PartyPanel.svelte';
 	import Panel from '#lib/components/Panel.svelte';
 	import {
 		createCampaign,
@@ -55,6 +57,8 @@
 		copied = true;
 	}
 
+	const myRole = $derived(campaigns.find((c) => c.id === campaign.id)?.role ?? null);
+
 	const roleLabel = (c: CampaignListing) => (c.role === 'gm' ? 'GM' : c.role === 'player' ? 'PLAYER' : 'PUBLIC');
 </script>
 
@@ -64,10 +68,19 @@
 
 {#if link}
 	<Panel title="INVITE PLAYERS">
-		<p class="dim">Anyone with this link can join <strong>{campaign.name}</strong> as a player. They sign in by email.</p>
+		<p class="dim">Anyone with this link can join <strong>{campaign.name}</strong> as a player. They create an account to join.</p>
 		<input readonly aria-label="Invite link" value={link} onfocus={(e) => e.currentTarget.select()} />
 		<button type="button" onclick={copy}>{copied ? 'COPIED' : 'COPY LINK'}</button>
 	</Panel>
+{/if}
+
+{#if gm.isGm}
+	<!-- Keyed: a new account or campaign gets a fresh panel, never the last one's contents. -->
+	{#key `${gm.userId}:${campaign.id}`}<PartyPanel campaignId={campaign.id} />{/key}
+{:else if gm.userId && myRole === 'player'}
+	{#key `${gm.userId}:${campaign.id}`}
+		<MyCharacterPanel userId={gm.userId} campaignId={campaign.id} campaignName={campaign.name} />
+	{/key}
 {/if}
 
 <Panel title="YOUR CAMPAIGNS">
