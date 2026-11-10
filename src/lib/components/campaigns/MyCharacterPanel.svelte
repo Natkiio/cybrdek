@@ -13,10 +13,17 @@
 	const playing = $derived(characters.filter((c) => c.campaignId === campaignId));
 	const others = $derived(characters.filter((c) => c.campaignId !== campaignId));
 
+	// Only the newest request may change what's shown, so a slow reply meant for
+	// an earlier account or campaign can never land on this one.
+	let request = 0;
+
 	async function load() {
+		const mine = ++request;
 		// A character made a moment ago may not have gone up yet.
 		await syncCharacters();
+		if (mine !== request) return;
 		const result = await listMyCharacters(userId);
+		if (mine !== request) return;
 		if ('error' in result) error = result.error;
 		else {
 			characters = result;
@@ -26,16 +33,23 @@
 	}
 
 	async function place(id: string, campaign: string | null) {
+		const mine = request;
 		busy = true;
 		const problem = await setCharacterCampaign(id, campaign);
+		if (mine !== request) return; // the account or campaign changed meanwhile
+		busy = false;
 		if (problem) error = problem;
 		else await load();
-		busy = false;
 	}
 
 	$effect(() => {
 		void userId;
 		void campaignId;
+		// Nothing from the last account stays on screen while this one loads.
+		characters = [];
+		loaded = false;
+		error = '';
+		busy = false;
 		void load();
 	});
 </script>

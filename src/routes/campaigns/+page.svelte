@@ -75,9 +75,12 @@
 {/if}
 
 {#if gm.isGm}
-	<PartyPanel campaignId={campaign.id} />
+	<!-- Keyed: a new account or campaign gets a fresh panel, never the last one's contents. -->
+	{#key `${gm.userId}:${campaign.id}`}<PartyPanel campaignId={campaign.id} />{/key}
 {:else if gm.userId && myRole === 'player'}
-	<MyCharacterPanel userId={gm.userId} campaignId={campaign.id} campaignName={campaign.name} />
+	{#key `${gm.userId}:${campaign.id}`}
+		<MyCharacterPanel userId={gm.userId} campaignId={campaign.id} campaignName={campaign.name} />
+	{/key}
 {/if}
 
 <Panel title="YOUR CAMPAIGNS">

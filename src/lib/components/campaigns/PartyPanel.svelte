@@ -9,9 +9,14 @@
 	let busy = $state(false);
 	let error = $state('');
 
+	// Only the newest request may change what's shown (see MyCharacterPanel).
+	let request = 0;
+
 	async function load() {
+		const mine = ++request;
 		busy = true;
 		const result = await listParty(campaignId);
+		if (mine !== request) return;
 		if ('error' in result) error = result.error;
 		else {
 			party = result;
@@ -23,6 +28,9 @@
 
 	$effect(() => {
 		void campaignId;
+		party = [];
+		loaded = false;
+		error = '';
 		void load();
 	});
 </script>
