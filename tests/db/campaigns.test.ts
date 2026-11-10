@@ -3,6 +3,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { SUPABASE_DEFAULT_GRANTS } from './supabase-defaults.ts';
 
 const VOYAGE = '00000000-0000-4000-8000-000000000001';
 const GM = '10000000-0000-4000-8000-000000000001'; // the existing GM
@@ -44,6 +45,7 @@ beforeAll(async () => {
 			('${GM}', 'gm@example.com'), ('${RIVAL}', 'rival@example.com'),
 			('${PLAYER}', 'player@example.com'), ('${STRANGER}', 'stranger@example.com');
 	`);
+	await db.exec(SUPABASE_DEFAULT_GRANTS);
 	const dir = 'supabase/migrations';
 	for (const file of readdirSync(dir).sort()) {
 		if (file.includes('_campaigns')) {
