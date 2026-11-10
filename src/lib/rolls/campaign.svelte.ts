@@ -114,9 +114,11 @@ export function startCampaignRolls(campaignId: string, userId: string | null) {
 				if (error) {
 					// Validation/permission errors cannot succeed unchanged. Leave the
 					// device roll intact and let later valid rolls through. Network,
-					// server errors, timeouts and throttling remain queued for retry.
-					const permanent = /^(22|23)/.test(error.code) || error.code === '42501'
-						|| (status >= 400 && status < 500 && status !== 408 && status !== 429);
+					// server errors, timeouts, throttling and JWT failures stay queued.
+					// Auth may refresh after an offline roll's first post attempt.
+					const jwtFailure = status === 401 || /^PGRST3/.test(error.code);
+					const permanent = !jwtFailure && (/^(22|23)/.test(error.code) || error.code === '42501'
+						|| (status >= 400 && status < 500 && status !== 408 && status !== 429));
 					if (permanent) {
 						sharedRolls.rejected++;
 						queue = queue.filter((r) => r.id !== entry.id);

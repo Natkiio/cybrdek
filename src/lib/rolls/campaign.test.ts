@@ -135,7 +135,7 @@ describe('campaign roll lifecycle', () => {
 			expect(fake.posts).toEqual([]);
 		}
 	);
-	it.each([['server', 503], ['timeout', 408], ['rate_limit', 429]] as const)(
+	it.each([['server', 503], ['timeout', 408], ['rate_limit', 429], ['expired_jwt', 401], ['PGRST301', 401], ['PGRST303', 403]] as const)(
 		'keeps retryable %s failures queued', async (code, status) => {
 			const m = await import('./campaign.svelte.ts');
 			stop = m.startCampaignRolls('campaign-a', 'player-a'); await settle();
@@ -143,9 +143,11 @@ describe('campaign roll lifecycle', () => {
 			m.shareRoll(roll('retry-me')); await settle();
 			expect(m.sharedRolls.pending).toBe(1);
 			expect(m.sharedRolls.rejected).toBe(0);
+			expect(JSON.parse(localStorage.getItem('cybrdek:pending-rolls')!)[0].id).toBe('retry-me');
 			fake.reject = {}; fake.status('SUBSCRIBED'); await settle();
 			expect(m.sharedRolls.pending).toBe(0);
 			expect(fake.posts).toHaveLength(2);
+			expect(fake.posts[1]).toEqual(fake.posts[0]);
 		}
 	);
 	it('clears private history when membership is removed' , async () => {
