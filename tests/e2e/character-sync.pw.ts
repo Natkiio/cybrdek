@@ -215,7 +215,7 @@ test('signing out takes account characters off the device; the cloud keeps them'
 	await page.getByRole('button', { name: 'SIGN OUT' }).click();
 	await expect(page.getByRole('button', { name: 'SIGN IN', exact: true })).toBeVisible();
 	await page.goto('/characters');
-	await expect(page.getByText('Device Only')).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Device Only' })).toBeVisible();
 	await expect(page.getByText('Vex')).toHaveCount(0);
 	// Actually gone from this device's storage, not just hidden on screen.
 	const stored = () =>
