@@ -3,6 +3,8 @@
 	import PartyPanel from '#lib/components/campaigns/PartyPanel.svelte';
 	import Panel from '#lib/components/Panel.svelte';
 	import {
+		campaignDisplayName,
+		setCampaignDisplayName,
 		createCampaign,
 		inviteCode,
 		inviteLink,
@@ -20,16 +22,22 @@
 	let busy = $state(false);
 	let link = $state('');
 	let copied = $state(false);
+	let displayName = $state<string | null>(null);
+	let displayNameError = $state('');
+	let displayNameSaved = $state(false);
+	let savingDisplayName = $state(false);
 
 	const latest = latestOnly();
 
 	async function load() {
 		const current = latest.begin();
-		const [list, code] = await Promise.all([
+		const [list, code, memberName] = await Promise.all([
 			listCampaigns(gm.userId),
-			gm.isGm ? inviteCode(campaign.id) : Promise.resolve(null)
+			gm.isGm ? inviteCode(campaign.id) : Promise.resolve(null),
+			gm.userId ? campaignDisplayName(campaign.id, gm.userId) : Promise.resolve(null)
 		]);
 		if (!current()) return;
+		displayName = memberName;
 		campaigns = list;
 		link = code ? inviteLink(location.origin, code) : '';
 		loaded = true;
@@ -52,6 +60,16 @@
 		else switchCampaign({ id: result.id, name: name.trim() });
 	}
 
+	async function saveDisplayName(event: SubmitEvent) {
+		event.preventDefault();
+		if (!displayName?.trim()) return;
+		savingDisplayName = true;
+		displayNameSaved = false;
+		displayNameError = await setCampaignDisplayName(campaign.id, displayName) ?? '';
+		savingDisplayName = false;
+		displayNameSaved = !displayNameError;
+	}
+
 	async function copy() {
 		await navigator.clipboard.writeText(link);
 		copied = true;
@@ -65,6 +83,18 @@
 <svelte:head><title>CAMPAIGNS // CYBRDEK</title></svelte:head>
 
 <h1>CAMPAIGNS</h1>
+
+{#if gm.userId && displayName !== null}
+	<Panel title="YOUR NAME AT THIS TABLE">
+		<p class="dim small">Choose the name campaign members see beside your rolls.</p>
+		<form onsubmit={saveDisplayName}>
+			<input required maxlength="80" aria-label="Campaign display name" bind:value={displayName} oninput={() => (displayNameSaved = false)} />
+			<button type="submit" class="go" disabled={savingDisplayName || !displayName.trim()}>{savingDisplayName ? 'SAVING…' : 'SAVE NAME'}</button>
+		</form>
+		{#if displayNameError}<p class="error" role="status">{displayNameError}</p>{/if}
+		{#if displayNameSaved}<p class="dim" role="status">Name saved.</p>{/if}
+	</Panel>
+{/if}
 
 {#if link}
 	<Panel title="INVITE PLAYERS">

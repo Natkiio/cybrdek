@@ -1,10 +1,21 @@
 <script lang="ts">
+	import { sharedRolls, type CampaignRoll } from '#lib/rolls/campaign.svelte.ts';
+	import { gm } from '#lib/supabase/gm.svelte.ts';
+	import { CAMPAIGN_ROLLS_ALWAYS_VISIBLE, CAMPAIGN_ROLL_LIMIT, GM_HIDDEN_ROLLS } from '#lib/rolls/settings.ts';
+	import type { RollEntry } from '#lib/rolls/log.svelte.ts';
 	import Panel from '#lib/components/Panel.svelte';
 	import { clearRolls, getRolls, isCrit, isFumble } from '#lib/rolls/log.svelte.ts';
 
 	let { characterId, limit = 20 }: { characterId?: string; limit?: number } = $props();
 	let confirmingClear = $state(false);
-	let entries = $derived(getRolls(characterId).slice(0, limit));
+	let campaignView = $state(true);
+	let showingCampaign = $derived(campaignView && sharedRolls.member && CAMPAIGN_ROLLS_ALWAYS_VISIBLE);
+	let campaignEntries = $derived([
+		...sharedRolls.pendingEntries,
+		...sharedRolls.entries.filter((entry) => !sharedRolls.pendingEntries.some((pending) => pending.id === entry.id))
+	].slice(0, CAMPAIGN_ROLL_LIMIT));
+	let entries = $derived<(RollEntry | CampaignRoll)[]>(showingCampaign
+		? campaignEntries : getRolls(characterId).slice(0, limit));
 
 	function formatModifier(modifier: number): string {
 		return `${modifier >= 0 ? '+' : ''}${modifier}`;
@@ -21,10 +32,22 @@
 </script>
 
 <Panel title="ROLL LOG">
+	{#if sharedRolls.member && CAMPAIGN_ROLLS_ALWAYS_VISIBLE}
+		<div class="actions">
+			<button type="button" aria-pressed={showingCampaign} onclick={() => (campaignView = true)}>CAMPAIGN</button>
+			<button type="button" aria-pressed={!showingCampaign} onclick={() => (campaignView = false)}>DEVICE</button>
+		</div>
+		{#if gm.isGm && GM_HIDDEN_ROLLS}
+			<label class="visibility"><input type="checkbox" bind:checked={sharedRolls.hidden} /> HIDE MY NEXT ROLLS (GM ONLY)</label>
+		{/if}
+	{/if}
+	{#if gm.userId && sharedRolls.status}<p class="empty" role="status">{sharedRolls.status}</p>{/if}
+	{#if sharedRolls.rejected}<p class="empty" role="status">{sharedRolls.rejected} roll(s) could not be shared. They remain in the device log.</p>{/if}
+	{#if sharedRolls.pending}<p class="empty">{sharedRolls.pending} campaign roll(s) waiting to send.</p>{/if}
 	{#if entries.length === 0}
 		<p class="empty">No rolls yet.</p>
 	{:else}
-		<div class="actions">
+		{#if !showingCampaign}<div class="actions">
 			{#if confirmingClear}
 				<span class="confirm">CLEAR LOG?</span>
 				<button type="button" class="confirm-yes" onclick={confirmClear}>YES</button>
@@ -32,7 +55,7 @@
 			{:else}
 				<button type="button" onclick={() => (confirmingClear = true)}>CLEAR</button>
 			{/if}
-		</div>
+		</div>{/if}
 
 		<ol class="rolls">
 			{#each entries as entry (entry.id)}
@@ -41,6 +64,9 @@
 				<li class:crit class:fumble class="flash">
 					<div class="main">
 						<span class="label">{entry.label}</span>
+						{#if 'userId' in entry}<span class="author" title={entry.userId} aria-label={`Rolled by ${entry.userId}`}>{entry.userId === gm.userId ? 'YOU' : (entry.rollerName ?? `PLAYER ${entry.userId.slice(0, 4)}…${entry.userId.slice(-4)}`)}</span>{/if}
+						{#if showingCampaign && sharedRolls.pendingEntries.some((pending) => pending.id === entry.id)}<span class="tag">PENDING</span>{/if}
+						{#if 'hidden' in entry && entry.hidden}<span class="tag">GM ONLY</span>{/if}
 						<span class="kind">{entry.kind}</span>
 						{#if crit}<span class="tag">CRIT</span>{/if}
 						{#if fumble}<span class="tag">FUMBLE</span>{/if}
@@ -62,6 +88,7 @@
 </Panel>
 
 <style>
+	.visibility { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; color: var(--muted); font-size: 0.75rem; }
 	.actions { display: flex; justify-content: flex-end; align-items: center; gap: 0.4rem; margin: -0.15rem 0 0.7rem; }
 	button { min-height: 44px; padding: 0.35rem 0.7rem; font-size: 0.8rem; }
 	.confirm { color: var(--red-soft); font-size: 0.8rem; }
@@ -70,11 +97,13 @@
 	.rolls { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
 	li { border-left: 2px solid var(--frame-dim); background: var(--bg-2); padding: 0.5rem 0.55rem; }
 	.main, .result { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
-	.main { margin-bottom: 0.2rem; }
+	.main { flex-wrap: wrap; margin-bottom: 0.2rem; }
 	.label { color: var(--label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.author { max-width: 100%; overflow-wrap: anywhere; color: var(--muted); font-size: 0.75rem; }
 	.kind, time { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 	.kind { margin-left: auto; }
 	.dice, .modifier { color: var(--value); }
+	.dice { overflow-wrap: anywhere; min-width: 0; }
 	.modifier { color: var(--mint-dim); }
 	.total { margin-left: auto; color: var(--value); font-family: var(--f-text); font-size: 1.55rem; line-height: 1; }
 	time { min-width: 3.4em; text-align: right; }
