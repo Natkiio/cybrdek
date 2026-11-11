@@ -67,7 +67,7 @@ test('a new player creates an account from an invite and joins, with no email', 
 	await fill(page, 'player@example.com', 'long-enough');
 	await page.getByRole('button', { name: 'CREATE ACCOUNT' }).click();
 
-	await expect(page).toHaveURL(/\/lore$/);
+	await expect(page).toHaveURL(/\/campaigns$/);
 	await expect(page.getByRole('link', { name: 'CAMPAIGN: Friend Game' })).toBeVisible();
 	expect(fake.accounts['player@example.com']).toBe('long-enough');
 	expect(fake.joined).toEqual(['abc123']);
@@ -85,7 +85,7 @@ test('a returning player signs in; a wrong password says so and joins nothing', 
 
 	await fill(page, 'player@example.com', 'right-password');
 	await page.getByRole('button', { name: 'SIGN IN', exact: true }).click();
-	await expect(page).toHaveURL(/\/lore$/);
+	await expect(page).toHaveURL(/\/campaigns$/);
 	expect(fake.joined).toEqual(['abc123']);
 });
 
