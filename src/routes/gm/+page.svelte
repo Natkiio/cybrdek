@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AccountForm from '#lib/components/account/AccountForm.svelte';
+	import ResetCodePanel from '#lib/components/account/ResetCodePanel.svelte';
 	import Panel from '#lib/components/Panel.svelte';
 	import { changePassword, gm, signOut } from '#lib/supabase/gm.svelte.ts';
 
@@ -48,6 +49,7 @@
 		{#if error}<p class="error" role="alert">{error}</p>{/if}
 		<p><button type="button" onclick={signOut}>SIGN OUT</button></p>
 	</Panel>
+	{#if gm.userId}<ResetCodePanel userId={gm.userId} />{/if}
 {:else}
 	<Panel title="SIGN IN">
 		<p class="dim">
