@@ -25,14 +25,17 @@
 
 	async function issue(event: SubmitEvent) {
 		event.preventDefault();
+		// The code belongs to the email it was made for. Keep that, not whatever
+		// is in the box when the reply arrives, so it's never shown beside someone else.
+		const requested = email.trim();
 		busy = true;
 		issued = null;
-		const result = await issueResetCode(email);
+		const result = await issueResetCode(requested);
 		busy = false;
 		if ('error' in result) error = result.error;
 		else {
 			error = '';
-			issued = { email: email.trim(), code: result.code };
+			issued = { email: requested, code: result.code };
 			email = '';
 		}
 	}
@@ -45,7 +48,7 @@
 			once, for 30 minutes, and a new one replaces it.
 		</p>
 		<form onsubmit={issue}>
-			<input type="email" required placeholder="player@example.com" aria-label="Player's email" bind:value={email} />
+			<input type="email" required placeholder="player@example.com" aria-label="Player's email" disabled={busy} bind:value={email} />
 			<button type="submit" disabled={busy}>MAKE CODE</button>
 		</form>
 		{#if issued}

@@ -2,6 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { SUPABASE_DEFAULT_GRANTS } from './supabase-defaults.ts';
 
 const ADMIN = '10000000-0000-4000-8000-000000000001';
 const PLAYER = '10000000-0000-4000-8000-000000000002';
@@ -51,6 +52,9 @@ beforeAll(async () => {
 		insert into auth.users (id, email) values
 			('${ADMIN}', 'admin@example.com'), ('${PLAYER}', 'Player@Example.com'), ('${CAMPAIGN_GM}', 'gm@example.com');
 	`);
+	await db.exec(SUPABASE_DEFAULT_GRANTS);
+	// Live, service_role also gets every new function by default.
+	await db.exec(`alter default privileges in schema public grant all on functions to service_role`);
 	const dir = 'supabase/migrations';
 	for (const file of readdirSync(dir).sort()) {
 		if (file.includes('_campaigns')) await db.exec(`insert into public.gms (email) values ('admin@example.com')`);
@@ -118,6 +122,15 @@ describe('claiming a code', () => {
 		const code = await codeFor('player@example.com');
 		await db.exec(`update public.password_resets set expires_at = now() - interval '1 second'`);
 		expect((await claim('player@example.com', code)).rows[0].player).toBeNull();
+	});
+
+	it('a missing (null) code is wrong, never a match, and counts as a try', async () => {
+		const code = await codeFor('player@example.com');
+		const r = await run('service_role', null, `select public.claim_password_reset($1, null) as player`, ['player@example.com']);
+		expect(r.rows[0].player).toBeNull();
+		const left = await db.query<{ attempts: number }>(`select attempts from public.password_resets`);
+		expect(left.rows).toEqual([{ attempts: 1 }]);
+		expect((await claim('player@example.com', code)).rows[0].player).toBe(PLAYER);
 	});
 
 	it('players, the admin and signed-out callers can never claim directly', async () => {

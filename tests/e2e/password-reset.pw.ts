@@ -5,6 +5,7 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 // tests/functions/reset-password.test.ts cover the real checks.
 
 interface Fake {
+	hold?: Promise<void>; // delays the code reply while set
 	accounts: Record<string, string>;
 	admin: boolean;
 	codes: Record<string, string>; // email -> live code
@@ -30,6 +31,7 @@ async function fakeSupabase(page: Page, fake: Fake, signedInAs?: string) {
 		}
 		if (path.endsWith('/rpc/is_gm')) return json(fake.admin);
 		if (path.endsWith('/rpc/issue_password_reset')) {
+			await fake.hold;
 			if (!fake.admin) return json({ code: '42501', message: 'Only the app admin can issue reset codes.' }, 403);
 			if (!fake.accounts[body.player_email]) return json({ code: 'P0002', message: 'No account uses that email.' }, 400);
 			fake.codes[body.player_email] = '3F9A-0C21-B7E4';
@@ -105,4 +107,31 @@ test('a short new password is caught before anything is sent', async ({ page }) 
 	await page.getByRole('button', { name: 'SET NEW PASSWORD' }).click();
 	expect(await page.getByLabel('New password').evaluate((el: HTMLInputElement) => el.validity.tooShort)).toBe(true);
 	expect(fake.codes['p@example.com']).toBe('3F9A-0C21-B7E4');
+});
+
+test('the code is shown beside the email it was made for, even if the box changes while it loads', async ({ page }) => {
+	let release!: () => void;
+	const fake: Fake = {
+		accounts: { 'victim@example.com': 'pw', 'other@example.com': 'pw', 'gm@example.com': 'pw' },
+		admin: true,
+		codes: {},
+		issued: [],
+		hold: new Promise<void>((resolve) => (release = resolve))
+	};
+	await fakeSupabase(page, fake, 'gm@example.com');
+	await page.goto('/gm');
+	const panel = page.locator('section.panel').filter({ hasText: 'PASSWORD RESET CODES' });
+	const box = panel.getByLabel("Player's email");
+	await box.fill('victim@example.com');
+	await panel.getByRole('button', { name: 'MAKE CODE' }).click();
+	await expect(box).toBeDisabled();
+	// Even a change that gets past the lock must not move the code to another name.
+	await box.evaluate((el: HTMLInputElement) => {
+		el.value = 'other@example.com';
+		el.dispatchEvent(new Event('input', { bubbles: true }));
+	});
+	release();
+	await expect(panel.getByText('Code for victim@example.com')).toBeVisible();
+	await expect(panel.getByText('other@example.com')).toHaveCount(0);
+	expect(fake.issued).toEqual(['victim@example.com']);
 });

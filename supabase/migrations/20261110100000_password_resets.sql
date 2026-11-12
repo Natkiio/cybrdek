@@ -67,7 +67,8 @@ begin
 		delete from public.password_resets where user_id = player;
 		return null;
 	end if;
-	if pending.code_hash <> public.reset_code_hash(code) then
+	-- IS DISTINCT FROM, not <>: a null code must count as wrong, never as a match.
+	if code is null or pending.code_hash is distinct from public.reset_code_hash(code) then
 		update public.password_resets set attempts = attempts + 1 where user_id = player;
 		return null;
 	end if;
