@@ -1,10 +1,19 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import Panel from '#lib/components/Panel.svelte';
 	import type { Character } from '#lib/engine/types.ts';
 	import { rulesets } from '#lib/rulesets/index.ts';
 	import { characterFileName, exportCharacter, parseCharacterFile } from '#lib/storage/backup.ts';
-	import { deleteCharacter, listCharacters, renameCharacter, saveCharacter } from '#lib/storage/characters.ts';
+	import {
+		deleteCharacter,
+		listCharacters,
+		listDeviceOnlyIds,
+		moveToAccount,
+		renameCharacter,
+		saveCharacter
+	} from '#lib/storage/characters.ts';
+	import { gm } from '#lib/supabase/gm.svelte.ts';
+	import { characterSync } from '#lib/sync/characters.svelte.ts';
 
 	let characters = $state<Character[]>([]);
 	let loading = $state(true);
@@ -16,13 +25,38 @@
 	let pendingImport = $state<Character | null>(null);
 	let importMessage = $state('');
 
+	let deviceOnly = $state.raw(new Set<string>());
+	const statusText = {
+		off: '',
+		syncing: 'SYNCING…',
+		synced: 'SYNCED TO YOUR ACCOUNT',
+		offline: 'OFFLINE: changes will sync when you reconnect',
+		error: "COULDN'T SYNC: changes are safe on this device"
+	};
+
 	onMount(() => {
 		void loadCharacters();
 	});
 
+	// The cloud changed what's on this device, or the account changed.
+	let seenRevision = characterSync.revision;
+	$effect(() => {
+		const revision = characterSync.revision;
+		untrack(() => {
+			if (revision !== seenRevision) void loadCharacters();
+			seenRevision = revision;
+		});
+	});
+
+	async function moveIn(id: string) {
+		await moveToAccount(id);
+		await loadCharacters();
+	}
+
 	async function loadCharacters() {
 		loading = true;
 		characters = await listCharacters();
+		deviceOnly = await listDeviceOnlyIds();
 		loading = false;
 	}
 
@@ -158,6 +192,13 @@
 
 {#if importMessage}<p class="import-success" role="status">{importMessage}</p>{/if}
 
+{#if gm.email && characterSync.status !== 'off'}
+	<p class="sync" role="status">{statusText[characterSync.status]}</p>
+	{#if characterSync.message}<p class="dim">{characterSync.message}</p>{/if}
+{:else if gm.ready && !gm.email}
+	<p class="dim">Saved on this device only. <a href="/gm">Sign in</a> to keep characters in your account.</p>
+{/if}
+
 <Panel title="ROSTER">
 	{#if loading}
 		<p class="dim cursor">LOADING…</p>
@@ -184,6 +225,9 @@
 					<div class="actions">
 						<a class="open" href={`/characters/${encodeURIComponent(character.id)}`}>OPEN</a>
 						<button type="button" onclick={() => downloadCharacter(character)}>EXPORT</button>
+						{#if gm.email && deviceOnly.has(character.id)}
+							<button type="button" class="move" onclick={() => void moveIn(character.id)}>MOVE TO MY ACCOUNT</button>
+						{/if}
 						{#if renamingId === character.id}
 							<button onclick={() => void saveRename(character.id)}>SAVE</button>
 							<button onclick={cancelRename}>CANCEL</button>
@@ -203,6 +247,15 @@
 </Panel>
 
 <style>
+	.sync,
+	.move {
+		color: var(--mint);
+	}
+
+	.move {
+		border-color: var(--mint-dim);
+	}
+
 	.roster-tools { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1rem; }
 	.roster-tools a, .open { display: inline-flex; align-items: center; min-height: 44px; border: 1px solid var(--red-dim); padding: 0.4rem 0.8rem; font-family: var(--f-label); font-size: 0.65rem; letter-spacing: 0.1em; }
 	.roster-tools button { min-height: 44px; }

@@ -15,7 +15,7 @@
 		joining = true;
 		void joinCampaign(page.params.code ?? '').then((result) => {
 			if ('error' in result) error = result.error;
-			else switchCampaign(result, '/lore');
+			else switchCampaign(result); // to /campaigns, to pick a character
 		});
 	});
 </script>

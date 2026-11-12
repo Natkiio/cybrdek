@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import Panel from '#lib/components/Panel.svelte';
 	import RollLog from '#lib/components/RollLog.svelte';
@@ -29,7 +29,9 @@
 		woundState,
 		type DeathSaveResult
 	} from '#lib/rulesets/red/wounds.ts';
-	import { getCharacter, saveCharacter } from '#lib/storage/characters.ts';
+	import CharacterHistory from '#lib/components/sheet/CharacterHistory.svelte';
+	import { getCharacter, isInAccount, saveCharacter } from '#lib/storage/characters.ts';
+	import { characterSync } from '#lib/sync/characters.svelte.ts';
 
 	let character = $state<Character | undefined>(undefined);
 	let loaded = $state(false);
@@ -46,10 +48,32 @@
 	let saveError = $state('');
 	let damageNotice = $state('');
 
-	onMount(async () => {
-		character = await getCharacter(page.params.id ?? '');
+	let inAccount = $state(false);
+
+	async function load() {
+		const id = page.params.id ?? '';
+		character = await getCharacter(id);
+		inAccount = await isInAccount(id);
 		loaded = true;
+	}
+
+	onMount(load);
+
+	// Another device changed this character: show the newer copy, so saving here
+	// can't quietly put the old one back. Only `revision` is a dependency.
+	let seenRevision = characterSync.revision;
+	$effect(() => {
+		const revision = characterSync.revision;
+		untrack(() => {
+			if (revision !== seenRevision && loaded) void load();
+			seenRevision = revision;
+		});
 	});
+
+	async function restore(version: Character) {
+		await saveCharacter(version);
+		await load();
+	}
 
 	// ---- everything below recalculates automatically when `character` changes
 	const ruleset = $derived(rulesets.find((r) => r.id === character?.rulesetId));
@@ -311,6 +335,9 @@
 	/>
 
 	<RollLog characterId={character.id} />
+	{#if inAccount && character}
+		<CharacterHistory id={character.id} onrestore={restore} />
+	{/if}
 {/if}
 
 <style>

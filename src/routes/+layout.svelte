@@ -1,7 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '#lib/assets/favicon.svg';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import { startCampaignRolls } from '#lib/rolls/campaign.svelte.ts';
 	import { page } from '$app/state';
 	import { campaign } from '#lib/campaigns/current.svelte.ts';
 	import { gm, startGmSession } from '#lib/supabase/gm.svelte.ts';
@@ -20,6 +21,12 @@
 	];
 
 	onMount(startGmSession);
+	$effect(() => {
+		const id = campaign.id;
+		const userId = gm.userId;
+		// Only account/campaign changes restart the session, not its own log updates.
+		return untrack(() => startCampaignRolls(id, userId));
+	});
 </script>
 
 <svelte:head>
