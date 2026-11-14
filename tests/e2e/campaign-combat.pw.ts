@@ -11,6 +11,9 @@ const sheet = (name: string) => ({ id: 'same-backup', name, rulesetId: 'cyberpun
 	skills: {}, extra: { role: 'solo', roleRank: 4 } });
 
 class Cloud {
+	sheets = new Map([[PLAYER, { id: 'same-backup', data: sheet('Vex'), updated_at: 1000, deleted_at: null }],
+		[OTHER, { id: 'same-backup', data: sheet('Kit'), updated_at: 1000, deleted_at: null }]]);
+	sheetWrites: { who: string; body: any }[] = [];
 	fight: { id: string; revision: number; ended: boolean; encounter: Encounter } | null = null;
 	member = true;
 	reads: { who: string; body: unknown }[] = [];
@@ -51,9 +54,26 @@ class Cloud {
 				this.writes.push({ who, body });
 				if (who !== GM || body.owner !== who) return json({ code: '42501', message: 'GM only' }, 403);
 				if (body.fight_id && (body.fight_id !== this.fight?.id || body.expected_revision !== this.fight.revision)) return json({ code: '40001', message: 'Conflict' }, 409);
+				for (const c of body.snapshot.combatants) c.startingHp = (this.fight?.encounter.combatants.find(old => old.id === c.id) as any)?.startingHp ?? c.hp;
 				this.fight = { id: body.fight_id ?? '20000000-0000-4000-8000-000000000001', revision: (this.fight?.revision ?? 0) + 1,
 					ended: body.finish, encounter: body.snapshot };
 				this.emit(); return json(this.view(who));
+			}
+			if (url.pathname.endsWith('/rpc/my_characters')) return json(this.sheets.has(who) ? [this.sheets.get(who)] : []);
+			if (url.pathname.endsWith('/rpc/save_character')) {
+				this.sheetWrites.push({ who, body });
+				if (body.owner !== who) return json({ message: 'Owner only' }, 403);
+				this.sheets.set(who, { id: body.character_id, data: body.character_data, updated_at: body.saved_at, deleted_at: body.removed_at });
+				return json(body.saved_at);
+			}
+			if (url.pathname.endsWith('/rpc/campaign_damage_offers')) {
+				if ((!this.member && who !== GM) || body.owner !== who) return json({ message: 'Owner only' }, 403);
+				const f = this.fight;
+				const receipts = (this.sheets.get(who)?.data.extra as any)?.acceptedChanges ?? {};
+				return json(!f?.ended ? [] : f.encounter.combatants.filter(c => c.characterOwnerId === who)
+					.map(c => ({ encounterId: f.id, characterId: c.characterId, name: c.name,
+						damage: Math.max(0, (c as any).startingHp - c.hp), endedAt: new Date().toISOString() }))
+					.filter(o => o.damage > 0 && !receipts[`fight-damage:${who}:${f.id}`]));
 			}
 			if (url.pathname.endsWith('/characters')) return json(who === GM ? [
 				{ user_id: PLAYER, id: 'same-backup', data: sheet('Vex') },
@@ -132,6 +152,9 @@ test('GM runs a campaign fight; a second session sees only server-redacted updat
 		await gm.page.getByRole('button', { name: 'CONFIRM: END ENCOUNTER' }).click();
 		await expect(player.page.getByRole('status').filter({ hasText: 'ENCOUNTER ENDED' })).toBeVisible();
 		await expect(fightPanel(player.page)).toContainText('HP 35/40');
+		await expect(player.page.getByRole('button', { name: 'Take 5 damage from the fight', exact: true })).toBeVisible();
+		expect((cloud.sheets.get(PLAYER)!.data.extra as any).currentHp).toBeUndefined();
+		expect(cloud.sheetWrites).toEqual([]);
 	} finally { await gm.context.close(); await player.context.close(); }
 });
 
@@ -149,5 +172,47 @@ test('membership revocation clears the fight; signing out restores an independen
 		await player.page.getByRole('link', { name: 'COMBAT', exact: true }).click();
 		await expect(player.page.getByLabel('NPC NAME')).toBeVisible();
 		await expect(player.page.getByText('Private campaign enemy')).toHaveCount(0);
+	} finally { await player.context.close(); }
+});
+
+// The server fixture emits only the owner's allowlisted offer. The real browser
+// must apply it to IndexedDB and sync it as that owner, never from the GM.
+test('finished damage waits for owner consent; receipt sync prevents a second-device repeat', async ({ browser, baseURL }) => {
+	const cloud = new Cloud();
+	cloud.fight = { id: '20000000-0000-4000-8000-000000000001', revision: 2, ended: true,
+		encounter: { ...newEncounter(), combatants: [{ id: 'pc', name: 'Vex', characterId: 'same-backup', characterOwnerId: PLAYER,
+			ref: 7, hp: 28, maxHp: 40, startingHp: 40, tiebreak: 0, initiative: null, roll: null, gear: [], out: false } as Combatant] } };
+	const player = await cloud.device(browser, baseURL, PLAYER);
+	const hp = async (context: BrowserContext) => context.pages()[0].evaluate(async () => {
+		if (!(await indexedDB.databases()).some(db => db.name === 'cybrdek')) return undefined;
+		return new Promise<any>((resolve, reject) => {
+			const request = indexedDB.open('cybrdek'); request.onerror = () => reject(request.error);
+			request.onsuccess = () => { const db = request.result; if (!db.objectStoreNames.contains('characters')) { db.close(); return resolve(undefined); } const read = db.transaction('characters').objectStore('characters').get('same-backup');
+				read.onsuccess = () => { resolve(read.result); db.close(); }; read.onerror = () => reject(read.error); };
+		});
+	});
+	try {
+		await player.page.goto('/combat');
+		const take = player.page.getByRole('button', { name: 'Take 12 damage from the fight', exact: true });
+		await expect(take).toBeVisible();
+		expect((await hp(player.context)).extra.currentHp).toBeUndefined(); // default full HP
+		expect(cloud.sheetWrites).toHaveLength(0);
+		await player.context.setOffline(true);
+		await take.click();
+		await expect(player.page.getByRole('status').filter({ hasText: 'Applied 12 damage' })).toBeVisible();
+		expect((await hp(player.context)).extra.currentHp).toBe(28);
+		expect((await hp(player.context)).dirty).toBe(true);
+		await player.context.setOffline(false);
+		await expect.poll(() => (cloud.sheets.get(PLAYER)!.data.extra as any).currentHp).toBe(28);
+		expect(cloud.sheetWrites.every(w => w.who === PLAYER && w.body.owner === PLAYER)).toBe(true);
+		const second = await cloud.device(browser, baseURL, PLAYER);
+		try {
+			await second.page.goto('/combat');
+			await expect.poll(async () => (await hp(second.context))?.extra.currentHp).toBe(28);
+			await expect(second.page.getByRole('button', { name: /Take .* damage from the fight/ })).toHaveCount(0);
+		} finally { await second.context.close(); }
+		await player.page.reload();
+		await expect(player.page.getByText('THE FIGHT · READ ONLY')).toBeVisible();
+		await expect(take).toHaveCount(0); expect((await hp(player.context)).extra.currentHp).toBe(28);
 	} finally { await player.context.close(); }
 });

@@ -270,3 +270,34 @@ export async function forgetOtherAccounts(user: string | undefined, current: Sti
 		);
 	});
 }
+
+/** null means the account character is not on this device; false means not yet accepted. */
+export async function hasOwnedReceipt(owner: string, id: string, key: string): Promise<boolean | null> {
+	if ((await currentUser()) !== owner) return null;
+	const row = await getDatabase()?.characters.get(id);
+	if (!row || row.ownerId !== owner || row.deletedAt) return null;
+	const receipts = row.extra.acceptedChanges;
+	return !!receipts && typeof receipts === 'object' && Object.hasOwn(receipts, key);
+}
+
+/** An explicit owner choice: update data and receipt in one local write transaction. */
+export async function updateOwnedCharacterOnce(owner: string, id: string, key: string,
+	change: (character: Character) => Character, current: StillCurrent = () => true): Promise<boolean> {
+	if ((await currentUser()) !== owner || !current()) throw new Error('Sign in to the character owner’s account first.');
+	const db = getDatabase();
+	if (!db) throw new Error('On-device storage is unavailable.');
+	const changed = await db.transaction('rw', db.characters, async () => {
+		const row = await db.characters.get(id);
+		if (!current() || !row || row.ownerId !== owner || row.deletedAt) throw new Error('This character is not available in your account.');
+		const receipts = row.extra.acceptedChanges && typeof row.extra.acceptedChanges === 'object'
+			&& !Array.isArray(row.extra.acceptedChanges) ? row.extra.acceptedChanges as Record<string, unknown> : {};
+		if (Object.hasOwn(receipts, key)) return false;
+		const next = cloneCharacter(change(cloneCharacter(plainCharacter(row))));
+		await db.characters.put({ ...next, id: row.id, ownerId: owner, remoteAt: row.remoteAt,
+			updatedAt: Date.now(), rev: newRev(), dirty: true,
+			extra: { ...next.extra, acceptedChanges: { ...receipts, [key]: true } } });
+		return true;
+	});
+	if (changed) onChange();
+	return changed;
+}
