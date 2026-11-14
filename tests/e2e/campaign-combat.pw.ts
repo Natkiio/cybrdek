@@ -152,6 +152,9 @@ test('GM runs a campaign fight; a second session sees only server-redacted updat
 		await gm.page.getByRole('button', { name: 'CONFIRM: END ENCOUNTER' }).click();
 		await expect(player.page.getByRole('status').filter({ hasText: 'ENCOUNTER ENDED' })).toBeVisible();
 		await expect(fightPanel(player.page)).toContainText('HP 35/40');
+		await expect(player.page.getByRole('button', { name: 'Take 5 damage from the fight', exact: true })).toBeVisible();
+		expect((cloud.sheets.get(PLAYER)!.data.extra as any).currentHp).toBeUndefined();
+		expect(cloud.sheetWrites).toEqual([]);
 	} finally { await gm.context.close(); await player.context.close(); }
 });
 
