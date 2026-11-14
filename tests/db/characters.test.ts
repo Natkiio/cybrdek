@@ -258,7 +258,8 @@ describe('placing a character in a campaign', () => {
 
 
 describe('API grants (Supabase opens new objects by default)', () => {
-	const ANON_FUNCTIONS = ['can_read_campaign', 'is_campaign_gm', 'is_campaign_member'];
+	// can_read_map_object: the storage policy for public campaigns' map images.
+	const ANON_FUNCTIONS = ['can_read_campaign', 'can_read_map_object', 'is_campaign_gm', 'is_campaign_member'];
 
 	it('people signed out can call only the read checks that policies use', async () => {
 		const r = await db.query<{ proname: string }>(`
