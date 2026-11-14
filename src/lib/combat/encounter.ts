@@ -26,6 +26,10 @@ export interface Combatant {
 	name: string;
 	/** Set for a character saved on this device; damage is written back to it. */
 	characterId?: string;
+	/** Cloud PCs use an owner + id pair; an id alone is only a local reference. */
+	characterOwnerId?: string;
+	/** GM explicitly marks death; being out can also mean knockout or fleeing. */
+	dead?: boolean;
 	ref: number;
 	roll: number | null; // the d10, null if the initiative was typed in
 	initiative: number | null; // null until rolled or typed in
