@@ -139,6 +139,8 @@ test('an invite link: asks you to sign in, then joins and switches', async ({ pa
 
 	await signedIn(page);
 	await page.goto('/join/abc123');
+	await expect(page.getByLabel('Campaign display name')).toHaveValue('');
+	await page.getByRole('button', { name: 'SKIP FOR NOW' }).click();
 	await expect(page).toHaveURL(/\/campaigns$/);
 	await expect(page.getByRole('link', { name: 'CAMPAIGN: Friend Game' })).toBeVisible();
 	expect(fake.joined).toEqual(['abc123']);

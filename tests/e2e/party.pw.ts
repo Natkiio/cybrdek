@@ -119,6 +119,8 @@ test('the GM sees the party with HP and IP, and no picker', async ({ page }) => 
 test('joining from an invite lands on the picker', async ({ page }) => {
 	await setup(page, { user: 'p1', role: 'player', rows: [row('p1', 'v', 'Vex')] });
 	await page.goto('/join/abc123');
+	await expect(page.getByLabel('Campaign display name')).toHaveValue('');
+	await page.getByRole('button', { name: 'SKIP FOR NOW' }).click();
 	await expect(page).toHaveURL(/\/campaigns$/);
 	await expect(page.getByRole('button', { name: 'PLAY THIS CHARACTER' })).toBeVisible();
 });
