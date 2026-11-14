@@ -6,7 +6,7 @@
 	import DistrictMenu from '#lib/components/map/DistrictMenu.svelte';
 	import PinEditor from '#lib/components/map/PinEditor.svelte';
 	import MapManager from '#lib/components/map/MapManager.svelte';
-	import { listMaps, loadMapDefinition, type CampaignMap } from '#lib/map/campaign-maps.ts';
+	import { activeMapKey, listMaps, loadMapDefinition, type CampaignMap } from '#lib/map/campaign-maps.ts';
 	import type { MapDefinition } from '#lib/map/types.ts';
 	import { listEntries } from '#lib/lore/api.ts';
 	import { latestOnly } from '#lib/lore/latest.ts';
@@ -73,21 +73,31 @@
 	// ---- loading: everything again when GM mode changes (RLS decides what we get)
 	const latest = latestOnly();
 	// The active map, remembered per campaign so it opens offline too.
-	const savedMapKey = (id: string) => `cybrdek:active-map:${id}`;
 	function rememberMaps(campaignId: string, list: CampaignMap[]) {
 		try {
-			localStorage.setItem(savedMapKey(campaignId), JSON.stringify(list.find((m) => m.active) ?? null));
+			localStorage.setItem(activeMapKey(campaignId), JSON.stringify(list.find((m) => m.active) ?? null));
 		} catch {
 			// storage blocked: the map just needs a connection next time
 		}
 	}
 	function savedActiveMap(campaignId: string): CampaignMap[] {
 		try {
-			const saved = JSON.parse(localStorage.getItem(savedMapKey(campaignId)) ?? 'null');
+			const saved = JSON.parse(localStorage.getItem(activeMapKey(campaignId)) ?? 'null');
 			return saved && typeof saved.id === 'string' ? [saved as CampaignMap] : [];
 		} catch {
 			return [];
 		}
+	}
+
+	/** A different map is on screen: nothing being edited on the last one carries over. */
+	function showMap(next: typeof uploaded) {
+		if (next?.map.id !== uploaded?.map.id) {
+			closeDraft();
+			selectedPinId = undefined;
+			pins = [];
+		}
+		uploaded?.release();
+		uploaded = next;
 	}
 
 	async function loadUploadedMap(campaignId: string, current: () => boolean) {
@@ -101,8 +111,7 @@
 				return;
 			}
 			if (local) {
-				uploaded?.release();
-				uploaded = { map: remembered, ...local };
+				showMap({ map: remembered, ...local });
 				maps = [remembered];
 				mapStatus = 'ready';
 			}
@@ -123,8 +132,7 @@
 			loaded?.release();
 			return;
 		}
-		uploaded?.release();
-		uploaded = loaded && active ? { map: active, ...loaded } : null;
+		showMap(loaded && active ? { map: active, ...loaded } : null);
 		mapStatus = active && !loaded ? 'offline' : 'ready';
 	}
 
@@ -132,10 +140,7 @@
 		const current = latest.begin();
 		const campaignId = campaign.id;
 		if (campaignId !== VOYAGE_CITY_ID) await loadUploadedMap(campaignId, current);
-		else if (uploaded) {
-			uploaded.release();
-			uploaded = null;
-		}
+		else if (uploaded) showMap(null);
 		if (!current()) return;
 		const mapId = campaignId === VOYAGE_CITY_ID ? null : (uploaded?.map.id ?? undefined);
 		const [lore, pinRows, overrideRows] = await Promise.all([
@@ -151,8 +156,12 @@
 	}
 	$effect(() => () => uploaded?.release());
 	$effect(() => {
-		// Only gm.isGm is a dependency; untrack the rest so writing them doesn't re-run this.
-		if (!gm.isGm) {
+		// Dependencies: GM mode, the campaign and the account. Everything else is
+		// untracked, so state the loader reads or writes can't re-run this.
+		const isGm = gm.isGm;
+		void campaign.id;
+		void gm.userId;
+		if (!isGm) {
 			untrack(() => {
 				// Leaving GM mode: drop GM-only things from screen now.
 				entries = entries.filter((e) => e.visible);
@@ -161,8 +170,7 @@
 				tapMode = 'none';
 			});
 		}
-		void campaign.id; // another campaign: its own map and pins
-		void load();
+		untrack(() => void load());
 	});
 
 	// ---- map interaction
@@ -192,8 +200,10 @@
 		if (!draft) return;
 		busy = true;
 		if (!currentMap) return;
-		const result = await savePin(draft, draftId, currentMap, currentMapId);
+		const savingOn = currentMapId;
+		const result = await savePin(draft, draftId, currentMap, savingOn);
 		busy = false;
+		if (savingOn !== currentMapId) return; // the map changed meanwhile: that pin isn't on this one
 		if ('error' in result) {
 			error = result.error;
 			return;

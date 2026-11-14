@@ -122,16 +122,26 @@ export async function uploadMap(campaignId: string, name: string, prepared: Prep
 		const blob = prepared[size];
 		const { error: uploadError } = await storage.upload(imagePath(campaignId, map.id, size), blob, { contentType: blob.type, upsert: true });
 		if (uploadError) {
-			await removeMap(campaignId, map.id);
-			return { error: 'The image could not be uploaded. Check your connection and try again.' };
+			const cleanup = await removeMap(campaignId, map.id);
+			return {
+				error: cleanup
+					? `The image could not be uploaded, and the half-made map "${map.name}" is still listed. Delete it, then try again.`
+					: 'The image could not be uploaded. Check your connection and try again.'
+			};
 		}
 	}
 	return map;
 }
 
-/** Images first: once the row is gone the storage rules no longer let anyone remove them. */
+/**
+ * Images first: once the row is gone the storage rules no longer let anyone
+ * remove them. So if removing them fails, the map stays, to try again later.
+ */
 export async function removeMap(campaignId: string, mapId: string): Promise<string | null> {
-	await supabase().storage.from(BUCKET).remove([imagePath(campaignId, mapId, 'full'), imagePath(campaignId, mapId, 'small')]);
+	const { error: filesError } = await supabase()
+		.storage.from(BUCKET)
+		.remove([imagePath(campaignId, mapId, 'full'), imagePath(campaignId, mapId, 'small')]);
+	if (filesError) return "The map's images could not be removed, so the map was kept. Try again.";
 	const { error } = await supabase().from('campaign_maps').delete().eq('id', mapId);
 	if (error) return 'The map could not be deleted.';
 	await forgetCachedImages(mapId);
@@ -152,8 +162,28 @@ export async function setActiveMap(campaignId: string, mapId: string | null): Pr
 
 // ---- images, kept on the device so the active map works offline
 
+// Kept per account, like private lore (lore/api.ts), and wiped on sign-out, so
+// the next person on this device never sees a private campaign's map.
 const CACHE = 'cybrdek-campaign-maps';
-const cacheKey = (mapId: string, size: 'full' | 'small') => `/__campaign-maps/${mapId}/${size}`;
+export const ACTIVE_MAP_PREFIX = 'cybrdek:active-map:';
+let viewer = 'signed-out';
+/** Who is looking: the signed-in account's id, or null when signed out. */
+export function setMapViewer(userId: string | null) {
+	viewer = userId ?? 'signed-out';
+}
+const cacheKey = (mapId: string, size: 'full' | 'small') => `/__campaign-maps/${viewer}/${mapId}/${size}`;
+export const activeMapKey = (campaignId: string) => `${ACTIVE_MAP_PREFIX}${viewer}:${campaignId}`;
+
+/** Sign-out: forget every map image and remembered map on this device. */
+export async function clearMapCaches(): Promise<void> {
+	try {
+		const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+		for (const key of keys) if (key?.startsWith(ACTIVE_MAP_PREFIX)) localStorage.removeItem(key);
+	} catch {
+		// storage blocked: nothing was saved there either
+	}
+	if (typeof caches !== 'undefined') await caches.delete(CACHE).catch(() => false);
+}
 
 async function cachedImage(campaignId: string, mapId: string, size: 'full' | 'small', network: boolean): Promise<Blob | null> {
 	const cache = typeof caches === 'undefined' ? undefined : await caches.open(CACHE).catch(() => undefined);
