@@ -1,6 +1,7 @@
 // Row-level security tests, on real Postgres (PGlite) with our real migrations.
 // A small stand-in provides the Supabase parts migrations rely on.
 import { readdirSync, readFileSync } from 'node:fs';
+import { SUPABASE_DEFAULT_GRANTS } from './supabase-defaults.ts';
 import { rollExpression } from '../../src/lib/engine/notation.ts';
 import { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -42,6 +43,7 @@ beforeAll(async () => {
 			('${GM}', 'gm@example.com'), ('${RIVAL}', 'rival@example.com'),
 			('${PLAYER}', 'player@example.com'), ('${STRANGER}', 'stranger@example.com');
 	`);
+	await db.exec(SUPABASE_DEFAULT_GRANTS);
 	for (const file of readdirSync('supabase/migrations').sort()) {
 		if (file.includes('_campaigns')) await db.exec(`insert into public.gms(email) values ('gm@example.com')`);
 		await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));

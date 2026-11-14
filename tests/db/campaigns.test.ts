@@ -82,10 +82,10 @@ describe('moving existing data', () => {
 		expect(edits.rows).toEqual([{ name: 'Araki' }]);
 	});
 
-	it('lets the deployed app keep writing without a campaign_id', async () => {
-		const made = await as(GM, `insert into public.lore_entries (slug, title) values ('old-app', 'Old App') returning campaign_id`);
-		expect(made.rows[0].campaign_id).toBe(VOYAGE);
-		await as(GM, `delete from public.lore_entries where slug = 'old-app'`);
+	it('a write without a campaign_id is refused, never filed under Voyage City (a stale cached app)', async () => {
+		const made = await as(GM, `insert into public.lore_entries (slug, title) values ('old-app', 'Old App')`);
+		expect(['23502', '42501']).toContain(made.error);
+		expect((await db.query(`select 1 from public.lore_entries where slug = 'old-app'`)).rows).toEqual([]);
 	});
 });
 
@@ -108,8 +108,8 @@ describe('reading', () => {
 	});
 
 	it('hides hidden pins, and pins linked to hidden lore', async () => {
-		await db.exec(`insert into public.map_pins (x, y, label, visible, lore_entry_id)
-			select 30, 30, 'Secret Link', true, id from public.lore_entries where slug = 'secret'`);
+		await db.exec(`insert into public.map_pins (x, y, label, visible, lore_entry_id, campaign_id)
+			select 30, 30, 'Secret Link', true, id, campaign_id from public.lore_entries where slug = 'secret'`);
 		const pins = await as(null, `select label from public.map_pins`);
 		expect(pins.rows).toEqual([{ label: 'Topaz' }]);
 		expect((await as(GM, `select label from public.map_pins`)).rows).toHaveLength(3);
