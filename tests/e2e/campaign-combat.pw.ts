@@ -175,6 +175,15 @@ test('membership revocation clears the fight; signing out restores an independen
 	} finally { await player.context.close(); }
 });
 
+const hp = async (context: BrowserContext) => context.pages()[0].evaluate(async () => {
+	if (!(await indexedDB.databases()).some(db => db.name === 'cybrdek')) return undefined;
+	return new Promise<any>((resolve, reject) => {
+		const request = indexedDB.open('cybrdek'); request.onerror = () => reject(request.error);
+		request.onsuccess = () => { const db = request.result; if (!db.objectStoreNames.contains('characters')) { db.close(); return resolve(undefined); } const read = db.transaction('characters').objectStore('characters').get('same-backup');
+			read.onsuccess = () => { resolve(read.result); db.close(); }; read.onerror = () => reject(read.error); };
+	});
+	});
+
 // The server fixture emits only the owner's allowlisted offer. The real browser
 // must apply it to IndexedDB and sync it as that owner, never from the GM.
 test('finished damage waits for owner consent; receipt sync prevents a second-device repeat', async ({ browser, baseURL }) => {
@@ -183,14 +192,7 @@ test('finished damage waits for owner consent; receipt sync prevents a second-de
 		encounter: { ...newEncounter(), combatants: [{ id: 'pc', name: 'Vex', characterId: 'same-backup', characterOwnerId: PLAYER,
 			ref: 7, hp: 28, maxHp: 40, startingHp: 40, tiebreak: 0, initiative: null, roll: null, gear: [], out: false } as Combatant] } };
 	const player = await cloud.device(browser, baseURL, PLAYER);
-	const hp = async (context: BrowserContext) => context.pages()[0].evaluate(async () => {
-		if (!(await indexedDB.databases()).some(db => db.name === 'cybrdek')) return undefined;
-		return new Promise<any>((resolve, reject) => {
-			const request = indexedDB.open('cybrdek'); request.onerror = () => reject(request.error);
-			request.onsuccess = () => { const db = request.result; if (!db.objectStoreNames.contains('characters')) { db.close(); return resolve(undefined); } const read = db.transaction('characters').objectStore('characters').get('same-backup');
-				read.onsuccess = () => { resolve(read.result); db.close(); }; read.onerror = () => reject(read.error); };
-		});
-	});
+
 	try {
 		await player.page.goto('/combat');
 		const take = player.page.getByRole('button', { name: 'Take 12 damage from the fight', exact: true });
@@ -214,5 +216,37 @@ test('finished damage waits for owner consent; receipt sync prevents a second-de
 		await player.page.reload();
 		await expect(player.page.getByText('THE FIGHT · READ ONLY')).toBeVisible();
 		await expect(take).toHaveCount(0); expect((await hp(player.context)).extra.currentHp).toBe(28);
+	} finally { await player.context.close(); }
+});
+
+test('already-applied damage can be dismissed without changing HP, including after sync and reload', async ({ browser, baseURL }) => {
+	const cloud = new Cloud();
+	Object.assign(cloud.sheets.get(PLAYER)!.data.extra, { currentHp: 28 }); // already recorded by hand
+	cloud.fight = { id: '20000000-0000-4000-8000-000000000001', revision: 2, ended: true,
+		encounter: { ...newEncounter(), combatants: [{ id: 'pc', name: 'Vex', characterId: 'same-backup', characterOwnerId: PLAYER,
+			ref: 7, hp: 28, maxHp: 40, startingHp: 40, tiebreak: 0, initiative: null, roll: null, gear: [], out: false } as Combatant] } };
+	const player = await cloud.device(browser, baseURL, PLAYER);
+	try {
+		await player.page.goto('/combat');
+		await expect(player.page.getByRole('button', { name: 'Take 12 damage from the fight', exact: true })).toBeVisible();
+		expect((await hp(player.context)).extra.currentHp).toBe(28);
+		await player.page.getByRole('button', { name: 'Already applied / dismiss', exact: true }).click();
+		await expect(player.page.getByRole('status').filter({ hasText: 'Dismissed fight damage for Vex. HP is unchanged.' })).toBeVisible();
+		expect((await hp(player.context)).extra.currentHp).toBe(28);
+		const key = `fight-damage:${PLAYER}:${cloud.fight.id}`;
+		await expect.poll(() => (cloud.sheets.get(PLAYER)!.data.extra as any).acceptedChanges?.[key]).toBe(true);
+		expect((cloud.sheets.get(PLAYER)!.data.extra as any).currentHp).toBe(28);
+		expect(cloud.sheetWrites.every(w => w.who === PLAYER && w.body.owner === PLAYER)).toBe(true);
+		await player.page.reload();
+		await expect(player.page.getByText('THE FIGHT · READ ONLY')).toBeVisible();
+		await expect(player.page.getByRole('button', { name: /Take .* damage from the fight|Already applied/ })).toHaveCount(0);
+		expect((await hp(player.context)).extra.currentHp).toBe(28);
+		const second = await cloud.device(browser, baseURL, PLAYER);
+		try {
+			await second.page.goto('/combat');
+			await expect.poll(async () => (await hp(second.context))?.extra.acceptedChanges?.[key]).toBe(true);
+			await expect(second.page.getByRole('button', { name: /Take .* damage from the fight|Already applied/ })).toHaveCount(0);
+			expect((await hp(second.context)).extra.currentHp).toBe(28);
+		} finally { await second.context.close(); }
 	} finally { await player.context.close(); }
 });

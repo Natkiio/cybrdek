@@ -13,9 +13,16 @@ export async function readDamageOffers(campaign: string, owner: string): Promise
 		(await hasOwnedReceipt(owner, offer.characterId, damageReceipt(owner, offer))) === false ? offer : null));
 	return checks.filter((o): o is DamageOffer => o !== null);
 }
-export async function acceptDamage(owner: string, offer: DamageOffer, current: StillCurrent): Promise<boolean> {
+function validateOffer(offer: DamageOffer) {
 	if (!Number.isInteger(offer.damage) || offer.damage < 1 || offer.damage > 10000
 		|| !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(offer.encounterId)) throw new Error('This fight result could not be read.');
+}
+export async function dismissDamage(owner: string, offer: DamageOffer, current: StillCurrent): Promise<boolean> {
+	validateOffer(offer);
+	return updateOwnedCharacterOnce(owner, offer.characterId, damageReceipt(owner, offer), character => character, current);
+}
+export async function acceptDamage(owner: string, offer: DamageOffer, current: StillCurrent): Promise<boolean> {
+	validateOffer(offer);
 	return updateOwnedCharacterOnce(owner, offer.characterId, damageReceipt(owner, offer), character => {
 		const maxHp = derivedStats(character.stats).hp;
 		const hp = Number(character.extra.currentHp ?? maxHp);

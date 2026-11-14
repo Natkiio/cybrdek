@@ -6,7 +6,7 @@ vi.mock('#lib/supabase/client.ts', () => ({ supabase: () => ({ auth: {
 	getSession: async () => ({ data: { session: fake.user ? { user: { id: fake.user } } : null } })
 } }) }));
 import { saveCharacter, getCharacter, hasOwnedReceipt, syncRows, markPushed } from './characters.ts';
-import { acceptDamage, damageReceipt, type DamageOffer } from '#lib/combat/damage-offers.ts';
+import { acceptDamage, dismissDamage, damageReceipt, type DamageOffer } from '#lib/combat/damage-offers.ts';
 const offer = (damage = 10): DamageOffer => ({ encounterId: '20000000-0000-4000-8000-000000000001', characterId: 'pc', name: 'Vex', damage, endedAt: new Date().toISOString() });
 beforeEach(async () => {
 	fake.user = 'owner-a';
@@ -39,4 +39,22 @@ it('rejects another account and a superseded UI action, without changing the she
 it('rejects malformed damage and clamps accepted damage at zero HP', async () => {
 	for (const amount of [0,-5,1.5,Number.NaN,10001]) await expect(acceptDamage('owner-a',offer(amount),()=>true)).rejects.toThrow();
 	await acceptDamage('owner-a',offer(99),()=>true); expect((await getCharacter('pc'))?.extra.currentHp).toBe(0);
+});
+
+it('dismissal records a synced receipt without changing HP, and prevents later acceptance', async () => {
+	const before = await getCharacter('pc');
+	expect(await dismissDamage('owner-a',offer(),()=>true)).toBe(true);
+	const after = await getCharacter('pc');
+	expect(after).toMatchObject({ ...before, extra: { ...before!.extra, acceptedChanges: { [damageReceipt('owner-a',offer())]: true } } });
+	expect((await syncRows('owner-a'))[0].dirty).toBe(true);
+	expect(await dismissDamage('owner-a',offer(),()=>true)).toBe(false);
+	expect(await acceptDamage('owner-a',offer(),()=>true)).toBe(false);
+	expect((await getCharacter('pc'))?.extra.currentHp).toBe(30);
+});
+it('dismissal after acceptance cannot change HP again and still checks ownership', async () => {
+	await acceptDamage('owner-a',offer(),()=>true);
+	expect(await dismissDamage('owner-a',offer(),()=>true)).toBe(false);
+	expect((await getCharacter('pc'))?.extra.currentHp).toBe(20);
+	fake.user = 'owner-b'; await expect(dismissDamage('owner-a',offer(),()=>true)).rejects.toThrow();
+	fake.user = 'owner-a'; await expect(dismissDamage('owner-a',offer(),()=>false)).rejects.toThrow();
 });
