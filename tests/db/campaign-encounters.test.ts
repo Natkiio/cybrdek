@@ -48,7 +48,9 @@ beforeAll(async () => {
 	for (const file of readdirSync('supabase/migrations').sort()) {
 		if (file.includes('_campaigns')) await db.exec(`insert into public.gms(email) values ('gm@example.com')`);
 		await db.exec(readFileSync(file.endsWith('_campaign_encounters.sql') && process.env.ENCOUNTER_MIGRATION_OVERRIDE
-			? process.env.ENCOUNTER_MIGRATION_OVERRIDE : `supabase/migrations/${file}`, 'utf8'));
+			? process.env.ENCOUNTER_MIGRATION_OVERRIDE
+			: file.endsWith('_fight_damage_offers.sql') && process.env.DAMAGE_MIGRATION_OVERRIDE
+				? process.env.DAMAGE_MIGRATION_OVERRIDE : `supabase/migrations/${file}`, 'utf8'));
 	}
 	rivalCampaign = (await as(RIVAL, `select public.create_campaign('Other') as id`)).rows[0].id as string;
 	await db.exec(`insert into public.campaign_members(campaign_id, user_id, role) values ('${VOYAGE}', '${PLAYER}', 'player'), ('${VOYAGE}', '${STRANGER}', 'player');
@@ -179,5 +181,46 @@ describe('server-built player views', () => {
 		await as(GM, `delete from public.campaign_members where user_id = $1`, [PLAYER]);
 		expect((await view(PLAYER)).error).toBe('42501');
 		expect((await as(PLAYER, 'select * from public.campaign_encounter_updates')).rows).toEqual([]);
+	});
+});
+
+describe('owner-only damage offers from retained finished fights', () => {
+	it('offers nothing while active; finishing only exposes the owner’s net HP damage', async () => {
+		// Previous tests removed PLAYER; rejoin for this separate acceptance flow.
+		await db.exec(`insert into public.campaign_members(campaign_id,user_id,role) values ('${VOYAGE}','${PLAYER}','player')`);
+		const active = (await view(GM)).rows[0].v as any;
+		let saved = await save(GM, snapshot(), active.id, active.revision); expect(saved.error).toBeNull();
+		const v = saved.rows[0].v as any;
+		const hurt = snapshot(); hurt.combatants[1].hp = 10; hurt.combatants[2].hp = 15; hurt.combatants[0].hp = 1;
+		saved = await save(GM, hurt, v.id, v.revision); expect(saved.error).toBeNull();
+		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,$2) as offers', [VOYAGE,PLAYER])).rows[0].offers).toEqual([]);
+		const live = saved.rows[0].v as any;
+		expect((await save(GM, hurt, live.id, live.revision, VOYAGE, true)).error).toBeNull();
+		const own = await as(PLAYER, 'select public.campaign_damage_offers($1,$2) as offers', [VOYAGE,PLAYER]);
+		const offers = own.rows[0].offers as any[];
+		expect(offers).toHaveLength(1); expect(offers[0]).toMatchObject({ characterId: 'same-backup', damage: 30, name: 'Player PC' });
+		expect(Object.keys(offers[0]).sort()).toEqual(['characterId','damage','encounterId','endedAt','name']);
+		const other = await as(STRANGER, 'select public.campaign_damage_offers($1,$2) as offers', [VOYAGE,STRANGER]);
+		expect((other.rows[0].offers as any[])[0].damage).toBe(25);
+		const gm = await as(GM, 'select public.campaign_damage_offers($1,$2) as offers', [VOYAGE,GM]); expect(gm.rows[0].offers).toEqual([]);
+		for (const user of [GM, RIVAL, null]) {
+			expect((await as(user, 'select public.campaign_damage_offers($1,$2)', [VOYAGE,PLAYER])).error).toBe('42501');
+		}
+		expect((await as(RIVAL, 'select public.campaign_damage_offers($1,$2)', [VOYAGE,RIVAL])).error).toBe('42501');
+		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,$2)', [rivalCampaign,PLAYER])).error).toBe('42501');
+		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,null)', [VOYAGE])).error).toBe('42501');
+		await db.exec(`insert into public.campaign_members(campaign_id,user_id,role) values ('${rivalCampaign}','${PLAYER}','player')`);
+		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,$2) as offers', [rivalCampaign,PLAYER])).rows[0].offers).toEqual([]);
+		await as(GM, 'delete from public.campaign_members where user_id=$1', [PLAYER]);
+		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,$2)', [VOYAGE,PLAYER])).error).toBe('42501');
+		await db.exec(`insert into public.campaign_members(campaign_id,user_id,role) values ('${VOYAGE}','${PLAYER}','player')`);
+		// The offer itself never writes a sheet. Only the owner’s sync publishes their receipt.
+		const before = await as(PLAYER, 'select data from public.characters'); expect(before.rows[0].data).toEqual({});
+		const key = `fight-damage:${PLAYER}:${offers[0].encounterId}`;
+		await as(PLAYER, `update public.characters set data = jsonb_build_object('extra', jsonb_build_object('acceptedChanges', jsonb_build_object($1::text,true)))`, [key]);
+		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,$2) as offers', [VOYAGE,PLAYER])).rows[0].offers).toEqual([]);
+		// Starting another fight does not bring an accepted result back.
+		expect((await save(GM, newEncounter())).error).toBeNull();
+		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,$2) as offers', [VOYAGE,PLAYER])).rows[0].offers).toEqual([]);
 	});
 });
