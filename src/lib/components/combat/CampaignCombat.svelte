@@ -5,6 +5,7 @@
 	import AddCombatant from './AddCombatant.svelte';
 	import CombatantCard from './CombatantCard.svelte';
 	import PlayerFight from './PlayerFight.svelte';
+	import FightDamageOffers from './FightDamageOffers.svelte';
 	import { encounterSession } from '#lib/combat/session.svelte.ts';
 	import { newEncounter, addCombatants, makeNpcs, makePc, damage, heal, startEncounter,
 		nextTurn, previousTurn, rollFor, setInitiative, setOut, removeCombatant,
@@ -93,8 +94,9 @@
 				{:else}<button type="button" onclick={() => (confirmingEnd = true)}>END ENCOUNTER</button>{/if}
 			</div>
 		</fieldset>
-		<p class="dim">Fight HP and armor are encounter snapshots. Character sheets stay unchanged until their owners accept carry-over damage (coming next).</p>
+		<p class="dim">Fight HP and armor are encounter snapshots. Owners choose whether to take fight damage onto their sheets after the encounter ends.</p>
 	{/if}
+	<FightDamageOffers {campaignId} {userId} fightVersion={`${combat.view.id}:${combat.view.revision}`} />
 {/if}
 <RollLog />
 
