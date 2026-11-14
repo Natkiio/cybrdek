@@ -159,14 +159,14 @@ describe('map image files', () => {
 		map = (await as(GM, `select id from public.campaign_maps where campaign_id = $1 and name = 'Docks'`, [home])).rows[0].id as string;
 	});
 
-	it('the bucket is private, WebP only, 8 MB per file', async () => {
+	it('the bucket is private, WebP or JPEG only, 8 MB per file', async () => {
 		const bucket = await db.query(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'campaign-maps'`);
-		expect(bucket.rows).toEqual([{ public: false, file_size_limit: 8388608, allowed_mime_types: ['image/webp'] }]);
+		expect(bucket.rows).toEqual([{ public: false, file_size_limit: 8388608, allowed_mime_types: ['image/webp', 'image/jpeg'] }]);
 	});
 
 	it("the GM uploads a map's two images; members see them, others don't", async () => {
-		expect((await upload(GM, `${home}/${map}/full.webp`)).error).toBeNull();
-		expect((await upload(GM, `${home}/${map}/small.webp`)).error).toBeNull();
+		expect((await upload(GM, `${home}/${map}/full`)).error).toBeNull();
+		expect((await upload(GM, `${home}/${map}/small`)).error).toBeNull();
 		expect((await files(PLAYER)).rows).toHaveLength(2);
 		expect((await files(STRANGER)).rows).toEqual([]);
 		expect((await files(null)).rows).toEqual([]);
@@ -175,25 +175,25 @@ describe('map image files', () => {
 
 	it('players and other GMs cannot upload, replace or remove them', async () => {
 		for (const user of [PLAYER, RIVAL, STRANGER]) {
-			expect((await upload(user, `${home}/${map}/other.webp`)).error).toBe('42501');
+			expect((await upload(user, `${home}/${map}/other`)).error).toBe('42501');
 			await as(user, `delete from storage.objects where name like $1`, [`${home}/%`]);
 		}
-		expect((await upload(null, `${home}/${map}/full.webp`)).error).not.toBeNull();
+		expect((await upload(null, `${home}/${map}/full`)).error).not.toBeNull();
 		expect((await files(GM)).rows.filter((r) => String(r.name).startsWith(home))).toHaveLength(2);
 	});
 
 	it('only the two expected names, under a real map of that campaign', async () => {
 		expect((await upload(GM, `${home}/${map}/evil.svg`)).error).toBe('42501');
-		expect((await upload(GM, `${home}/${map}/x/full.webp`)).error).toBe('42501');
-		expect((await upload(GM, `${home}/00000000-0000-4000-8000-00000000dead/full.webp`)).error).toBe('42501');
+		expect((await upload(GM, `${home}/${map}/x/full`)).error).toBe('42501');
+		expect((await upload(GM, `${home}/00000000-0000-4000-8000-00000000dead/full`)).error).toBe('42501');
 		const theirs = (await as(RIVAL, `select id from public.campaign_maps where campaign_id = $1`, [rivalGame])).rows[0].id;
-		expect((await upload(GM, `${home}/${theirs}/full.webp`)).error).toBe('42501'); // their map, my campaign folder
-		expect((await upload(GM, `${rivalGame}/${theirs}/full.webp`)).error).toBe('42501'); // their campaign
+		expect((await upload(GM, `${home}/${theirs}/full`)).error).toBe('42501'); // their map, my campaign folder
+		expect((await upload(GM, `${rivalGame}/${theirs}/full`)).error).toBe('42501'); // their campaign
 	});
 
 	it("anyone sees a public campaign's map images", async () => {
 		const sewers = (await as(GM, `select id from public.campaign_maps where name = 'Voyage Sewers'`)).rows[0].id;
-		await upload(GM, `${VOYAGE}/${sewers}/full.webp`);
-		expect((await files(null)).rows).toEqual([{ name: `${VOYAGE}/${sewers}/full.webp` }]);
+		await upload(GM, `${VOYAGE}/${sewers}/full`);
+		expect((await files(null)).rows).toEqual([{ name: `${VOYAGE}/${sewers}/full` }]);
 	});
 });

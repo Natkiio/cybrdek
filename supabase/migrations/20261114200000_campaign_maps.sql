@@ -1,5 +1,5 @@
--- MP-3 (#62): a campaign's own maps. The GM uploads images (shrunk to WebP in
--- the browser), names them and picks the active one; members see it, and so
+-- MP-3 (#62): a campaign's own maps. The GM uploads images (shrunk to WebP, or
+-- JPEG where the browser can't make WebP, e.g. Safari), names them and picks the active one; members see it, and so
 -- does anyone when the campaign is public. Pins belong to one map. Voyage City
 -- keeps its built-in map: its pins have no map_id.
 
@@ -101,7 +101,7 @@ revoke all on function public.set_active_map(uuid, uuid) from public, anon, auth
 grant execute on function public.set_active_map(uuid, uuid) to authenticated;
 
 -- ---- image files: private bucket, one folder per campaign and map
--- Paths are "<campaign id>/<map id>/full.webp" and ".../small.webp".
+-- Paths are "<campaign id>/<map id>/full" and ".../small" (WebP or JPEG).
 
 -- The campaign and map a storage path names, or null if it isn't a map path.
 create function public.map_object_owner(object_name text, out campaign uuid, out map uuid)
@@ -109,7 +109,7 @@ language plpgsql immutable set search_path = '' as $$
 declare
 	parts text[] := pg_catalog.string_to_array(object_name, '/');
 begin
-	if pg_catalog.array_length(parts, 1) = 3 and parts[3] in ('full.webp', 'small.webp')
+	if pg_catalog.array_length(parts, 1) = 3 and parts[3] in ('full', 'small')
 		and parts[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 		and parts[2] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
 		campaign := parts[1]::uuid;
@@ -143,8 +143,9 @@ grant execute on function public.can_write_map_object(text) to authenticated;
 do $$ begin
 	if exists (select 1 from pg_catalog.pg_namespace where nspname = 'storage') then
 		insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-		values ('campaign-maps', 'campaign-maps', false, 8388608, array['image/webp'])
-		on conflict (id) do update set public = false, file_size_limit = 8388608, allowed_mime_types = array['image/webp'];
+		values ('campaign-maps', 'campaign-maps', false, 8388608, array['image/webp', 'image/jpeg'])
+		on conflict (id) do update set public = false, file_size_limit = 8388608,
+			allowed_mime_types = array['image/webp', 'image/jpeg'];
 
 		create policy "Campaign readers view map images" on storage.objects for select
 		to anon, authenticated using (bucket_id = 'campaign-maps' and public.can_read_map_object(name));

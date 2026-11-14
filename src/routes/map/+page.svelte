@@ -5,6 +5,9 @@
 	import DistrictEditor from '#lib/components/map/DistrictEditor.svelte';
 	import DistrictMenu from '#lib/components/map/DistrictMenu.svelte';
 	import PinEditor from '#lib/components/map/PinEditor.svelte';
+	import MapManager from '#lib/components/map/MapManager.svelte';
+	import { listMaps, loadMapDefinition, type CampaignMap } from '#lib/map/campaign-maps.ts';
+	import type { MapDefinition } from '#lib/map/types.ts';
 	import { listEntries } from '#lib/lore/api.ts';
 	import { latestOnly } from '#lib/lore/latest.ts';
 	import type { LoreEntry } from '#lib/lore/types.ts';
@@ -25,6 +28,16 @@
 	} from '#lib/map/pins.ts';
 	import { campaign, VOYAGE_CITY_ID } from '#lib/campaigns/current.svelte.ts';
 	import { gm } from '#lib/supabase/gm.svelte.ts';
+
+	// Voyage City has its built-in map and districts. Any other campaign shows its
+	// GM's active uploaded map (#62); its pins belong to that map.
+	const isVoyage = $derived(campaign.id === VOYAGE_CITY_ID);
+	let maps = $state<CampaignMap[]>([]);
+	let uploaded = $state<{ map: CampaignMap; definition: MapDefinition; release: () => void } | null>(null);
+	let mapStatus = $state<'loading' | 'ready' | 'offline'>('loading');
+	const activeMap = $derived(maps.find((m) => m.active));
+	const currentMap = $derived(isVoyage ? VOYAGE_MAP : (uploaded?.definition ?? null));
+	const currentMapId = $derived(isVoyage ? null : (uploaded?.map.id ?? null));
 
 	let entries = $state<LoreEntry[]>([]);
 	let pins = $state<MapPin[]>([]);
@@ -59,14 +72,84 @@
 
 	// ---- loading: everything again when GM mode changes (RLS decides what we get)
 	const latest = latestOnly();
+	// The active map, remembered per campaign so it opens offline too.
+	const savedMapKey = (id: string) => `cybrdek:active-map:${id}`;
+	function rememberMaps(campaignId: string, list: CampaignMap[]) {
+		try {
+			localStorage.setItem(savedMapKey(campaignId), JSON.stringify(list.find((m) => m.active) ?? null));
+		} catch {
+			// storage blocked: the map just needs a connection next time
+		}
+	}
+	function savedActiveMap(campaignId: string): CampaignMap[] {
+		try {
+			const saved = JSON.parse(localStorage.getItem(savedMapKey(campaignId)) ?? 'null');
+			return saved && typeof saved.id === 'string' ? [saved as CampaignMap] : [];
+		} catch {
+			return [];
+		}
+	}
+
+	async function loadUploadedMap(campaignId: string, current: () => boolean) {
+		// Show this device's copy of the last active map at once (and offline),
+		// then check the cloud: a changed or removed map replaces it below.
+		const remembered = savedActiveMap(campaignId)[0];
+		if (remembered && uploaded?.map.id !== remembered.id) {
+			const local = await loadMapDefinition(campaignId, remembered, false);
+			if (!current()) {
+				local?.release();
+				return;
+			}
+			if (local) {
+				uploaded?.release();
+				uploaded = { map: remembered, ...local };
+				maps = [remembered];
+				mapStatus = 'ready';
+			}
+		}
+		const listed = await listMaps(campaignId);
+		if (!current()) return;
+		const list = 'error' in listed ? savedActiveMap(campaignId) : listed;
+		if (!('error' in listed)) rememberMaps(campaignId, listed);
+		maps = list;
+		const active = list.find((m) => m.active);
+		if (uploaded && uploaded.map.id === active?.id && uploaded.map.width === active.width) {
+			mapStatus = 'ready';
+			uploaded = { ...uploaded, map: active };
+			return;
+		}
+		const loaded = active ? await loadMapDefinition(campaignId, active) : null;
+		if (!current()) {
+			loaded?.release();
+			return;
+		}
+		uploaded?.release();
+		uploaded = loaded && active ? { map: active, ...loaded } : null;
+		mapStatus = active && !loaded ? 'offline' : 'ready';
+	}
+
 	async function load() {
 		const current = latest.begin();
-		const [lore, pinRows, overrideRows] = await Promise.all([listEntries(), listPins(), listDistrictOverrides()]);
+		const campaignId = campaign.id;
+		if (campaignId !== VOYAGE_CITY_ID) await loadUploadedMap(campaignId, current);
+		else if (uploaded) {
+			uploaded.release();
+			uploaded = null;
+		}
+		if (!current()) return;
+		const mapId = campaignId === VOYAGE_CITY_ID ? null : (uploaded?.map.id ?? undefined);
+		const [lore, pinRows, overrideRows] = await Promise.all([
+			listEntries(),
+			mapId === undefined ? Promise.resolve([]) : listPins(mapId),
+			campaignId === VOYAGE_CITY_ID ? listDistrictOverrides() : Promise.resolve([])
+		]);
 		if (!current()) return;
 		entries = lore.entries;
 		pins = pinRows;
 		overrides = overrideRows;
+		mapStatus = mapStatus === 'loading' ? 'ready' : mapStatus;
 	}
+	$effect(() => () => uploaded?.release());
 	$effect(() => {
 		// Only gm.isGm is a dependency; untrack the rest so writing them doesn't re-run this.
 		if (!gm.isGm) {
@@ -78,6 +161,7 @@
 				tapMode = 'none';
 			});
 		}
+		void campaign.id; // another campaign: its own map and pins
 		void load();
 	});
 
@@ -107,7 +191,8 @@
 	async function saveDraft() {
 		if (!draft) return;
 		busy = true;
-		const result = await savePin(draft, draftId, VOYAGE_MAP);
+		if (!currentMap) return;
+		const result = await savePin(draft, draftId, currentMap, currentMapId);
 		busy = false;
 		if ('error' in result) {
 			error = result.error;
@@ -150,14 +235,22 @@
 
 <svelte:head><title>{campaign.name} MAP // CYBRDEK</title></svelte:head>
 
-{#if campaign.id !== VOYAGE_CITY_ID}
+{#if !currentMap}
 	<h1>{campaign.name}</h1>
 	<Panel title="NO MAP YET">
-		<p class="dim">This campaign doesn't have a map yet. Map uploads are coming soon.</p>
+		{#if mapStatus === 'loading'}
+			<p class="dim">LOADING…</p>
+		{:else if mapStatus === 'offline'}
+			<p class="dim">This campaign's map needs a connection the first time it opens on this device.</p>
+		{:else if gm.isGm}
+			<p class="dim">Upload a map below. Your players see it as soon as it's added.</p>
+		{:else}
+			<p class="dim">Your GM hasn't added a map to this campaign yet.</p>
+		{/if}
 	</Panel>
 {:else}
 <div class="head">
-	<h1>VOYAGE CITY</h1>
+	<h1>{isVoyage ? 'VOYAGE CITY' : currentMap.name}</h1>
 	{#if gm.isGm}
 		<button
 			type="button"
@@ -193,9 +286,9 @@
 {/snippet}
 
 <CityMap
-	map={VOYAGE_MAP}
-	areas={districts}
-	{districtInfo}
+	map={currentMap}
+	areas={isVoyage ? districts : []}
+	districtInfo={isVoyage ? districtInfo : undefined}
 	onselect={(d) => {
 		selectedDistrictId = d?.id;
 		if (d) selectedPinId = undefined;
@@ -215,7 +308,7 @@
 {#if gm.isGm && draft}
 	{#key draftId ?? 'new'}
 		<PinEditor
-			map={VOYAGE_MAP}
+			map={currentMap}
 			bind:draft
 			isNew={!draftId}
 			{entries}
@@ -272,6 +365,10 @@
 	</details>
 {/if}
 
+{/if}
+
+{#if !isVoyage && gm.isGm}
+	<MapManager campaignId={campaign.id} {maps} onchange={() => void load()} />
 {/if}
 
 <style>

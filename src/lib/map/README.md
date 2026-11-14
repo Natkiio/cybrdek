@@ -75,3 +75,20 @@ Navigation math is tested independently of the browser. The Playwright map tests
 exercise taps, drag, keyboard/wheel/buttons, real two-contact touch events,
 resizing and both offline image paths. Run after a production build with
 `npx playwright test tests/e2e/map.pw.ts tests/e2e/map-areas.pw.ts`.
+
+## Campaign maps (#62)
+
+`campaign-maps.ts` handles a campaign's own maps. `prepareImage(file)` shrinks
+the GM's image in the browser to two copies: `full` (longest side 4096, used for
+pin coordinates) and `small` (1600, for phones). They're WebP, or JPEG where the
+browser can't make WebP (Safari). `uploadMap` adds the `campaign_maps` row first
+(the storage rules need it), then stores both images privately at
+`<campaign>/<map>/full|small` in the `campaign-maps` bucket. `removeMap` deletes
+the images before the row, because once the row is gone nobody may remove them.
+`setActiveMap` picks the map players see.
+
+`loadMapDefinition` returns a `MapDefinition` with object URLs for `CityMap`. Each
+image is kept in Cache Storage, and `/map` remembers the active map per campaign
+in localStorage. A seen map therefore opens instantly and offline, then is checked
+against the cloud. Pins on an uploaded map carry its `map_id`; Voyage City's
+built-in map is `map_id` null. Saving drawn areas for uploaded maps is not done yet.
