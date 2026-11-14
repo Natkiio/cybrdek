@@ -30,6 +30,34 @@ describe('summarise', () => {
 		expect(member.maxHp).toBeGreaterThan(0);
 	});
 
+	it('gives the GM dashboard wound state, worn SP, STATs, Humanity and injuries', () => {
+		const member = summarise(
+			'k',
+			sheet({
+				currentHp: 10, // max is 40 with BODY 6 / WILL 6, so under half: Seriously Wounded
+				gear: [
+					{ id: 'a', kind: 'armor', name: 'Kevlar', sp: 7, location: 'both', currentSp: { body: 5 } },
+					{ id: 'b', kind: 'armor', name: 'Helmet', sp: 11, location: 'head', equipped: false }
+				],
+				criticalInjuries: [{ location: 'body', roll: 5 }],
+				humanity: 42
+			})
+		)!;
+		expect(member.wound).toBe('seriously');
+		expect(member.woundLabel).toBe('Seriously Wounded');
+		expect(member.sp).toEqual({ head: 7, body: 5 }); // the unworn helmet doesn't count
+		expect(member.stats.REF).toBe(7);
+		expect(member.humanity).toBe(42);
+		expect(member.maxHumanity).toBe(50);
+		expect(member.injuries).toEqual(['Broken Ribs']);
+		expect(member.character.name).toBe('Vex');
+	});
+
+	it('an unhurt character with nothing worn shows zero SP and no injuries', () => {
+		const member = summarise('k', sheet())!;
+		expect(member).toMatchObject({ wound: 'unhurt', sp: { head: 0, body: 0 }, injuries: [] });
+	});
+
 	it('skips a damaged character instead of showing nonsense', () => {
 		expect(summarise('k', { nonsense: true })).toBeUndefined();
 		expect(summarise('k', null)).toBeUndefined();
