@@ -258,7 +258,7 @@ describe('placing a character in a campaign', () => {
 
 
 describe('API grants (Supabase opens new objects by default)', () => {
-	const ANON_FUNCTIONS = ['can_read_campaign', 'is_campaign_gm', 'is_campaign_member', 'is_gm'];
+	const ANON_FUNCTIONS = ['can_read_campaign', 'is_campaign_gm', 'is_campaign_member'];
 
 	it('people signed out can call only the read checks that policies use', async () => {
 		const r = await db.query<{ proname: string }>(`
@@ -274,6 +274,15 @@ describe('API grants (Supabase opens new objects by default)', () => {
 			and (has_table_privilege('anon', c.oid, 'INSERT') or has_table_privilege('anon', c.oid, 'UPDATE')
 				or has_table_privilege('anon', c.oid, 'DELETE') or has_table_privilege('anon', c.oid, 'TRUNCATE'))`);
 		expect(r.rows).toEqual([]);
+	});
+
+	it('lore, pins and district edits must name their campaign: nothing defaults to Voyage City', async () => {
+		const r = await db.query<{ table_name: string }>(`
+			select table_name from information_schema.columns
+			where table_schema = 'public' and column_name = 'campaign_id' and column_default is not null`);
+		expect(r.rows).toEqual([]);
+		const pin = await as(GM, `insert into public.map_pins (x, y, label) values (1, 1, 'No campaign')`);
+		expect(['23502', '42501']).toContain(pin.error); // refused, by NOT NULL or by RLS first
 	});
 
 	it("a GM can rename a campaign but not publish it; a player can't pick a campaign without the check", async () => {
