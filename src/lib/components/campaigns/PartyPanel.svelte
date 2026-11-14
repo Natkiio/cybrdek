@@ -53,7 +53,10 @@
 		</ul>
 	{/if}
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
-	<button type="button" disabled={busy} onclick={load}>REFRESH</button>
+	<p class="actions">
+		<button type="button" disabled={busy} onclick={load}>REFRESH</button>
+		<a href="/campaigns/party">OPEN LIVE DASHBOARD →</a>
+	</p>
 </Panel>
 
 <style>
@@ -85,5 +88,12 @@
 
 	.error {
 		color: var(--red-soft);
+	}
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
 	}
 </style>
