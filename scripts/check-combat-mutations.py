@@ -1,7 +1,7 @@
 """Mutation-check campaign combat rules on PGlite only; never connects to Supabase."""
 import os, subprocess, pathlib, tempfile
 repo = pathlib.Path(__file__).resolve().parents[1]
-source = (repo / 'supabase/migrations/20261113180000_campaign_encounters.sql').read_text()
+source = (repo / 'supabase/migrations/20261114150000_campaign_encounters.sql').read_text()
 mutants = {
  'gm_write_guard': ("or not public.is_campaign_gm(campaign) then", "then"),
  'member_read_guard': ("or not public.is_campaign_member(campaign) then", "then"),
