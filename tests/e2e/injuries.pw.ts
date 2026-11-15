@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openDamageForm, openFold } from './sheet.ts';
 
 test('Critical Injuries: target rolls, receiving, duplicate rerolls, persistence and treatment', async ({ page }, testInfo) => {
 	const errors: string[] = [];
@@ -19,6 +20,7 @@ test('Critical Injuries: target rolls, receiving, duplicate rerolls, persistence
 		});
 	});
 	await page.goto('/characters/injury-test');
+	await openFold(page, 'CRITICAL INJURIES');
 	await expect(page.getByRole('heading', { name: 'Injury Test' })).toBeVisible();
 	// Deterministic dice through the real UI: 3d6 all sixes triggers the offer.
 	await page.evaluate(() => { Math.random = () => 0.999; });
@@ -45,6 +47,7 @@ test('Critical Injuries: target rolls, receiving, duplicate rerolls, persistence
 	await expect(page.getByRole('button', { name: 'REROLL INJURY RECEIVED' })).toBeVisible();
 	await expect(page.locator('.current')).toHaveText('35');
 	await page.getByRole('button', { name: 'DISMISS INJURY ROLL' }).click();
+	await openDamageForm(page);
 	await page.getByLabel('Attack type').selectOption('direct');
 	await page.getByLabel('Damage or healing amount').fill('35');
 	await page.getByRole('button', { name: 'DAMAGE', exact: true }).first().click();
@@ -53,7 +56,7 @@ test('Critical Injuries: target rolls, receiving, duplicate rerolls, persistence
 	await expect(page.getByText('Penalty now: +2.', { exact: false })).toBeVisible();
 	await page.getByRole('button', { name: 'ROLL DEATH SAVE' }).click();
 	await expect(page.getByText('Penalty now: +3.', { exact: false })).toBeVisible();
-	await page.getByRole('button', { name: 'FULL', exact: true }).click();
+	await page.getByRole('button', { name: 'FULL HP', exact: true }).click();
 	await page.getByRole('button', { name: 'RESET', exact: true }).click();
 	await page.getByRole('button', { name: 'TREATED: REMOVE Brain Injury' }).scrollIntoViewIfNeeded();
 	await page.screenshot({ path: testInfo.outputPath('injuries-mobile.png') });

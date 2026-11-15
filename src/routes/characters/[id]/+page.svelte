@@ -31,6 +31,9 @@
 		type DeathSaveResult
 	} from '#lib/rulesets/red/wounds.ts';
 	import CharacterHistory from '#lib/components/sheet/CharacterHistory.svelte';
+	import Fold from '#lib/components/Fold.svelte';
+	import { CRITICAL_INJURIES } from '#lib/rulesets/red/injuries.ts';
+	import { wornSp } from '#lib/rulesets/red/armor.ts';
 	import { getCharacter, isInAccount, saveCharacter } from '#lib/storage/characters.ts';
 	import { characterSync } from '#lib/sync/characters.svelte.ts';
 
@@ -76,6 +79,12 @@
 		await load();
 	}
 
+	// Two letters for the avatar until portraits arrive (#87).
+	const initials = (name: string) => {
+		const words = name.trim().split(/\s+/).filter(Boolean);
+		return ((words.length > 1 ? words.map((w) => w[0]).join('') : words[0]) ?? '').slice(0, 2).toUpperCase() || '??';
+	};
+
 	// ---- everything below recalculates automatically when `character` changes
 	const ruleset = $derived(rulesets.find((r) => r.id === character?.rulesetId));
 	const role = $derived(ruleset?.roles.find((r) => r.id === character?.extra.role));
@@ -92,6 +101,9 @@
 	const gear = $derived(character ? gearOf(character.extra) : []);
 
 	const cyberware = $derived(character ? cyberwareOf(character.extra) : []);
+	// One-line summaries for the folded sections.
+	const injuryNames = $derived(injuries.map((i) => CRITICAL_INJURIES[i.location][i.roll]?.name ?? 'Injury').join(', '));
+	const armorSp = $derived(wornSp(gear));
 	const humanity = $derived(humanityOf(character?.extra ?? {}, character?.stats.EMP ?? 0));
 	// Armor lowers REF/DEX/MOVE; lost Humanity lowers EMP. Base STATs stay as they were.
 	const effectiveStats: Record<string, number> = $derived({
@@ -215,11 +227,14 @@
 	<Panel title="CHARACTER FILE"><p class="error">NOT FOUND</p></Panel>
 {:else}
 	<header class="identity">
-		<h1>{character.name}</h1>
-		<p>
-			<span class="role">{role?.name ?? 'No Role'}</span>
-			{#if role}<span class="dim">· {role.ability} {roleRank}</span>{/if}
-		</p>
+		<div class="avatar" aria-hidden="true">{initials(character.name)}</div>
+		<div class="who">
+			<h1>{character.name}</h1>
+			<p>
+				<span class="role">{role?.name ?? 'No Role'} {roleRank}</span>
+				{#if role}<span class="dim">· {role.ability} · {ipOf(character.extra)} IP</span>{/if}
+			</p>
+		</div>
 	</header>
 
 	{#if saveError}<p class="error">SAVE FAILED: {saveError}</p>{/if}
@@ -235,7 +250,9 @@
 		</div>
 	{/if}
 
-	<div class="grid">
+	<!-- Three columns on a laptop; on a phone they stack in this order (#101):
+	     what you check every turn, what you roll, then the rest folded away. -->
+	<div class="sheet">
 		<div class="col">
 			<HpTracker
 				{hp}
@@ -249,7 +266,6 @@
 				ondeathsave={rollDeathSave}
 				onresetpenalty={() => update({ deathSavePenalty: 0 })}
 			/>
-			<CriticalInjuries {injuries} {hp} {maxHp} characterId={character.id} offered={lastRoll?.damageCritical ?? false} onchange={update} />
 			{#if damageNotice}<p role="status">{damageNotice}</p>{/if}
 			{#if lastDeathSave && wound === 'mortally'}
 				<p class="death-result" class:fail={!lastDeathSave.survived}>
@@ -279,6 +295,16 @@
 		</div>
 
 		<div class="col">
+			<GearPanel
+				{gear}
+				kinds={['weapon']}
+				title="WEAPONS"
+				{attackBase}
+				onchange={(next) => update({ gear: next })}
+				onattack={attackWith}
+				ondamage={rollDamage}
+			/>
+
 			<Panel title="SKILLS">
 				<div class="skills-head">
 					<p class="hint dim">Tap a skill to roll. Base = STAT + level.</p>
@@ -304,43 +330,69 @@
 					</ul>
 				{/each}
 			</Panel>
+
+			<div class="folds">
+				<Fold
+					id="injuries"
+					title="CRITICAL INJURIES"
+					summary={injuries.length ? `${injuries.length} · ${injuryNames}` : 'none'}
+					alert={injuries.length > 0}
+					openOn={lastRoll?.damageCritical ? lastRoll : null}
+				>
+					<CriticalInjuries {injuries} {hp} {maxHp} characterId={character.id} offered={lastRoll?.damageCritical ?? false} onchange={update} />
+				</Fold>
+				<Fold id="armor" title="ARMOR" summary="SP head {armorSp.head} · body {armorSp.body}">
+					<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
+				</Fold>
+				<Fold id="cyberdeck" title="CYBERDECK" summary={gear.some((g) => g.cyberdeck) ? 'loaded' : 'none'}>
+					<CyberdeckPanel {gear} {cyberware} onchange={(next) => update({ gear: next })} />
+				</Fold>
+				<Fold
+					id="cyberware"
+					title="CYBERWARE & HUMANITY"
+					summary="{cyberware.length} installed · {humanity}/{maxHumanity(character.stats.EMP, cyberware)}"
+				>
+					<CyberwarePanel
+						installed={cyberware}
+						{humanity}
+						baseEmp={character.stats.EMP}
+						onchange={(change) => update(change)}
+					/>
+				</Fold>
+				<Fold id="gear" title="GEAR" summary="{gear.filter((g) => g.kind !== 'weapon').length} items">
+					<GearPanel
+						{gear}
+						kinds={['armor', 'item']}
+						{attackBase}
+						onchange={(next) => update({ gear: next })}
+						onattack={attackWith}
+						ondamage={rollDamage}
+					/>
+				</Fold>
+				<Fold id="improvement" title="IMPROVEMENT POINTS" summary="{ipOf(character.extra)} IP">
+					<ImprovementPanel
+						ip={ipOf(character.extra)}
+						ipLog={ipLogOf(character.extra)}
+						skills={ruleset.skills}
+						skillCategories={ruleset.skillCategories}
+						levels={character.skills}
+						roleAbility={role?.ability}
+						{roleRank}
+						onchange={improve}
+					/>
+				</Fold>
+				{#if inAccount && character}
+					<Fold id="history" title="PAST VERSIONS">
+						<CharacterHistory id={character.id} onrestore={restore} />
+					</Fold>
+				{/if}
+			</div>
+		</div>
+
+		<div class="col">
+			<RollLog characterId={character.id} />
 		</div>
 	</div>
-
-	<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
-
-	<GearPanel
-		{gear}
-		{attackBase}
-		onchange={(next) => update({ gear: next })}
-		onattack={attackWith}
-		ondamage={rollDamage}
-	/>
-
-	<CyberdeckPanel {gear} {cyberware} onchange={(next) => update({ gear: next })} />
-
-	<CyberwarePanel
-		installed={cyberware}
-		{humanity}
-		baseEmp={character.stats.EMP}
-		onchange={(change) => update(change)}
-	/>
-
-	<ImprovementPanel
-		ip={ipOf(character.extra)}
-		ipLog={ipLogOf(character.extra)}
-		skills={ruleset.skills}
-		skillCategories={ruleset.skillCategories}
-		levels={character.skills}
-		roleAbility={role?.ability}
-		{roleRank}
-		onchange={improve}
-	/>
-
-	<RollLog characterId={character.id} />
-	{#if inAccount && character}
-		<CharacterHistory id={character.id} onrestore={restore} />
-	{/if}
 {/if}
 
 <style>
@@ -358,12 +410,40 @@
 		color: var(--red);
 	}
 
+	.identity {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+		margin-bottom: 1.25rem;
+	}
+
+	.avatar {
+		width: 4rem;
+		height: 4rem;
+		flex: none;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid var(--red);
+		background: #140508;
+		color: var(--red);
+		font-family: var(--f-label);
+		font-size: 1.25rem;
+	}
+
+	.who {
+		min-width: 0;
+	}
+
 	.identity h1 {
 		margin: 0;
+		color: var(--bright);
+		text-shadow: none;
+		overflow-wrap: anywhere;
 	}
 
 	.identity p {
-		margin: 0.25rem 0 1rem;
+		margin: 0.2rem 0 0;
 	}
 
 	.role {
@@ -376,7 +456,7 @@
 
 	.last-roll {
 		position: sticky;
-		top: 0;
+		top: 3.6rem; /* under the top bar */
 		z-index: 20;
 		display: flex;
 		flex-wrap: wrap;
@@ -433,15 +513,39 @@
 		min-height: 44px;
 	}
 
-	.grid {
+	/* Phone: one column. Tablet: two. Laptop: three, filling the screen (#101). */
+	.sheet {
 		display: grid;
-		gap: 0 1rem;
+		gap: 0 clamp(1rem, 2.5vw, 3.5rem);
+		align-items: start;
+	}
+
+	.col {
+		min-width: 0;
+	}
+
+	.folds {
+		border-top: 1px solid var(--frame-dim);
+		margin-bottom: 1.75rem;
 	}
 
 	@media (min-width: 760px) {
-		.grid {
-			grid-template-columns: 1fr 1fr;
-			align-items: start;
+		.sheet {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+		}
+
+		.sheet > .col:last-child {
+			grid-column: 1 / -1;
+		}
+	}
+
+	@media (min-width: 1200px) {
+		.sheet {
+			grid-template-columns: minmax(18rem, 1fr) minmax(0, 2fr) minmax(16rem, 1fr);
+		}
+
+		.sheet > .col:last-child {
+			grid-column: auto;
 		}
 	}
 

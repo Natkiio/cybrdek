@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openDamageForm } from './sheet.ts';
 
 async function saved(page: Page) {
 	return page.evaluate(() => new Promise<{ extra: { currentHp: number; gear: { currentSp?: { body?: number; head?: number } }[] } }>((resolve) => {
@@ -28,6 +29,7 @@ test('damage form: default, melee, brawling, AP, rubber, stun and direct HP', as
 		};
 	}));
 	await page.goto('/characters/armor-special');
+	await openDamageForm(page);
 	await expect(page.getByRole('heading', { name: 'Armor Test' })).toBeVisible();
 	const attack = page.getByLabel('Attack type', { exact: true });
 	const location = page.getByLabel('Damage location', { exact: true });
@@ -53,16 +55,16 @@ test('damage form: default, melee, brawling, AP, rubber, stun and direct HP', as
 	// The sheet uses the shared Cracked Skull ×3 option after SP.
 	await hit('armor-piercing', 14, 28);
 	expect((await saved(page)).extra.gear[0].currentSp).toEqual({ body: 7, head: 9 });
-	await page.getByRole('button', { name: 'FULL', exact: true }).click();
+	await page.getByRole('button', { name: 'FULL HP', exact: true }).click();
 	await location.selectOption('body');
 	await hit('rubber', 14, 33);
 	await hit('rubber', 100, 1);
 	expect((await saved(page)).extra.gear[0].currentSp).toEqual({ body: 7, head: 9 });
-	await page.getByRole('button', { name: 'FULL', exact: true }).click();
+	await page.getByRole('button', { name: 'FULL HP', exact: true }).click();
 	await hit('stun-baton', 8, 36);
 	await hit('stun-baton', 100, 1);
 	await expect(page.getByRole('status')).toContainText('unconscious');
-	await page.getByRole('button', { name: 'FULL', exact: true }).click();
+	await page.getByRole('button', { name: 'FULL HP', exact: true }).click();
 	await location.selectOption('head');
 	await hit('direct', 6, 34);
 	await expect(location).toBeDisabled();
@@ -70,6 +72,7 @@ test('damage form: default, melee, brawling, AP, rubber, stun and direct HP', as
 	await attack.scrollIntoViewIfNeeded();
 	await page.screenshot({ path: testInfo.outputPath('damage-types-mobile.png') });
 	await page.reload();
+	await openDamageForm(page);
 	await expect(page.locator('.current')).toHaveText('34');
 	await expect(attack).toHaveValue('ranged');
 	// The tracker snapshots the same injury and writes ×3 head damage back to the sheet.
@@ -82,6 +85,7 @@ test('damage form: default, melee, brawling, AP, rubber, stun and direct HP', as
 	await page.getByRole('button', { name: 'DAMAGE', exact: true }).click();
 	await expect.poll(async () => (await saved(page)).extra.currentHp).toBe(16);
 	await page.goto('/characters/armor-special');
+	await openDamageForm(page);
 	await expect(page.locator('.current')).toHaveText('16');
 	expect(errors).toEqual([]);
 });

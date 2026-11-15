@@ -2,6 +2,7 @@
 // two copies, a detailed one for zooming and a small one for phones, then
 // stored privately; row-level security decides who may read or change them.
 import { supabase } from '#lib/supabase/client.ts';
+import { MAP_CACHE } from '#lib/storage/cache-names.ts';
 import type { MapDefinition } from './types.ts';
 
 export const BUCKET = 'campaign-maps';
@@ -164,7 +165,7 @@ export async function setActiveMap(campaignId: string, mapId: string | null): Pr
 
 // Kept per account, like private lore (lore/api.ts), and wiped on sign-out, so
 // the next person on this device never sees a private campaign's map.
-const CACHE = 'cybrdek-campaign-maps';
+const CACHE = MAP_CACHE; // the service worker keeps it across app updates
 export const ACTIVE_MAP_PREFIX = 'cybrdek:active-map:';
 let viewer = 'signed-out';
 /** Who is looking: the signed-in account's id, or null when signed out. */

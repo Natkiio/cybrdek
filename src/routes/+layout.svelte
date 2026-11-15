@@ -137,6 +137,12 @@
 		padding: 1.25rem 1rem 1rem;
 	}
 
+	/* Pages built to fill a laptop screen (the sheet) opt out of the reading width. */
+	.shell:has(:global(.sheet)) {
+		max-width: 1800px;
+		padding-inline: clamp(1rem, 3vw, 4.5rem);
+	}
+
 	footer {
 		margin-top: 2rem;
 		padding-top: 0.75rem;

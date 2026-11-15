@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openFold } from './sheet.ts';
 import { goToSection } from './nav.ts';
 const panel = (page: Page) => page.locator('section.panel').filter({ has: page.getByText('CYBERDECK', { exact: true }) });
 async function seed(page: Page, links = false) {
@@ -15,7 +16,7 @@ async function seed(page: Page, links = false) {
    tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
   };
  }),links);
- await page.goto('/characters/netrunner'); await expect(page.getByRole('heading', { name: 'Runner', exact: true, level: 1 })).toBeVisible();
+ await page.goto('/characters/netrunner'); await expect(page.getByRole('heading', { name: 'Runner', exact: true, level: 1 })).toBeVisible(); await openFold(page, 'CYBERDECK');
 }
 async function stored(page: Page): Promise<any> {
  return page.evaluate(() => new Promise((resolve,reject) => {
@@ -82,6 +83,7 @@ test('explicit implant and suit links add the right slot types without applying 
  await deck.getByRole('button', { name: 'FIT HARDWARE' }).click();
  await expect(deck.getByRole('status')).toContainText('6 program slots + 1 hardware slots used · 0 shared slots free');
  expect((await stored(page)).extra.humanity).toBe(43);
+ await openFold(page, 'CYBERWARE & HUMANITY');
  await page.getByRole('button', { name: 'Remove Cyberdeck', exact: true }).click();
  await page.getByRole('button', { name: 'CONFIRM', exact: true }).click();
  await expect(deck.getByRole('alert')).toContainText('Over capacity by 1');
@@ -119,6 +121,7 @@ test('an in-flight account sync cannot acknowledge away a newer program edit', a
  await page.goto('/characters');
  await page.getByRole('link', { name: 'OPEN', exact: true }).click();
  await expect(page.getByRole('heading', { name: 'Synced Runner', exact: true })).toBeVisible();
+ await openFold(page, 'CYBERDECK');
  const deck = panel(page); await deck.getByLabel('Program to add').selectOption('sword');
  await addCopy(page); await expect.poll(() => firstPending).toBe(true);
  await addCopy(page); release!();
