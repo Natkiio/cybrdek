@@ -113,3 +113,22 @@ test('on a phone it is one column with no sideways scroll', async ({ page }) => 
 	expect(skills.y).toBeGreaterThan(hp.y);
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('every critical damage roll reopens the injuries fold, even two in a row', async ({ page }) => {
+	await page.addInitScript(() => {
+		Math.random = () => 0.99; // every die rolls its highest: 4d6 shows four 6s, a critical
+	});
+	await open(page);
+	const injuries = fold(page, 'CRITICAL INJURIES');
+	const damage = section(page, 'WEAPONS').getByRole('button', { name: /^DMG/ });
+
+	await damage.click();
+	await expect(injuries).toHaveAttribute('open', '');
+	await expect(page.getByRole('button', { name: 'ROLL INJURY FOR TARGET' })).toBeVisible();
+
+	await injuries.locator('summary').click(); // the player closes it
+	await expect(injuries).not.toHaveAttribute('open', '');
+	await damage.click(); // another crit straight away
+	await expect(injuries).toHaveAttribute('open', '');
+	await expect(page.getByRole('button', { name: 'ROLL INJURY FOR TARGET' })).toBeVisible();
+});

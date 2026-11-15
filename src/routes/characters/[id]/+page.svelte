@@ -337,7 +337,7 @@
 					title="CRITICAL INJURIES"
 					summary={injuries.length ? `${injuries.length} · ${injuryNames}` : 'none'}
 					alert={injuries.length > 0}
-					forceOpen={lastRoll?.damageCritical ?? false}
+					openOn={lastRoll?.damageCritical ? lastRoll : null}
 				>
 					<CriticalInjuries {injuries} {hp} {maxHp} characterId={character.id} offered={lastRoll?.damageCritical ?? false} onchange={update} />
 				</Fold>

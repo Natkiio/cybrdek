@@ -9,14 +9,14 @@
 		title,
 		summary = '',
 		alert = false,
-		forceOpen = false,
+		openOn = null,
 		children
 	}: {
 		id: string; // stable name, for remembering it open
 		title: string;
 		summary?: string;
 		alert?: boolean; // summary shown in red (e.g. an active injury)
-		forceOpen?: boolean; // open it now (e.g. a critical injury was just offered)
+		openOn?: unknown; // each new non-null value opens it (e.g. a roll that offers a critical injury)
 		children: Snippet;
 	} = $props();
 
@@ -32,8 +32,9 @@
 	}
 
 	let open = $state(remembered());
+	// Every new value reopens it, so a second crit in a row opens a fold closed in between.
 	$effect(() => {
-		if (forceOpen) open = true;
+		if (openOn) open = true;
 	});
 
 	function toggled(event: Event) {
