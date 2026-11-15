@@ -52,7 +52,7 @@
 				<span class="handle">{m.name}</span>
 				<span class="dim">{m.role} {m.rank}</span>
 			</div>
-			<a class="open" href="/characters/{me.id}">SHEET →</a>
+			<a class="open" href="/characters/{encodeURIComponent(me.id)}">SHEET →</a>
 		</div>
 		<div class="hp-line">
 			<span class="hp">{m.hp}<span class="dim">{' '}/ {m.maxHp} HP</span></span>

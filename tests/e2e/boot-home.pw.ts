@@ -103,3 +103,42 @@ test('the roll log shows only the last 5 rolls', async ({ page }) => {
 	const log = page.locator('section.panel').filter({ hasText: 'ROLL LOG' });
 	await expect(log.locator('li')).toHaveCount(5);
 });
+
+
+test('reduced-motion CSS hides the server-rendered boot while hydration is delayed', async ({ browser, baseURL }) => {
+	const context = await browser.newContext({ baseURL, reducedMotion: 'reduce', serviceWorkers: 'block' });
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => (release = resolve));
+	await context.route(/\/_app\/immutable\/.*\.js(?:\?|$)/, async (route) => {
+		await gate;
+		await route.continue();
+	});
+	try {
+		const page = await context.newPage();
+		await page.addInitScript((key) => localStorage.setItem(key, '1'), FORCE);
+		const navigating = page.goto('/', { waitUntil: 'domcontentloaded' });
+		const boot = page.locator('.boot');
+		await expect(boot).toBeAttached();
+		await expect(boot).toHaveCSS('display', 'none');
+		await expect(boot).toBeHidden();
+		release();
+		await navigating;
+		await expect(boot).toHaveCount(0);
+	} finally {
+		release();
+		await context.close();
+	}
+});
+
+test('dashboard sheet links encode reserved characters in imported IDs', async ({ page }) => {
+	const id = 'runner?version=1#copy';
+	await seed(page, { ...vex, id });
+	await page.reload();
+	await expect(page.getByRole('link', { name: 'OPEN', exact: true })).toHaveAttribute('href', `/characters/${encodeURIComponent(id)}`);
+	await page.goto('/');
+	const sheet = page.getByRole('link', { name: 'SHEET →', exact: true });
+	await expect(sheet).toHaveAttribute('href', `/characters/${encodeURIComponent(id)}`);
+	await sheet.click();
+	await expect(page.getByRole('heading', { name: 'Vex', exact: true })).toBeVisible();
+	await expect(page.getByText('NOT FOUND', { exact: true })).toHaveCount(0);
+});

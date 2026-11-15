@@ -75,12 +75,6 @@
 </div>
 
 <style>
-	@media (prefers-reduced-motion: reduce) {
-		.boot {
-			display: none;
-		}
-	}
-
 	.boot {
 		position: fixed;
 		inset: 0;
@@ -89,6 +83,13 @@
 		display: flex;
 		justify-content: center;
 		cursor: pointer;
+	}
+
+	/* The first-paint fallback must override the base display before hydration. */
+	@media (prefers-reduced-motion: reduce) {
+		.boot {
+			display: none;
+		}
 	}
 
 	.inner {
