@@ -120,7 +120,7 @@ test('create a campaign: become its GM, get an invite, everything is scoped to i
 
 	// It has no map yet, and doesn't show Voyage City's.
 	await page.goto('/map');
-	await expect(page.getByText("This campaign doesn't have a map yet.")).toBeVisible();
+	await expect(page.getByText('Upload a map below.')).toBeVisible(); // its GM can add one (#62)
 	await expect(page.locator('.scene img')).toHaveCount(0);
 
 	// Switching back works.

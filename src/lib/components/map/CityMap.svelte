@@ -162,7 +162,7 @@
 		<button type="button" aria-label="Pan right" onclick={() => pan(-100, 0)}>→</button>
 	</div>
 </div>
-<p id={helpId} class="hint">Drag to pan · pinch or scroll to zoom · tap a district. Keyboard: arrows, +/−, Home to fit, Escape to close.</p>
+<p id={helpId} class="hint">Drag to pan · pinch or scroll to zoom{districts.length ? ' · tap a district' : ''}. Keyboard: arrows, +/−, Home to fit, Escape to close.</p>
 
 <!-- A custom keyboard-operated map application; the district list is an alternative to spatial input. -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->

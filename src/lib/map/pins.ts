@@ -107,8 +107,10 @@ export function pinLore(pin: MapPin, entries: readonly LoreEntry[]): LoreEntry |
 
 // ---- Supabase ---------------------------------------------------------------
 
-export async function listPins(): Promise<MapPin[]> {
-	const { data, error } = await supabase().from('map_pins').select('id,x,y,label,lore_entry_id,visible,category').eq('campaign_id', campaign.id);
+/** Pins on one map: a campaign's uploaded map, or null for Voyage City's built-in one. */
+export async function listPins(mapId: string | null = null): Promise<MapPin[]> {
+	const query = supabase().from('map_pins').select('id,x,y,label,lore_entry_id,visible,category').eq('campaign_id', campaign.id);
+	const { data, error } = await (mapId ? query.eq('map_id', mapId) : query.is('map_id', null));
 	return error || !data ? [] : (data as MapPin[]);
 }
 
@@ -117,10 +119,15 @@ export async function listDistrictOverrides(): Promise<DistrictOverride[]> {
 	return error || !data ? [] : (data as DistrictOverride[]);
 }
 
-export async function savePin(draft: PinDraft, id: string | undefined, map: Size): Promise<{ pin: MapPin } | { error: string }> {
+export async function savePin(
+	draft: PinDraft,
+	id: string | undefined,
+	map: Size,
+	mapId: string | null = null
+): Promise<{ pin: MapPin } | { error: string }> {
 	const row = { ...draft, label: draft.label.trim(), ...clampToMap(draft.x, draft.y, map) };
 	const table = supabase().from('map_pins');
-	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert({ ...row, campaign_id: campaign.id }))
+	const { data, error } = await (id ? table.update(row).eq('id', id) : table.insert({ ...row, campaign_id: campaign.id, map_id: mapId }))
 		.select('id,x,y,label,lore_entry_id,visible,category')
 		.single();
 	return error ? { error: error.message } : { pin: data as MapPin };

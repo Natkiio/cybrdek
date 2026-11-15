@@ -9,6 +9,7 @@
 
 import { campaign, VOYAGE_CITY_ID } from '#lib/campaigns/current.svelte.ts';
 import { clearPrivateCaches } from '#lib/lore/api.ts';
+import { clearMapCaches, setMapViewer } from '#lib/map/campaign-maps.ts';
 import { setSyncUser, syncCharacters } from '#lib/sync/characters.svelte.ts';
 import { supabase } from './client.ts';
 
@@ -45,6 +46,7 @@ export function startGmSession() {
 		const sameUser = email === gm.email && gm.ready;
 		gm.email = email;
 		gm.userId = userId;
+		setMapViewer(userId); // map caches are kept per account
 		// A different person (or nobody) is never the GM until checked again.
 		if (!sameUser) gm.isGm = false;
 		// Don't await inside the callback: supabase-js warns that it can deadlock.
@@ -101,5 +103,6 @@ export async function changePassword(password: string): Promise<string | null> {
 export async function signOut() {
 	await syncCharacters(); // last chance to save edits to the cloud
 	clearPrivateCaches(); // first: signing out reloads private campaign pages
+	await clearMapCaches();
 	await supabase().auth.signOut();
 }
