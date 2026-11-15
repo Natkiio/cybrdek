@@ -18,6 +18,7 @@
 import { version } from '$app/env';
 import { assets, immutable } from '$app/manifest';
 import { self } from '$app/service-worker';
+import { staleAppCaches } from '#lib/storage/cache-names.ts';
 
 const CACHE = `cybrdek-${version}`;
 
@@ -55,10 +56,10 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
 	event.waitUntil(
 		(async () => {
-			// Delete caches from older versions of the app.
-			for (const key of await caches.keys()) {
-				if (key !== CACHE) await caches.delete(key);
-			}
+			// Delete caches from older versions of the app, and only those: data
+			// the app keeps for offline use lives in its own caches and must
+			// survive an update (offline campaign maps, #62).
+			for (const key of staleAppCaches(await caches.keys(), CACHE)) await caches.delete(key);
 			await self.clients.claim();
 		})()
 	);
