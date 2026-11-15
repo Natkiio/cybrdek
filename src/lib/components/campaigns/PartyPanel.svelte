@@ -79,7 +79,7 @@
 	}
 
 	.name {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.dim {

@@ -130,6 +130,6 @@
 	li { margin-bottom: 0.5rem; overflow-wrap: anywhere; }
 	.dim { color: var(--muted); }
 	.error { color: var(--red-soft); }
-	.capacity { color: var(--mint); }
+	.capacity { color: var(--bright); }
 	h3 { color: var(--label); font-size: 0.85rem; }
 </style>

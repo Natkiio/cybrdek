@@ -12,56 +12,32 @@
 </section>
 
 <style>
+	/* Sections read like terminal output: a red // and the title over a thin
+	   line, no box. Things you act on (HP, weapons, the current turn) keep a
+	   frame of their own (#101). */
 	.panel {
-		border: 1px solid var(--frame-dim);
-		border-left: 2px solid var(--frame);
-		background: var(--bg-1);
-		padding: 1rem;
-		margin-bottom: 1rem;
+		margin-bottom: 1.75rem;
+		min-width: 0;
 	}
 
-	/* Michroma label with the HUD's segmented mint bar underneath */
 	header {
-		position: relative;
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
 		font-family: var(--f-label);
 		font-size: 0.7rem;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--label);
-		padding-bottom: 0.6rem;
-		margin-bottom: 0.75rem;
+		padding-bottom: 0.5rem;
+		margin-bottom: 0.85rem;
+		border-bottom: 1px solid var(--frame-dim);
 	}
 
-	header::after {
-		content: '';
-		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		height: 3px;
-		opacity: 0.85;
-		background:
-			linear-gradient(
-					90deg,
-					var(--mint) 0 9%,
-					transparent 9% 10.5%,
-					var(--mint) 10.5% 24%,
-					transparent 24% 24.6%,
-					var(--mint) 24.6% 25.4%,
-					transparent 25.4% 26%,
-					var(--mint) 26% 38%,
-					transparent 38% 38.8%,
-					var(--mint) 38.8% 82%,
-					transparent 82%
-				)
-				left / 100% 100% no-repeat,
-			repeating-linear-gradient(
-					90deg,
-					var(--mint) 0 2px,
-					transparent 2px 3px,
-					var(--mint) 3px 6px,
-					transparent 6px 8px
-				)
-				right / 15% 100% no-repeat;
+	header::before {
+		content: '//';
+		color: var(--red);
+		font-family: var(--f-mono);
+		letter-spacing: 0;
 	}
 </style>

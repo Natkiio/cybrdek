@@ -174,7 +174,7 @@
 		font-family: var(--f-label);
 		font-size: 0.8rem;
 		letter-spacing: 0.12em;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.controls {
@@ -191,8 +191,8 @@
 	}
 
 	.next {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.up {

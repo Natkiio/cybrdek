@@ -43,7 +43,7 @@
 		min-width: 44px;
 		min-height: 44px;
 		background: var(--bg-2);
-		color: var(--mint);
+		color: var(--bright);
 		border: none;
 		font-family: var(--f-mono);
 		font-size: 1.2rem;

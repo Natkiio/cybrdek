@@ -1,4 +1,5 @@
 import { test, expect, type Browser, type BrowserContext, type WebSocketRoute } from '@playwright/test';
+import { goToSection } from './nav.ts';
 import { newEncounter, spOf, type Encounter, type Combatant } from '../../src/lib/combat/encounter.ts';
 import { woundState } from '../../src/lib/rulesets/red/wounds.ts';
 const GAME = 'c0000000-0000-4000-8000-000000000002';
@@ -169,7 +170,7 @@ test('membership revocation clears the fight; signing out restores an independen
 		await expect(player.page.getByRole('alert')).toContainText('membership');
 		await player.page.getByRole('link', { name: 'SIGNED IN', exact: true }).click();
 		await player.page.getByRole('button', { name: 'SIGN OUT' }).click();
-		await player.page.getByRole('link', { name: 'COMBAT', exact: true }).click();
+		await goToSection(player.page, 'COMBAT');
 		await expect(player.page.getByLabel('NPC NAME')).toBeVisible();
 		await expect(player.page.getByText('Private campaign enemy')).toHaveCount(0);
 	} finally { await player.context.close(); }

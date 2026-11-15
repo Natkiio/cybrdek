@@ -171,8 +171,8 @@
 		display: inline-flex;
 		align-items: center;
 		padding: 0 0.9rem;
-		border: 1px solid var(--mint-dim);
-		color: var(--mint);
+		border: 1px solid var(--bright-dim);
+		color: var(--bright);
 	}
 
 	.danger {
@@ -194,7 +194,7 @@
 	}
 
 	.body :global(a) {
-		color: var(--mint);
+		color: var(--bright);
 		text-decoration: underline;
 	}
 

@@ -104,17 +104,17 @@
 	.kind { margin-left: auto; }
 	.dice, .modifier { color: var(--value); }
 	.dice { overflow-wrap: anywhere; min-width: 0; }
-	.modifier { color: var(--mint-dim); }
+	.modifier { color: var(--bright-dim); }
 	.total { margin-left: auto; color: var(--value); font-family: var(--f-text); font-size: 1.55rem; line-height: 1; }
 	time { min-width: 3.4em; text-align: right; }
 	.tag { color: var(--ink-on-red); background: var(--red); padding: 0.05rem 0.28rem; font-size: 0.65rem; font-weight: 700; }
-	.crit { border-left-color: var(--mint); }
-	.crit .tag { color: var(--bg-0); background: var(--mint); }
-	.crit .total { color: var(--mint); }
+	.crit { border-left-color: var(--bright); }
+	.crit .tag { color: var(--bg-0); background: var(--bright); }
+	.crit .total { color: var(--bright); }
 	.fumble { border-left-color: var(--red); }
 	.fumble .total { color: var(--red-soft); }
 	.bonus-die { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.18em; }
 	.flash { animation: flash 750ms ease-out; }
-	@keyframes flash { from { background: var(--bg-3); box-shadow: inset 0 0 16px var(--mint-glow); } to { background: var(--bg-2); box-shadow: none; } }
+	@keyframes flash { from { background: var(--bg-3); box-shadow: inset 0 0 16px var(--bright-glow); } to { background: var(--bg-2); box-shadow: none; } }
 	@media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
 </style>

@@ -138,7 +138,7 @@
 
 	.init {
 		font-size: 1.4rem;
-		color: var(--mint);
+		color: var(--bright);
 		text-align: center;
 	}
 
@@ -180,7 +180,7 @@
 
 	.hp {
 		font-size: 1.15rem;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.hp small {
@@ -232,8 +232,8 @@
 	}
 
 	.heal {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.dim {

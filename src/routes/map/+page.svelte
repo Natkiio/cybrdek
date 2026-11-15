@@ -161,6 +161,9 @@
 		const isGm = gm.isGm;
 		void campaign.id;
 		void gm.userId;
+		// Wait until we know who's signed in: the offline copy of a campaign's
+		// map is kept per account, so looking before then finds the wrong one.
+		if (!gm.ready) return;
 		if (!isGm) {
 			untrack(() => {
 				// Leaving GM mode: drop GM-only things from screen now.
@@ -392,8 +395,8 @@
 
 	.add {
 		min-height: 44px;
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.add.on {
@@ -411,13 +414,13 @@
 	}
 
 	:global(.pin .dot) {
-		fill: var(--mint);
+		fill: var(--bright);
 		stroke: var(--bg-0);
 	}
 
 	:global(.pin.hidden .dot) {
 		fill: var(--bg-1);
-		stroke: var(--mint);
+		stroke: var(--bright);
 		stroke-dasharray: 2 2;
 	}
 
@@ -432,7 +435,7 @@
 	}
 
 	.pin-name {
-		color: var(--mint);
+		color: var(--bright);
 		font-size: 1.1rem;
 		margin: 0 0 0.25rem;
 	}
@@ -441,7 +444,7 @@
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.dim {
@@ -467,7 +470,7 @@
 	}
 
 	button[aria-pressed='true'] {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 </style>

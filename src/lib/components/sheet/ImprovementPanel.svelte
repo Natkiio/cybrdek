@@ -186,8 +186,8 @@
 	.ip {
 		font-size: 2.2rem;
 		line-height: 1;
-		color: var(--mint);
-		text-shadow: 0 0 12px var(--mint-glow);
+		color: var(--bright);
+		text-shadow: 0 0 12px var(--bright-glow);
 	}
 
 	.unit {
@@ -225,8 +225,8 @@
 	}
 
 	.gain {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.role {
@@ -235,7 +235,7 @@
 
 	.message {
 		margin: 0.75rem 0 0;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.dim {
@@ -252,7 +252,7 @@
 		padding: 0 0.3rem;
 		background: none;
 		border: none;
-		color: var(--mint);
+		color: var(--bright);
 		text-decoration: underline;
 		cursor: pointer;
 	}

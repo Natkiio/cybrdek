@@ -113,7 +113,7 @@
 		padding: 0 0.3rem;
 		background: none;
 		border: none;
-		color: var(--mint);
+		color: var(--bright);
 		text-decoration: underline;
 		cursor: pointer;
 	}
@@ -123,7 +123,7 @@
 	}
 
 	.ok {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.error {

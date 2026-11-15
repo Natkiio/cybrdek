@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import { goToSection } from './nav.ts';
 
 // Campaign maps (#62): fixes from the review of #99, adapted from the reviewer's
 // reproductions to assert the fixed behaviour. Supabase, including Storage, is faked.
@@ -179,7 +180,7 @@ test("after signing out, a private campaign's map is gone from the device, even 
 	fake.offline = true;
 	await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
 	await expect(page.getByRole('link', { name: 'SIGN IN', exact: true })).toBeVisible();
-	await page.getByRole('link', { name: 'MAP', exact: true }).click();
+	await goToSection(page, 'MAP');
 	await page.waitForTimeout(500);
 	await expect(page.getByText('PRIVATE GM FLOORPLAN')).toHaveCount(0);
 	await expect(page.locator('.scene img')).toHaveCount(0);

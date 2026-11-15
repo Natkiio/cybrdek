@@ -173,11 +173,11 @@
 	.actions label { flex: 1; min-width: 9rem; }
 	.hint { color: var(--muted); }
 	.error { color: var(--red-soft); }
-	button[aria-pressed='true'], .save { color: var(--mint); border-color: var(--mint-dim); }
+	button[aria-pressed='true'], .save { color: var(--bright); border-color: var(--bright-dim); }
 	:global(.draft-edge) { fill: none; stroke: var(--bg-0); stroke-width: 4; vector-effect: non-scaling-stroke; }
-	:global(.draft-shape) { fill: var(--mint); fill-opacity: 0.15; stroke: var(--mint); stroke-width: 2; vector-effect: non-scaling-stroke; }
+	:global(.draft-shape) { fill: var(--bright); fill-opacity: 0.15; stroke: var(--bright); stroke-width: 2; vector-effect: non-scaling-stroke; }
 	:global(.point-hit) { fill: transparent; }
-	:global(.point-dot) { fill: var(--bg-0); stroke: var(--mint); }
+	:global(.point-dot) { fill: var(--bg-0); stroke: var(--bright); }
 	:global(.point-dot.chosen) { fill: var(--red); }
 	:global([data-map-handle]) { cursor: move; }
 	:global(.point-label) { fill: var(--value); stroke: var(--bg-0); paint-order: stroke; pointer-events: none; text-anchor: middle; }

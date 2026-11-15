@@ -194,7 +194,7 @@
 	.summary strong {
 		font-family: var(--f-mono);
 		font-size: 1.2rem;
-		color: var(--mint);
+		color: var(--bright);
 		margin-left: 0.3rem;
 	}
 
@@ -252,8 +252,8 @@
 	}
 
 	.attack {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.base {

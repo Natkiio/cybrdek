@@ -66,5 +66,5 @@
 	.offer { display: grid; gap: 0.4rem; margin-bottom: 0.7rem; overflow-wrap: anywhere; }
 	button { min-height: 44px; }
 	.error { color: var(--red-soft); }
-	.notice { color: var(--mint); }
+	.notice { color: var(--bright); }
 </style>

@@ -402,13 +402,13 @@
 	}
 
 	.last-roll.crit {
-		border-color: var(--mint);
-		box-shadow: 0 0 12px var(--mint-glow);
+		border-color: var(--bright);
+		box-shadow: 0 0 12px var(--bright-glow);
 	}
 
 	.last-roll.crit strong,
 	.last-roll.crit .tag {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.last-roll.fumble {
@@ -502,12 +502,12 @@
 	dd {
 		margin: 0.15rem 0 0;
 		font-size: 1.2rem;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.death-result {
 		margin: -0.5rem 0 1rem;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.death-result.fail {
@@ -565,7 +565,7 @@
 	.x2 {
 		margin-left: 0.35rem;
 		font-size: 0.75em;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.calc {
@@ -575,6 +575,6 @@
 	.base {
 		text-align: right;
 		font-size: 1.2rem;
-		color: var(--mint);
+		color: var(--bright);
 	}
 </style>

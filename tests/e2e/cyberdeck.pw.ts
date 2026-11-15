@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { goToSection } from './nav.ts';
 const panel = (page: Page) => page.locator('section.panel').filter({ has: page.getByText('CYBERDECK', { exact: true }) });
 async function seed(page: Page, links = false) {
  await page.context().route(/supabase\.co/, route => route.abort());
@@ -55,9 +56,9 @@ test('device loadout: duplicates, shared hardware budget, refusal restores quali
  const row = await stored(page); const config = row.extra.gear.find((g: any) => g.cyberdeck).cyberdeck;
  expect(config.programs).toHaveLength(6); expect(new Set(config.programs.map((p: any) => p.id)).size).toBe(6);
  expect(row.extra.keep).toBe('keep unrelated data'); expect(row.ownerId).toBeUndefined();
- await page.getByRole('link', { name: 'RULES', exact: true }).click();
+ await goToSection(page, 'RULES');
  await context.setOffline(true);
- await page.getByRole('link', { name: 'CHARS', exact: true }).click();
+ await goToSection(page, 'CHARACTERS');
  await page.getByRole('link', { name: 'OPEN', exact: true }).click();
  await expect(page.getByRole('heading', { name: 'Runner', exact: true, level: 1 })).toBeVisible();
  await page.reload();
