@@ -105,7 +105,7 @@
 	.kind { margin-left: auto; }
 	.dice, .modifier { color: var(--value); }
 	.dice { overflow-wrap: anywhere; min-width: 0; }
-	.modifier { color: var(--bright-dim); }
+	.modifier { color: var(--label); }
 	.total { margin-left: auto; color: var(--value); font-family: var(--f-text); font-size: 1.55rem; line-height: 1; }
 	time { min-width: 3.4em; text-align: right; }
 	.tag { color: var(--ink-on-red); background: var(--red); padding: 0.05rem 0.28rem; font-size: 0.65rem; font-weight: 700; }
