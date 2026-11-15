@@ -1,3 +1,4 @@
+import type { Cyberdeck } from './cyberdeck.ts';
 // =============================================================================
 // gear.ts: Cyberpunk RED gear, weapons and armor (Core p. 91, 92, 97)
 // =============================================================================
@@ -14,6 +15,7 @@ export interface GearItem {
 	kind: GearKind;
 	name: string;
 	notes?: string;
+	cyberdeck?: Cyberdeck; // configuration on one existing gear item, including cyberarm-mounted decks
 	quantity?: number; // items
 	// weapons
 	weaponType?: string; // WeaponType id

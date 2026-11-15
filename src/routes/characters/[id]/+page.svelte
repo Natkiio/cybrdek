@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Panel from '#lib/components/Panel.svelte';
 	import RollLog from '#lib/components/RollLog.svelte';
+	import CyberdeckPanel from '#lib/components/sheet/CyberdeckPanel.svelte';
 	import CyberwarePanel from '#lib/components/sheet/CyberwarePanel.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
@@ -315,6 +316,8 @@
 		onattack={attackWith}
 		ondamage={rollDamage}
 	/>
+
+	<CyberdeckPanel {gear} {cyberware} onchange={(next) => update({ gear: next })} />
 
 	<CyberwarePanel
 		installed={cyberware}

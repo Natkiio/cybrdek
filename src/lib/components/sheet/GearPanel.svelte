@@ -128,7 +128,7 @@
 										>
 									{/if}
 								</div>
-							{:else if item.kind === 'item'}
+							{:else if item.kind === 'item' && !item.cyberdeck}
 								<div class="qty">
 									<button
 										type="button"
