@@ -43,6 +43,11 @@
 		input.value = gear.find(g => g.id === id)?.cyberdeck?.[field] ?? '';
 	}
 	async function addDeck(existing?: string) {
+		if (busy) return;
+		if (existing && !attachable.some(g => g.id === existing)) {
+			attachId = ''; error = 'Choose an unconfigured gear item.'; return;
+		}
+		if (existing) attachId = '';
 		const id = existing || crypto.randomUUID();
 		const next = existing ? gear.map(g => g.id === id ? { ...g, cyberdeck: newDeck() } : g)
 			: [...gear, { id, kind: 'item' as const, name: 'Cyberdeck', quantity: 1, cyberdeck: newDeck() }];

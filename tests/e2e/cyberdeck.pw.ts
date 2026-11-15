@@ -9,7 +9,7 @@ async function seed(page: Page, links = false) {
    const db = req.result; const tx = db.transaction('characters','readwrite');
    tx.objectStore('characters').put({ id: 'netrunner', name: 'Runner', rulesetId: 'cyberpunk-red',
     stats: { INT: 6, REF: 7, DEX: 6, TECH: 5, COOL: 6, WILL: 6, LUCK: 6, MOVE: 6, BODY: 6, EMP: 5 }, skills: {},
-    extra: { role: 'netrunner', roleRank: 4, humanity: 43, keep: 'keep unrelated data', gear: links ? [{ id: 'suit', kind: 'armor', name: 'Bodyweight Suit', armorType: 'bodyweight-suit', sp: 11, location: 'both' }] : [],
+    extra: { role: 'netrunner', roleRank: 4, humanity: 43, keep: 'keep unrelated data', gear: links ? [{ id: 'suit', kind: 'armor', name: 'Bodyweight Suit', armorType: 'bodyweight-suit', sp: 11, location: 'both' }, { id: 'spare-deck', kind: 'item', name: 'Existing deck gear', quantity: 1, notes: 'retain my notes' }, { id: 'agent', kind: 'item', name: 'Agent', quantity: 1 }] : [],
      cyberware: links ? [{ id: 'arm', defId: 'cyberarm', hl: 7 },{ id: 'implant', defId: 'cyberdeck', hostId: 'arm', hl: 3 }] : [] }, updatedAt: Date.now() });
    tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
   };
@@ -67,7 +67,10 @@ test('device loadout: duplicates, shared hardware budget, refusal restores quali
 
 test('explicit implant and suit links add the right slot types without applying Humanity loss', async ({ page }) => {
  await seed(page,true); const deck = panel(page);
- await deck.getByRole('button', { name: '+ CYBERDECK', exact: true }).click();
+ await deck.getByLabel('Existing gear for deck').selectOption('spare-deck');
+ await deck.getByRole('button', { name: 'CONFIGURE AS DECK', exact: true }).click();
+ await expect(deck.getByRole('button', { name: 'CONFIGURE AS DECK', exact: true })).toBeDisabled();
+ expect((await stored(page)).extra.gear.find((g: any) => g.id === 'spare-deck').notes).toBe('retain my notes');
  await deck.getByLabel('Deck quality').selectOption('poor');
  await deck.getByLabel('Cyberdeck implant link').selectOption('implant');
  await deck.getByLabel('Bodyweight Suit link').selectOption('suit');
