@@ -95,7 +95,7 @@
 		<label><span>SP</span><input type="number" min="0" max="30" bind:value={draft.sp} /></label>
 		<label><span>PENALTY</span><input type="number" min="-10" max="0" bind:value={draft.penalty} /></label>
 	{:else}
-		<label><span>QUANTITY</span><input type="number" min="0" max="999" bind:value={draft.quantity} /></label>
+		<label><span>QUANTITY</span><input type="number" min="0" max="999" bind:value={draft.quantity} disabled={!!draft.cyberdeck} /></label>
 	{/if}
 
 	<label class="wide">

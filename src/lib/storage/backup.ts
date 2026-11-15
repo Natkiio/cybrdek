@@ -1,3 +1,4 @@
+import { validCyberdeck } from '#lib/rulesets/red/cyberdeck.ts';
 import { validInjuries } from '#lib/rulesets/red/injuries.ts';
 import { validArmorState } from '#lib/rulesets/red/armor.ts';
 import { validCyberware } from '#lib/rulesets/red/cyberware.ts';
@@ -150,6 +151,9 @@ export function parseCharacterFile(text: string): ParseResult {
 	// Gear stays in extra, so Dexie and version-1 backups preserve armor without a migration.
 	if (candidate.rulesetId === 'cyberpunk-red' && isPlainObject(extra) && Array.isArray(extra.gear)) {
 		for (const item of extra.gear) {
+			if (isPlainObject(item) && 'cyberdeck' in item && (item.kind !== 'item' || (item.quantity !== undefined && item.quantity !== 1) || !validCyberdeck(item.cyberdeck))) {
+				errors.push('Cyberdeck loadout is damaged.');
+			}
 			if (isPlainObject(item) && item.kind === 'armor' && !validArmorState(item)) {
 				errors.push('Armor must have a valid location, SP, penalty, equipment state and current SP.');
 			}
