@@ -26,7 +26,7 @@ async function stored(page: Page): Promise<any> {
 }
 async function addCopy(page: Page) { await panel(page).getByRole('button', { name: 'ADD & LOAD COPY', exact: true }).click(); await expect(panel(page).getByRole('button', { name: 'ADD & LOAD COPY', exact: true })).toBeEnabled(); }
 
-test('device loadout: duplicates, shared hardware budget, refusal restores quality select, offline reload', async ({ page, context }) => {
+test('device loadout: duplicates, shared hardware budget, refusal restores quality select, offline reload', async ({ page, context }, testInfo) => {
  await seed(page); const deck = panel(page);
  await deck.getByRole('button', { name: '+ CYBERDECK', exact: true }).click();
  await deck.getByLabel('Deck quality').selectOption('poor');
@@ -51,7 +51,7 @@ test('device loadout: duplicates, shared hardware budget, refusal restores quali
  await expect(deck.getByRole('alert')).toContainText('Not enough deck slots');
  await expect(deck.getByLabel('Deck quality')).toHaveValue('standard');
  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
- await page.screenshot({ path: '/private/tmp/cybrdek-cyberdeck-mobile.png', fullPage: true });
+ await page.screenshot({ path: testInfo.outputPath('cyberdeck-mobile.png'), fullPage: true });
  const row = await stored(page); const config = row.extra.gear.find((g: any) => g.cyberdeck).cyberdeck;
  expect(config.programs).toHaveLength(6); expect(new Set(config.programs.map((p: any) => p.id)).size).toBe(6);
  expect(row.extra.keep).toBe('keep unrelated data'); expect(row.ownerId).toBeUndefined();
