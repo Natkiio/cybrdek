@@ -6,14 +6,15 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import { clearRolls, getRolls, isCrit, isFumble } from '#lib/rolls/log.svelte.ts';
 
-	let { characterId, limit = 20 }: { characterId?: string; limit?: number } = $props();
+	// Only the last 5 rolls, everywhere: more gets cluttered (owner, #101).
+	let { characterId, limit = 5 }: { characterId?: string; limit?: number } = $props();
 	let confirmingClear = $state(false);
 	let campaignView = $state(true);
 	let showingCampaign = $derived(campaignView && sharedRolls.member && CAMPAIGN_ROLLS_ALWAYS_VISIBLE);
 	let campaignEntries = $derived([
 		...sharedRolls.pendingEntries,
 		...sharedRolls.entries.filter((entry) => !sharedRolls.pendingEntries.some((pending) => pending.id === entry.id))
-	].slice(0, CAMPAIGN_ROLL_LIMIT));
+	].slice(0, Math.min(CAMPAIGN_ROLL_LIMIT, limit)));
 	let entries = $derived<(RollEntry | CampaignRoll)[]>(showingCampaign
 		? campaignEntries : getRolls(characterId).slice(0, limit));
 

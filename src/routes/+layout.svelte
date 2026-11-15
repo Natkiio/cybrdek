@@ -3,6 +3,8 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { onMount, untrack } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
+	import BootScreen from '#lib/components/BootScreen.svelte';
+	import { shouldBoot } from '#lib/boot/boot.ts';
 	import { startCampaignRolls } from '#lib/rolls/campaign.svelte.ts';
 	import { page } from '$app/state';
 	import { campaign } from '#lib/campaigns/current.svelte.ts';
@@ -42,6 +44,14 @@
 	}
 
 	onMount(startGmSession);
+
+	// The boot sequence plays each time the app opens (a full load), never on
+	// page changes inside it. It's in the first paint, so the page doesn't flash
+	// first; it goes at once where it shouldn't play (see shouldBoot).
+	let booting = $state(true);
+	onMount(() => {
+		if (!shouldBoot()) booting = false;
+	});
 	$effect(() => {
 		const id = campaign.id;
 		const userId = gm.userId;
@@ -56,6 +66,8 @@
 	<link rel="icon" href={favicon} />
 	<title>CYBRDEK</title>
 </svelte:head>
+
+{#if booting}<BootScreen onfinish={() => (booting = false)} />{/if}
 
 <!-- One compact bar on every screen (#101). Laptops show the sections inline;
      phones show where you are and open the full list from the menu button. -->
