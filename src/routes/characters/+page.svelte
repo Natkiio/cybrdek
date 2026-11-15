@@ -249,11 +249,11 @@
 <style>
 	.sync,
 	.move {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.move {
-		border-color: var(--mint-dim);
+		border-color: var(--bright-dim);
 	}
 
 	.roster-tools { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1rem; }
@@ -262,7 +262,7 @@
 	.file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 	.error-intro { margin-top: 0; color: var(--red-soft); }
 	.errors { margin: 0; padding-left: 1.25rem; color: var(--label); }
-	.import-success { color: var(--mint); margin: 0 0 1rem; }
+	.import-success { color: var(--bright); margin: 0 0 1rem; }
 	.roster { display: grid; gap: 0.75rem; }
 	.character-row { border: 1px solid var(--frame-dim); padding: 0.75rem; }
 	.identity h2, .identity p { margin: 0; }

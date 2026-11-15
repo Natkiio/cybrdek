@@ -212,10 +212,10 @@
 	.toolbar, .pan-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 	.pan-controls { margin-left: auto; }
 	button { min-width: 44px; min-height: 44px; }
-	output { min-width: 4ch; color: var(--mint); text-align: center; }
+	output { min-width: 4ch; color: var(--bright); text-align: center; }
 	.hint { color: var(--muted); font-size: 0.8rem; }
 	.viewport { position: relative; width: 100%; height: clamp(22rem, 62svh, 42rem); overflow: hidden; border: 1px solid var(--frame-dim); background: var(--bg-0); touch-action: none; user-select: none; cursor: grab; }
-	.viewport:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+	.viewport:focus-visible { outline: 2px solid var(--bright); outline-offset: 2px; }
 	.viewport.dragging { cursor: grabbing; }
 	.scene { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 	.scene img, .scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -224,11 +224,11 @@
 	.scene svg :global([data-map-interactive]) { pointer-events: auto; }
 	polygon { fill: transparent; stroke: transparent; vector-effect: non-scaling-stroke; }
 	polygon.outlined { stroke: var(--frame); stroke-width: 1.5; }
-	polygon.selected { fill: var(--mint); fill-opacity: 0.18; stroke: var(--mint); stroke-width: 2; }
-	.popup { position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; max-width: 23rem; max-height: 45%; overflow-y: auto; padding: 0.8rem 3rem 0.8rem 0.9rem; border: 1px solid var(--mint-dim); background: var(--bg-1); color: var(--value); cursor: auto; user-select: text; touch-action: pan-y; }
-	.popup strong { color: var(--mint); }
+	polygon.selected { fill: var(--bright); fill-opacity: 0.18; stroke: var(--bright); stroke-width: 2; }
+	.popup { position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; max-width: 23rem; max-height: 45%; overflow-y: auto; padding: 0.8rem 3rem 0.8rem 0.9rem; border: 1px solid var(--bright-dim); background: var(--bg-1); color: var(--value); cursor: auto; user-select: text; touch-action: pan-y; }
+	.popup strong { color: var(--bright); }
 	.popup p { margin: 0.4rem 0; }
-	.popup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--mint); }
+	.popup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--bright); }
 	.close { position: absolute; top: 0; right: 0; padding: 0.4rem; border: none; }
 	.error { position: absolute; top: 0; left: 0; padding: 1rem; color: var(--red-soft); background: var(--bg-1); }
 	summary { min-height: 44px; cursor: pointer; padding: 0.75rem 0; color: var(--label); }
@@ -237,5 +237,5 @@
 	.group { display: grid; gap: 0.3rem; align-content: start; }
 	.district-list .ward { min-height: 36px; padding-left: 1.4rem; font-size: 0.85em; color: var(--muted); }
 	.kind { display: block; font-family: var(--f-label); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--label); margin-top: 0.15rem; }
-	button[aria-pressed='true'] { color: var(--mint); border-color: var(--mint-dim); }
+	button[aria-pressed='true'] { color: var(--bright); border-color: var(--bright-dim); }
 </style>

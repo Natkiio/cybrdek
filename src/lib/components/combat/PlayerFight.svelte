@@ -32,5 +32,5 @@
 	strong { color: var(--value); }
 	.dim { color: var(--muted); }
 	.turn { color: var(--red-soft); margin-left: 0.6rem; }
-	.own { color: var(--mint); margin-top: 0.3rem; }
+	.own { color: var(--bright); margin-top: 0.3rem; }
 </style>

@@ -184,7 +184,7 @@
 	p { margin: 0.5rem 0; }
 	.dim { color: var(--muted); font-size: 0.85rem; }
 	.error { color: var(--red-soft); overflow-wrap: anywhere; }
-	.filename { color: var(--mint); overflow-wrap: anywhere; }
+	.filename { color: var(--bright); overflow-wrap: anywhere; }
 	.picker { display: grid; gap: 0.5rem; margin: 1rem 0; }
 	input, button { min-height: 44px; }
 	input { min-width: 0; width: 100%; }
@@ -195,7 +195,7 @@
 	.navigation input { width: 5rem; }
 	.results { list-style: none; padding: 0; max-height: 20rem; overflow-y: auto; }
 	.results button { text-align: left; width: 100%; margin-bottom: 0.5rem; overflow-wrap: anywhere; }
-	.results strong { color: var(--mint); display: block; }
+	.results strong { color: var(--bright); display: block; }
 	summary { min-height: 44px; cursor: pointer; padding-top: 0.75rem; }
 	pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 </style>

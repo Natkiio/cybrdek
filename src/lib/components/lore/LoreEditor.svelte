@@ -137,7 +137,7 @@
 	}
 
 	.save {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 </style>

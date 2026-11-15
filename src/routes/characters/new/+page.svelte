@@ -269,8 +269,8 @@
 	}
 
 	.steps button.done {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.steps button.current {
@@ -362,8 +362,8 @@
 	}
 
 	.pool.empty strong {
-		color: var(--mint);
-		text-shadow: 0 0 10px var(--mint-glow);
+		color: var(--bright);
+		text-shadow: 0 0 10px var(--bright-glow);
 	}
 
 	.pool.sticky {
@@ -396,7 +396,7 @@
 
 	.tag {
 		margin-left: 0.35rem;
-		color: var(--mint);
+		color: var(--bright);
 		font-size: 0.8em;
 	}
 
@@ -435,7 +435,7 @@
 
 	.derived dd {
 		font-size: 1.3rem;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.category {
@@ -460,7 +460,7 @@
 	}
 
 	.spent {
-		color: var(--mint);
+		color: var(--bright);
 		font-family: var(--f-mono);
 	}
 
@@ -476,7 +476,7 @@
 	}
 
 	.warn {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.error {

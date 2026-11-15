@@ -77,7 +77,7 @@
 
 <style>
 	.dim { color: var(--muted); }
-	.notice { color: var(--mint); }
+	.notice { color: var(--bright); }
 	label { display: grid; gap: 0.35rem; }
 	select { width: 100%; min-width: 0; background: var(--bg-2); color: var(--value); }
 	button, select { min-height: 44px; margin-bottom: 0.4rem; max-width: 100%; }

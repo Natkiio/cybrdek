@@ -99,7 +99,7 @@
 
 	h2 {
 		margin: 0;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.close {
@@ -114,7 +114,7 @@
 	}
 
 	.ward.focus h3 {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	h3 {
@@ -185,7 +185,7 @@
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
-		color: var(--mint);
+		color: var(--bright);
 		white-space: nowrap;
 	}
 

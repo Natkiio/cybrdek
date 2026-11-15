@@ -173,7 +173,7 @@
 
 	.name {
 		font-size: 1.15rem;
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.hp {
@@ -184,7 +184,7 @@
 
 	.bar {
 		height: 100%;
-		background: var(--mint);
+		background: var(--bright);
 	}
 
 	.hurt .bar {

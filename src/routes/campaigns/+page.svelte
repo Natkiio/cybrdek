@@ -166,7 +166,7 @@
 	}
 
 	li button[aria-pressed='true'] {
-		border-color: var(--mint-dim);
+		border-color: var(--bright-dim);
 	}
 
 	.name {
@@ -183,7 +183,7 @@
 	}
 
 	.on {
-		color: var(--mint);
+		color: var(--bright);
 		margin-left: auto;
 	}
 
@@ -208,8 +208,8 @@
 	}
 
 	.go {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.dim {

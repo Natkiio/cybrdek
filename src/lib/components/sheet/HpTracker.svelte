@@ -137,8 +137,8 @@
 	.current {
 		font-size: 2.6rem;
 		line-height: 1;
-		color: var(--mint);
-		text-shadow: 0 0 12px var(--mint-glow);
+		color: var(--bright);
+		text-shadow: 0 0 12px var(--bright-glow);
 	}
 
 	.max {
@@ -179,8 +179,8 @@
 
 	.fill {
 		height: 100%;
-		background: var(--mint);
-		box-shadow: 0 0 8px var(--mint-glow);
+		background: var(--bright);
+		box-shadow: 0 0 8px var(--bright-glow);
 		transition: width 0.2s ease;
 	}
 
@@ -230,8 +230,8 @@
 	}
 
 	.heal {
-		color: var(--mint);
-		border-color: var(--mint-dim);
+		color: var(--bright);
+		border-color: var(--bright-dim);
 	}
 
 	.death {
@@ -259,7 +259,7 @@
 		padding: 0 0.3rem;
 		background: none;
 		border: none;
-		color: var(--mint);
+		color: var(--bright);
 		text-decoration: underline;
 		cursor: pointer;
 	}

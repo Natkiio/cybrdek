@@ -96,11 +96,11 @@
 
 	.name,
 	.go {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.go {
-		border-color: var(--mint-dim);
+		border-color: var(--bright-dim);
 	}
 
 	.dim {

@@ -83,7 +83,7 @@
 	}
 
 	.ok {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.dim {

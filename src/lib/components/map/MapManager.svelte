@@ -159,7 +159,7 @@
 
 	.tag {
 		margin-left: 0.5rem;
-		color: var(--mint);
+		color: var(--bright);
 		font-size: 0.75rem;
 	}
 
@@ -199,7 +199,7 @@
 	}
 
 	.ok {
-		color: var(--mint);
+		color: var(--bright);
 	}
 
 	.error {

@@ -33,7 +33,7 @@
 </Panel>
 
 <style>
-	.readout strong { color: var(--mint); font-size: 1.4rem; }
+	.readout strong { color: var(--bright); font-size: 1.4rem; }
 	.dim { color: var(--muted); font-size: 0.85rem; }
 	.armor { padding: 0.5rem 0; border-bottom: 1px solid var(--frame-dim); }
 	label, .locations { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }

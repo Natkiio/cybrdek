@@ -95,10 +95,10 @@
 	.roller-input button, .quick-rolls button { min-height: 44px; }
 	.roller-input button { border: 0; border-left: 1px solid var(--frame-dim); }
 	.quick-rolls { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.75rem; }
-	.quick-rolls button { color: var(--mint); font-size: 0.8rem; }
+	.quick-rolls button { color: var(--bright); font-size: 0.8rem; }
 	.error { margin: 0.75rem 0 0; color: var(--red-soft); }
 	.result-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-	.total { color: var(--mint); font-family: var(--f-text); font-size: 3rem; line-height: 1; }
+	.total { color: var(--bright); font-family: var(--f-text); font-size: 3rem; line-height: 1; }
 	.groups { display: grid; gap: 0.25rem; margin-top: 0.75rem; color: var(--value); }
 	.groups p { margin: 0; }
 </style>

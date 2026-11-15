@@ -4,36 +4,37 @@
 @import '@fontsource/rajdhani/600.css';
 @import '@fontsource/rajdhani/700.css';
 
-/* NL-OS palette: shared with the NL-OS CV and the Cyberpunk HUD V2 VS Code theme.
+/* Cybrdek palette: black, red and white, with neutral greys (#101).
    Every colour in the app comes from these tokens. */
 :root {
 	color-scheme: dark;
 
-	/* backgrounds, darkest to lightest */
-	--bg-0: #050607;
-	--bg-1: #0b0d0e;
-	--bg-2: #111415;
-	--bg-3: #181c1d;
+	/* backgrounds, darkest to lightest (neutral: no blue or green tint) */
+	--bg-0: #050505;
+	--bg-1: #0b0b0c;
+	--bg-2: #121213;
+	--bg-3: #19191a;
 
-	/* primary: hot red */
+	/* primary: hot red, for actions, alerts and where you are */
 	--red: #ff1f4b;
 	--red-soft: #ff4d6d;
 	--red-dim: #7a1428;
 	--red-glow: rgba(255, 31, 75, 0.55);
 	--ink-on-red: #120206;
 
-	/* secondary: mint */
-	--mint: #a9f2e6;
-	--mint-dim: #5f9e95;
-	--mint-glow: rgba(169, 242, 230, 0.45);
+	/* secondary: bright white, for data you read and things that are on or chosen.
+	   (This was mint; the palette is black, red and white only, #101.) */
+	--bright: #ffffff;
+	--bright-dim: #6b6b6b;
+	--bright-glow: rgba(255, 255, 255, 0.2);
 
-	/* frames and text */
-	--frame: #8f9898;
-	--frame-dim: #3c4444;
-	--value: #e8eded;
-	--label: #c4cccc;
-	--muted: #7d8787;
-	--faint: #4a5252;
+	/* frames and text: neutral greys */
+	--frame: #8f8f8f;
+	--frame-dim: #3a3a3a;
+	--value: #e9e9e9;
+	--label: #c8c8c8;
+	--muted: #8a8a8a;
+	--faint: #4f4f4f;
 
 	--f-label: 'Michroma', 'Eurostile', 'Bank Gothic', sans-serif;
 	--f-mono: 'Share Tech Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -169,8 +170,8 @@ textarea:focus {
 	color: var(--muted);
 }
 
-.mint {
-	color: var(--mint);
+.bright {
+	color: var(--bright);
 }
 
 .cursor::after {
