@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { openFold } from './sheet.ts';
 
 // Cyberware and Humanity on the sheet (#50). Everything is on the device.
 async function seedCharacter(page: Page) {
@@ -29,6 +30,7 @@ async function seedCharacter(page: Page) {
 	);
 	await page.goto('/characters/chrome');
 	await expect(page.getByRole('heading', { name: 'Chrome' })).toBeVisible();
+	await openFold(page, 'CYBERWARE & HUMANITY');
 }
 
 async function choose(page: Page, type: string, item: string) {

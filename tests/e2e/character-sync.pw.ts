@@ -1,4 +1,5 @@
 import { test, expect, type Browser, type BrowserContext, type Page, type Route } from '@playwright/test';
+import { openFold } from './sheet.ts';
 
 // Character sync (#52) across two "devices": separate browser contexts with
 // their own storage, sharing one fake cloud. The cloud's own privacy rules are
@@ -291,6 +292,7 @@ test('a past version can be brought back, and syncs as the newest', async ({ bro
 	await page.goto('/characters');
 	await expect(page.getByText('Overwritten')).toBeVisible();
 	await page.goto('/characters/v');
+	await openFold(page, 'PAST VERSIONS');
 	await page.getByRole('button', { name: 'SHOW PAST VERSIONS' }).click();
 	await page.getByRole('button', { name: 'RESTORE' }).click();
 	await page.getByRole('button', { name: 'CONFIRM RESTORE' }).click();

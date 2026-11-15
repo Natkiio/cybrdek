@@ -15,12 +15,16 @@
 
 	let {
 		gear,
+		kinds = ['weapon', 'armor', 'item'],
+		title = 'GEAR',
 		attackBase,
 		onchange,
 		onattack,
 		ondamage
 	}: {
 		gear: GearItem[];
+		kinds?: GearKind[]; // which kinds this panel shows; edits still cover all gear
+		title?: string;
 		attackBase: (skillId: string) => number; // STAT + skill + wound penalty
 		onchange: (gear: GearItem[]) => void;
 		onattack: (item: GearItem) => void;
@@ -34,6 +38,7 @@
 	const sp = $derived(wornSp(gear));
 	const groups = $derived(
 		(['weapon', 'armor', 'item'] as GearKind[])
+			.filter((kind) => kinds.includes(kind))
 			.map((kind) => ({ kind, items: gear.filter((g) => g.kind === kind) }))
 			.filter((g) => g.items.length > 0)
 	);
@@ -73,18 +78,22 @@
 	const skillName = (id?: string) => skills.find((s) => s.id === id)?.name ?? '—';
 </script>
 
-<Panel title="GEAR">
-	<div class="summary">
-		<span>SP HEAD <strong>{sp.head}</strong></span>
-		<span>SP BODY <strong>{sp.body}</strong></span>
-	</div>
+<Panel {title}>
+	{#if kinds.includes('armor')}
+		<div class="summary">
+			<span>SP HEAD <strong>{sp.head}</strong></span>
+			<span>SP BODY <strong>{sp.body}</strong></span>
+		</div>
+	{/if}
 
-	{#if gear.length === 0 && !editing}
-		<p class="dim">Nothing on you, choom. Add a weapon to roll attacks and damage.</p>
+	{#if groups.length === 0 && !editing}
+		<p class="dim">
+			{kinds.length === 1 && kinds[0] === 'weapon' ? 'No weapons. Add one to roll attacks and damage.' : 'Nothing on you, choom.'}
+		</p>
 	{/if}
 
 	{#each groups as group (group.kind)}
-		<h3>{LABELS[group.kind]}</h3>
+		{#if groups.length > 1 || kinds.length > 1}<h3>{LABELS[group.kind]}</h3>{/if}
 		<ul class="items">
 			{#each group.items as item (item.id)}
 				<li>
@@ -165,9 +174,9 @@
 		<GearEditor item={editing.item} onsave={save} oncancel={() => (editing = null)} />
 	{:else}
 		<div class="add">
-			<button type="button" onclick={() => add('weapon')}>+ WEAPON</button>
-			<button type="button" onclick={() => add('armor')}>+ ARMOR</button>
-			<button type="button" onclick={() => add('item')}>+ ITEM</button>
+			{#if kinds.includes('weapon')}<button type="button" onclick={() => add('weapon')}>+ WEAPON</button>{/if}
+			{#if kinds.includes('armor')}<button type="button" onclick={() => add('armor')}>+ ARMOR</button>{/if}
+			{#if kinds.includes('item')}<button type="button" onclick={() => add('item')}>+ ITEM</button>{/if}
 		</div>
 	{/if}
 </Panel>

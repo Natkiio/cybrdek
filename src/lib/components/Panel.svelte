@@ -1,12 +1,16 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { getContext, type Snippet } from 'svelte';
 
 	let { title, children }: { title?: string; children: Snippet } = $props();
+
+	// Inside a Fold the fold's row already names the section, so the heading is
+	// kept for screen readers only.
+	const inFold = getContext('cybrdek:in-fold') === true;
 </script>
 
 <section class="panel">
 	{#if title}
-		<header>{title}</header>
+		<header class:sr-only={inFold}>{title}</header>
 	{/if}
 	{@render children()}
 </section>
@@ -17,6 +21,10 @@
 	   frame of their own (#101). */
 	.panel {
 		margin-bottom: 1.75rem;
+	}
+
+	:global(.fold) .panel {
+		margin-bottom: 0.5rem;
 		min-width: 0;
 	}
 

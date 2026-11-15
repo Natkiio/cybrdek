@@ -38,6 +38,8 @@
 	let location = $state<ArmorLocation>('body');
 	let attackType = $state<AttackType>('ranged');
 	let amount = $state<number | null>(null);
+	// The full damage form opens on demand: most turns only need the quick buttons.
+	let showDamage = $state(false);
 
 	const wound: WoundState = $derived(woundState(hp, maxHp));
 	const penalty = $derived(actionPenalty(wound));
@@ -74,14 +76,21 @@
 		<div class="mark" style:left="{(seriouslyWounded / maxHp) * 100}%" title="Seriously Wounded threshold"></div>
 	</div>
 
-	<p class="dim">Quick buttons adjust HP directly (ignore armor).</p>
-	<div class="quick">
+	<div class="quick" aria-label="Adjust HP directly, ignoring armor" role="group">
 		<button type="button" onclick={() => set(hp - 5)}>−5</button>
 		<button type="button" onclick={() => set(hp - 1)}>−1</button>
 		<button type="button" onclick={() => set(hp + 1)}>+1</button>
 		<button type="button" onclick={() => set(hp + 5)}>+5</button>
 	</div>
 
+	<div class="open-row">
+		<button type="button" class="take" aria-expanded={showDamage} onclick={() => (showDamage = !showDamage)}>
+			{showDamage ? 'CLOSE' : 'DAMAGE / HEAL…'}
+		</button>
+		<button type="button" disabled={hp === maxHp} onclick={() => set(maxHp)}>FULL HP</button>
+	</div>
+
+	{#if showDamage}
 	<label class="damage-location">ATTACK TYPE
 		<select aria-label="Attack type" bind:value={attackType}>
 			{#each Object.entries(ATTACK_RULES) as [id, rule] (id)}
@@ -107,8 +116,8 @@
 		/>
 		<button type="button" class="damage" disabled={!amount} onclick={() => apply(-1)}>DAMAGE</button>
 		<button type="button" class="heal" disabled={!amount} onclick={() => apply(1)}>HEAL</button>
-		<button type="button" disabled={hp === maxHp} onclick={() => set(maxHp)}>FULL</button>
 	</div>
+	{/if}
 
 	{#if wound === 'mortally'}
 		<div class="death">
@@ -127,6 +136,29 @@
 </Panel>
 
 <style>
+	.open-row {
+		display: grid;
+		grid-template-columns: 2fr 1fr;
+		gap: 0.35rem;
+		margin: 0.35rem 0 0.75rem;
+	}
+
+	.open-row button {
+		min-height: 44px;
+	}
+
+	.take {
+		background: var(--red);
+		border-color: var(--red);
+		color: var(--ink-on-red);
+		letter-spacing: 0.08em;
+	}
+
+	.take[aria-expanded='true'] {
+		background: transparent;
+		color: var(--red);
+	}
+
 	.readout {
 		display: flex;
 		flex-wrap: wrap;
