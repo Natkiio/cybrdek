@@ -31,9 +31,14 @@
 
 	// Phones: the compact bar's menu. Closes on any navigation and on Escape.
 	let menuOpen = $state(false);
+	let menuButton = $state<HTMLButtonElement>();
 	afterNavigate(() => (menuOpen = false));
 	function onKey(event: KeyboardEvent) {
-		if (event.key === 'Escape' && menuOpen) menuOpen = false;
+		if (event.key !== 'Escape' || !menuOpen) return;
+		const focusInMenu = document.activeElement?.closest('#site-menu');
+		menuOpen = false;
+		// Removing the focused link must not leave keyboard users on the body.
+		if (focusInMenu) menuButton?.focus();
 	}
 
 	onMount(startGmSession);
@@ -72,6 +77,7 @@
 		<button
 			type="button"
 			class="menu-button"
+			bind:this={menuButton}
 			aria-label={menuOpen ? 'Close menu' : 'Menu'}
 			aria-expanded={menuOpen}
 			aria-controls="site-menu"
