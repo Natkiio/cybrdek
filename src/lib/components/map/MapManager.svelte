@@ -35,6 +35,8 @@
 	} = $props();
 
 	const mine = (map: CampaignMap) => !!userId && map.uploaded_by === userId;
+	// A player may remove their own map only until the GM first shows it.
+	const removable = (map: CampaignMap) => mine(map) && !map.adopted && !map.active;
 
 	let name = $state('');
 	let file = $state<File | null>(null);
@@ -129,7 +131,7 @@
 								>{:else if !isGm && mine(map)}<span class="tag dimtag">YOURS</span>{/if}</span
 						>
 						<span class="dim">{map.width} × {map.height}</span>
-						{#if isGm || (mine(map) && !map.active)}
+						{#if isGm || removable(map)}
 						<span class="actions">
 							{#if isGm && !map.active}
 								<button type="button" disabled={busy} onclick={() => run(() => setActiveMap(campaignId, map.id))}>SHOW THIS ONE</button>

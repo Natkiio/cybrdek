@@ -20,6 +20,7 @@ export interface CampaignMap {
 	height: number;
 	active: boolean;
 	uploaded_by?: string | null; // null for the GM's older maps
+	adopted?: boolean; // the GM has shown it at least once: from then on it's theirs
 }
 
 export const imagePath = (campaignId: string, mapId: string, size: 'full' | 'small') => `${campaignId}/${mapId}/${size}`;
@@ -100,7 +101,7 @@ export async function prepareImage(file: File): Promise<PreparedMap> {
 export async function listMaps(campaignId: string): Promise<CampaignMap[] | { error: string }> {
 	const { data, error } = await supabase()
 		.from('campaign_maps')
-		.select('id, name, width, height, active, uploaded_by')
+		.select('id, name, width, height, active, uploaded_by, adopted')
 		.eq('campaign_id', campaignId)
 		.order('created_at')
 		.abortSignal(AbortSignal.timeout(TIMEOUT_MS));
@@ -115,7 +116,7 @@ export async function uploadMap(campaignId: string, name: string, prepared: Prep
 	const { data, error } = await supabase()
 		.from('campaign_maps')
 		.insert({ campaign_id: campaignId, name: name.trim(), width: prepared.width, height: prepared.height })
-		.select('id, name, width, height, active, uploaded_by')
+		.select('id, name, width, height, active, uploaded_by, adopted')
 		.single();
 	if (error || !data) return { error: error?.code === '23514' ? 'A campaign can have up to 10 maps. Delete one first.' : 'The map could not be saved.' };
 	const map = data as CampaignMap;

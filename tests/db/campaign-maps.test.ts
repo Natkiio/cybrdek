@@ -273,3 +273,42 @@ describe('players uploading maps, when the GM allows it', () => {
 		expect((await files(GM)).rows.filter((r) => String(r.name).startsWith(`${table}/${id}`))).toEqual([]);
 	});
 });
+
+describe("a player's map once the GM has shown it (review of #110)", () => {
+	let table = '';
+	beforeAll(async () => {
+		table = (await as(GM, `select public.create_campaign('Adopted') as id`)).rows[0].id as string;
+		const code = (await as(GM, `select code from public.campaign_invites where campaign_id = '${table}'`)).rows[0].code;
+		await as(PLAYER, `select public.join_campaign('${code}')`);
+		await as(GM, `update public.campaigns set players_upload_maps = true where id = $1`, [table]);
+	});
+
+	it('stays the GM’s after they switch away: the uploader cannot delete it, its pins or its images', async () => {
+		const id = (await addMap(PLAYER, table, 'Sewers')).rows[0].id as string;
+		await upload(PLAYER, `${table}/${id}/full`);
+		await as(GM, `select public.set_active_map($1, $2)`, [table, id]);
+		await as(GM, `insert into public.map_pins (campaign_id, map_id, x, y, label, visible) values ($1, $2, 5, 5, 'Secret', false)`, [table, id]);
+		await as(GM, `select public.set_active_map($1, null)`, [table]);
+
+		for (const uploadsOn of [true, false]) {
+			await as(GM, `update public.campaigns set players_upload_maps = $2 where id = $1`, [table, uploadsOn]);
+			expect((await upload(PLAYER, `${table}/${id}/small`)).error).toBe('42501');
+			await as(PLAYER, `update storage.objects set name = name where name = $1`, [`${table}/${id}/full`]);
+			await as(PLAYER, `delete from storage.objects where name = $1`, [`${table}/${id}/full`]);
+			await as(PLAYER, `delete from public.campaign_maps where id = $1`, [id]);
+		}
+		const map = await as(GM, `select adopted, active from public.campaign_maps where id = $1`, [id]);
+		expect(map.rows).toEqual([{ adopted: true, active: false }]);
+		expect((await as(GM, `select label from public.map_pins where map_id = $1`, [id])).rows).toEqual([{ label: 'Secret' }]);
+		expect((await files(GM)).rows.filter((r) => String(r.name).startsWith(`${table}/${id}`))).toHaveLength(1);
+	});
+
+	it("a player can't mark their own map adopted or not", async () => {
+		await as(GM, `update public.campaigns set players_upload_maps = true where id = $1`, [table]);
+		const sneaky = await as(PLAYER, `insert into public.campaign_maps (campaign_id, name, width, height, adopted) values ($1, 'X', 100, 100, true)`, [table]);
+		expect(sneaky.error).toBe('42501');
+		const adopted = (await as(GM, `select id from public.campaign_maps where name = 'Sewers'`)).rows[0].id;
+		await as(PLAYER, `update public.campaign_maps set adopted = false where id = $1`, [adopted]);
+		expect((await as(GM, `select adopted from public.campaign_maps where id = $1`, [adopted])).rows).toEqual([{ adopted: true }]);
+	});
+});
