@@ -19,6 +19,8 @@ export interface CampaignMap {
 	width: number;
 	height: number;
 	active: boolean;
+	uploaded_by?: string | null; // null for the GM's older maps
+	adopted?: boolean; // the GM has shown it at least once: from then on it's theirs
 }
 
 export const imagePath = (campaignId: string, mapId: string, size: 'full' | 'small') => `${campaignId}/${mapId}/${size}`;
@@ -99,7 +101,7 @@ export async function prepareImage(file: File): Promise<PreparedMap> {
 export async function listMaps(campaignId: string): Promise<CampaignMap[] | { error: string }> {
 	const { data, error } = await supabase()
 		.from('campaign_maps')
-		.select('id, name, width, height, active')
+		.select('id, name, width, height, active, uploaded_by, adopted')
 		.eq('campaign_id', campaignId)
 		.order('created_at')
 		.abortSignal(AbortSignal.timeout(TIMEOUT_MS));
@@ -114,7 +116,7 @@ export async function uploadMap(campaignId: string, name: string, prepared: Prep
 	const { data, error } = await supabase()
 		.from('campaign_maps')
 		.insert({ campaign_id: campaignId, name: name.trim(), width: prepared.width, height: prepared.height })
-		.select('id, name, width, height, active')
+		.select('id, name, width, height, active, uploaded_by, adopted')
 		.single();
 	if (error || !data) return { error: error?.code === '23514' ? 'A campaign can have up to 10 maps. Delete one first.' : 'The map could not be saved.' };
 	const map = data as CampaignMap;
@@ -159,6 +161,23 @@ export async function renameMap(mapId: string, name: string): Promise<string | n
 export async function setActiveMap(campaignId: string, mapId: string | null): Promise<string | null> {
 	const { error } = await supabase().rpc('set_active_map', { campaign: campaignId, map: mapId });
 	return error ? 'The active map could not be changed.' : null;
+}
+
+/** Whether this account may add maps to the campaign: its GM, or a player when the GM allows it. */
+export async function canUploadMap(campaignId: string): Promise<boolean> {
+	const { data, error } = await supabase().rpc('can_upload_map', { campaign: campaignId });
+	return !error && data === true;
+}
+
+/** The GM's setting: may players upload maps? null when it can't be read. */
+export async function playersUploadMaps(campaignId: string): Promise<boolean | null> {
+	const { data, error } = await supabase().from('campaigns').select('players_upload_maps').eq('id', campaignId).single();
+	return error || !data ? null : (data as { players_upload_maps: boolean }).players_upload_maps;
+}
+
+export async function setPlayersUploadMaps(campaignId: string, allowed: boolean): Promise<string | null> {
+	const { error } = await supabase().from('campaigns').update({ players_upload_maps: allowed }).eq('id', campaignId);
+	return error ? 'The setting could not be saved.' : null;
 }
 
 // ---- images, kept on the device so the active map works offline

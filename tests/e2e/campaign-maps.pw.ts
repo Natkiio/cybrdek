@@ -11,6 +11,7 @@ interface MapRow {
 	width: number;
 	height: number;
 	active: boolean;
+	uploaded_by?: string | null;
 }
 
 interface Fake {
@@ -19,6 +20,7 @@ interface Fake {
 	pinInserts: Record<string, unknown>[];
 	calls: string[];
 	offline: boolean;
+	playersUpload?: boolean;
 }
 
 async function setup(page: Page, role: 'gm' | 'player', fake: Fake) {
@@ -30,10 +32,19 @@ async function setup(page: Page, role: 'gm' | 'player', fake: Fake) {
 			route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
 		if (fake.offline && !path.includes('/auth/')) return route.abort('internetdisconnected');
 		if (path.endsWith('/rpc/is_campaign_gm')) return json(role === 'gm');
+		if (path.endsWith('/rpc/can_upload_map')) return json(role === 'gm' || !!fake.playersUpload);
+		if (path.endsWith('/rest/v1/campaigns') && url.searchParams.get('select') === 'players_upload_maps') {
+			return json({ players_upload_maps: !!fake.playersUpload });
+		}
+		if (path.endsWith('/rest/v1/campaigns') && req.method() === 'PATCH') {
+			fake.playersUpload = JSON.parse(req.postData() ?? '{}').players_upload_maps;
+			fake.calls.push(`players-upload ${fake.playersUpload}`);
+			return route.fulfill({ status: 204 });
+		}
 		if (path.endsWith('/rest/v1/campaign_maps')) {
 			if (req.method() === 'POST') {
 				const body = JSON.parse(req.postData() ?? '{}');
-				const row = { id: crypto.randomUUID(), name: body.name, width: body.width, height: body.height, active: false };
+				const row = { id: crypto.randomUUID(), name: body.name, width: body.width, height: body.height, active: false, uploaded_by: 'u1' };
 				fake.maps.push(row);
 				fake.calls.push('insert-map');
 				return json(row, 201);
@@ -225,4 +236,30 @@ test('a non-image file is refused before anything is sent', async ({ page }) => 
 	await panel.getByRole('button', { name: 'UPLOAD MAP' }).click();
 	await expect(panel.getByRole('alert')).toContainText('Choose an image file');
 	expect(fake.calls).toEqual([]);
+});
+
+test('the GM lets players upload; a player adds a map, can remove it, and leaves showing it to the GM', async ({ page }) => {
+	const fake = fresh();
+	await setup(page, 'gm', fake);
+	await page.goto('/map');
+	await expect(page.getByText('PLAYERS CAN UPLOAD MAPS: NO')).toBeVisible();
+	await page.getByRole('button', { name: 'LET PLAYERS UPLOAD' }).click();
+	await expect(page.getByText('PLAYERS CAN UPLOAD MAPS: YES')).toBeVisible();
+	expect(fake.calls).toContain('players-upload true');
+
+	await page.context().unrouteAll({ behavior: 'ignoreErrors' });
+	await setup(page, 'player', fake);
+	await page.reload();
+	await expect(page.getByText('PLAYERS CAN UPLOAD MAPS')).toHaveCount(0);
+	await uploadAs(page, 'Found a map', 400, 200);
+	const panel = page.locator('section.panel').filter({ hasText: 'MAPS' }).last();
+	await expect(panel.getByText('Found a map')).toBeVisible();
+	await expect(panel.getByText('YOURS')).toBeVisible();
+	expect(fake.calls).not.toContain('activate'); // the GM chooses what the table sees
+	await expect(panel.getByRole('button', { name: 'SHOW THIS ONE' })).toHaveCount(0);
+	await expect(panel.getByRole('button', { name: 'RENAME' })).toHaveCount(0);
+	await panel.getByRole('button', { name: 'DELETE' }).click();
+	await panel.getByRole('button', { name: /YES, DELETE/ }).click();
+	await expect(panel.getByText('Found a map')).toHaveCount(0);
+	expect(fake.calls.slice(-2)).toEqual(['remove-files', 'delete-map']);
 });

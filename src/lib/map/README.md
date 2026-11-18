@@ -92,3 +92,10 @@ image is kept in Cache Storage, and `/map` remembers the active map per campaign
 in localStorage. A seen map therefore opens instantly and offline, then is checked
 against the cloud. Pins on an uploaded map carry its `map_id`; Voyage City's
 built-in map is `map_id` null. Saving drawn areas for uploaded maps is not done yet.
+
+**Player uploads.** `campaigns.players_upload_maps` (off by default) lets members
+add maps too; only the GM changes it, from the MAPS panel on `/map`. A map records
+`uploaded_by` (set by the database). A player's map joins the list but only the GM
+renames it or shows it to the table. A player may remove a map they added until the GM
+first shows it (`adopted`, set by `set_active_map`), even after uploads are turned
+off. Once adopted it stays the GM's, with its pins, even after switching away. `can_upload_map(campaign)` is the one check the database and the page share.

@@ -1,6 +1,8 @@
 <script lang="ts">
-	// The GM's list of a campaign's maps (#62): upload, rename, choose the one
-	// players see, delete. The database refuses all of this for anyone else.
+	// A campaign's maps (#62). The GM uploads, renames, chooses the one players
+	// see, deletes, and decides whether players may upload too. A player who's
+	// allowed adds maps and removes their own while they aren't shown. The
+	// database refuses anything else, whatever this panel shows.
 	import Panel from '#lib/components/Panel.svelte';
 	import {
 		MAX_MAPS,
@@ -8,12 +10,33 @@
 		removeMap,
 		renameMap,
 		setActiveMap,
+		setPlayersUploadMaps,
 		uploadMap,
 		validMapName,
 		type CampaignMap
 	} from '#lib/map/campaign-maps.ts';
 
-	let { campaignId, maps, onchange }: { campaignId: string; maps: CampaignMap[]; onchange: () => void } = $props();
+	let {
+		campaignId,
+		maps,
+		onchange,
+		isGm,
+		userId,
+		canUpload,
+		playersUpload
+	}: {
+		campaignId: string;
+		maps: CampaignMap[];
+		onchange: () => void;
+		isGm: boolean;
+		userId: string | null;
+		canUpload: boolean;
+		playersUpload: boolean | null; // the GM's setting; null if unknown
+	} = $props();
+
+	const mine = (map: CampaignMap) => !!userId && map.uploaded_by === userId;
+	// A player may remove their own map only until the GM first shows it.
+	const removable = (map: CampaignMap) => mine(map) && !map.adopted && !map.active;
 
 	let name = $state('');
 	let file = $state<File | null>(null);
@@ -56,7 +79,7 @@
 			const result = await uploadMap(campaignId, mapName, prepared);
 			if ('error' in result) return result.error;
 			// The first map is the one players see, so the GM needn't do it by hand.
-			if (!maps.some((m) => m.active)) await setActiveMap(campaignId, result.id);
+			if (isGm && !maps.some((m) => m.active)) await setActiveMap(campaignId, result.id);
 			name = '';
 			file = null;
 			if (fileInput) fileInput.value = '';
@@ -66,6 +89,21 @@
 </script>
 
 <Panel title="MAPS">
+	{#if isGm && playersUpload !== null}
+		<div class="setting">
+			<span>PLAYERS CAN UPLOAD MAPS: <strong>{playersUpload ? 'YES' : 'NO'}</strong></span>
+			<button
+				type="button"
+				aria-pressed={playersUpload}
+				disabled={busy}
+				onclick={() => run(() => setPlayersUploadMaps(campaignId, !playersUpload))}
+			>
+				{playersUpload ? 'TURN OFF' : 'LET PLAYERS UPLOAD'}
+			</button>
+		</div>
+		<p class="dim small">Their maps join this list. Only you choose which one the table sees.</p>
+	{/if}
+
 	{#if maps.length}
 		<ul>
 			{#each maps as map (map.id)}
@@ -87,13 +125,20 @@
 							<button type="button" disabled={busy} onclick={() => (renaming = null)}>CANCEL</button>
 						</form>
 					{:else}
-						<span class="name">{map.name}{#if map.active}<span class="tag">SHOWN TO PLAYERS</span>{/if}</span>
+						<span class="name"
+							>{map.name}{#if map.active}<span class="tag">SHOWN TO PLAYERS</span>{/if}{#if isGm && map.uploaded_by && map.uploaded_by !== userId}<span
+									class="tag dimtag">FROM A PLAYER</span
+								>{:else if !isGm && mine(map)}<span class="tag dimtag">YOURS</span>{/if}</span
+						>
 						<span class="dim">{map.width} × {map.height}</span>
+						{#if isGm || removable(map)}
 						<span class="actions">
-							{#if !map.active}
+							{#if isGm && !map.active}
 								<button type="button" disabled={busy} onclick={() => run(() => setActiveMap(campaignId, map.id))}>SHOW THIS ONE</button>
 							{/if}
-							<button type="button" disabled={busy} onclick={() => ((renaming = map.id), (newName = map.name))}>RENAME</button>
+							{#if isGm}
+								<button type="button" disabled={busy} onclick={() => ((renaming = map.id), (newName = map.name))}>RENAME</button>
+							{/if}
 							{#if confirmDelete === map.id}
 								<button
 									type="button"
@@ -108,15 +153,20 @@
 								<button type="button" disabled={busy} onclick={() => (confirmDelete = map.id)}>DELETE</button>
 							{/if}
 						</span>
+						{/if}
 					{/if}
 				</li>
 			{/each}
 		</ul>
 	{:else}
-		<p class="dim">No maps yet. Upload one below; players see it once it's added.</p>
+		<p class="dim">
+			{isGm ? "No maps yet. Upload one below; players see it once it's added." : 'No maps yet. Upload one below; the GM chooses which map the table sees.'}
+		</p>
 	{/if}
 
-	{#if maps.length < MAX_MAPS}
+	{#if !canUpload}
+		<!-- nothing to add: a player whose GM hasn't allowed uploads -->
+	{:else if maps.length < MAX_MAPS}
 		<form class="upload" onsubmit={upload}>
 			<input aria-label="Map name" placeholder="Map name, e.g. The Docks" maxlength="80" bind:value={name} disabled={busy} />
 			<input
@@ -131,7 +181,9 @@
 		</form>
 		<p class="dim small">Big images are shrunk on this device first. Up to {MAX_MAPS} maps per campaign.</p>
 	{:else}
-		<p class="dim">This campaign has {MAX_MAPS} maps, the most it can have. Delete one to add another.</p>
+		<p class="dim">
+			This campaign has {MAX_MAPS} maps, the most it can have. {isGm ? 'Delete one to add another.' : 'Ask the GM to delete one first.'}
+		</p>
 	{/if}
 	{#if status}<p class="ok" role="status">{status}</p>{/if}
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -161,6 +213,22 @@
 		margin-left: 0.5rem;
 		color: var(--bright);
 		font-size: 0.75rem;
+	}
+
+	.dimtag {
+		color: var(--muted);
+	}
+
+	.setting {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.4rem 0.75rem;
+	}
+
+	.setting strong {
+		color: var(--bright);
 	}
 
 	.actions,

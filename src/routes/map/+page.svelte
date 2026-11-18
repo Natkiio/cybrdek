@@ -6,7 +6,14 @@
 	import DistrictMenu from '#lib/components/map/DistrictMenu.svelte';
 	import PinEditor from '#lib/components/map/PinEditor.svelte';
 	import MapManager from '#lib/components/map/MapManager.svelte';
-	import { activeMapKey, listMaps, loadMapDefinition, type CampaignMap } from '#lib/map/campaign-maps.ts';
+	import {
+		activeMapKey,
+		canUploadMap,
+		listMaps,
+		loadMapDefinition,
+		playersUploadMaps,
+		type CampaignMap
+	} from '#lib/map/campaign-maps.ts';
 	import type { MapDefinition } from '#lib/map/types.ts';
 	import { listEntries } from '#lib/lore/api.ts';
 	import { latestOnly } from '#lib/lore/latest.ts';
@@ -36,6 +43,10 @@
 	let uploaded = $state<{ map: CampaignMap; definition: MapDefinition; release: () => void } | null>(null);
 	let mapStatus = $state<'loading' | 'ready' | 'offline'>('loading');
 	const activeMap = $derived(maps.find((m) => m.active));
+	// Who may add maps here, and (for the GM) whether players may (#62).
+	let canUpload = $state(false);
+	let playersUpload = $state<boolean | null>(null);
+	const hasOwnMaps = $derived(!!gm.userId && maps.some((m) => m.uploaded_by === gm.userId));
 	const currentMap = $derived(isVoyage ? VOYAGE_MAP : (uploaded?.definition ?? null));
 	const currentMapId = $derived(isVoyage ? null : (uploaded?.map.id ?? null));
 
@@ -139,8 +150,21 @@
 	async function load() {
 		const current = latest.begin();
 		const campaignId = campaign.id;
-		if (campaignId !== VOYAGE_CITY_ID) await loadUploadedMap(campaignId, current);
-		else if (uploaded) showMap(null);
+		if (campaignId !== VOYAGE_CITY_ID) {
+			const signedIn = !!gm.userId;
+			const [, allowed, setting] = await Promise.all([
+				loadUploadedMap(campaignId, current),
+				signedIn && !gm.isGm ? canUploadMap(campaignId) : Promise.resolve(false),
+				signedIn && gm.isGm ? playersUploadMaps(campaignId) : Promise.resolve(null)
+			]);
+			if (!current()) return;
+			canUpload = allowed;
+			playersUpload = setting;
+		} else {
+			if (uploaded) showMap(null);
+			canUpload = false;
+			playersUpload = null;
+		}
 		if (!current()) return;
 		const mapId = campaignId === VOYAGE_CITY_ID ? null : (uploaded?.map.id ?? undefined);
 		const [lore, pinRows, overrideRows] = await Promise.all([
@@ -380,8 +404,16 @@
 
 {/if}
 
-{#if !isVoyage && gm.isGm}
-	<MapManager campaignId={campaign.id} {maps} onchange={() => void load()} />
+{#if !isVoyage && (gm.isGm || canUpload || hasOwnMaps)}
+	<MapManager
+		campaignId={campaign.id}
+		{maps}
+		onchange={() => void load()}
+		isGm={gm.isGm}
+		userId={gm.userId}
+		canUpload={gm.isGm || canUpload}
+		{playersUpload}
+	/>
 {/if}
 
 <style>
