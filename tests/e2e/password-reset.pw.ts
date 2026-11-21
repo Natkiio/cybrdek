@@ -61,7 +61,7 @@ test('the admin makes a code; the player uses it to set a new password and is si
 
 	const gmPage = await (await browser.newContext()).newPage();
 	await fakeSupabase(gmPage, fake, 'gm@example.com');
-	await gmPage.goto('/gm');
+	await gmPage.goto('/account');
 	const panel = gmPage.locator('section.panel').filter({ hasText: 'PASSWORD RESET CODES' });
 	await panel.getByLabel("Player's email").fill('nobody@example.com');
 	await panel.getByRole('button', { name: 'MAKE CODE' }).click();
@@ -72,7 +72,7 @@ test('the admin makes a code; the player uses it to set a new password and is si
 
 	const playerPage = await (await browser.newContext()).newPage();
 	await fakeSupabase(playerPage, fake);
-	await playerPage.goto('/gm');
+	await playerPage.goto('/account');
 	await playerPage.getByRole('button', { name: 'Forgot password?' }).click();
 	await playerPage.getByLabel('Email').fill('player@example.com');
 	await playerPage.getByLabel('Reset code').fill('0000-0000-0000');
@@ -90,7 +90,7 @@ test('the admin makes a code; the player uses it to set a new password and is si
 test('players never see the reset-code panel', async ({ page }) => {
 	const fake: Fake = { accounts: { 'player@example.com': 'pw' }, admin: false, codes: {}, issued: [] };
 	await fakeSupabase(page, fake, 'player@example.com');
-	await page.goto('/gm');
+	await page.goto('/account');
 	await expect(page.getByText('Signed in as')).toBeVisible();
 	await page.waitForTimeout(300);
 	await expect(page.getByText('PASSWORD RESET CODES')).toHaveCount(0);
@@ -99,7 +99,7 @@ test('players never see the reset-code panel', async ({ page }) => {
 test('a short new password is caught before anything is sent', async ({ page }) => {
 	const fake: Fake = { accounts: {}, admin: false, codes: { 'p@example.com': '3F9A-0C21-B7E4' }, issued: [] };
 	await fakeSupabase(page, fake);
-	await page.goto('/gm');
+	await page.goto('/account');
 	await page.getByRole('button', { name: 'Forgot password?' }).click();
 	await page.getByLabel('Email').fill('p@example.com');
 	await page.getByLabel('Reset code').fill('3F9A-0C21-B7E4');
@@ -119,7 +119,7 @@ test('the code is shown beside the email it was made for, even if the box change
 		hold: new Promise<void>((resolve) => (release = resolve))
 	};
 	await fakeSupabase(page, fake, 'gm@example.com');
-	await page.goto('/gm');
+	await page.goto('/account');
 	const panel = page.locator('section.panel').filter({ hasText: 'PASSWORD RESET CODES' });
 	const box = panel.getByLabel("Player's email");
 	await box.fill('victim@example.com');

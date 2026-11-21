@@ -39,7 +39,7 @@
 {#if !loaded || !gm.ready}
 	<Panel><p class="dim">LOADING…</p></Panel>
 {:else if !gm.isGm}
-	<Panel><p class="dim">Only the GM can edit lore. <a href="/gm">Sign in</a>.</p></Panel>
+	<Panel><p class="dim">Only the GM can edit lore. <a href="/account">Sign in</a>.</p></Panel>
 {:else if !entry}
 	<Panel><p class="dim">That entry doesn't exist.</p></Panel>
 {:else}

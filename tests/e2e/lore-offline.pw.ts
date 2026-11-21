@@ -49,6 +49,6 @@ test('lore list and entry pages open offline from the on-device copy', async ({ 
 	await expect(page.getByRole('link', { name: /Bowetown/ })).toBeVisible();
 	await expect(page.getByText('Secret Plan')).toHaveCount(0);
 
-	await page.goto('/gm');
-	await expect(page.getByRole('heading', { name: 'GM ACCESS' })).toBeVisible();
+	await page.goto('/account');
+	await expect(page.getByRole('heading', { name: /WELCOME TO CYBRDEK|ACCOUNT/ })).toBeVisible();
 });

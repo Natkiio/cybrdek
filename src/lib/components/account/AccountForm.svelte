@@ -2,11 +2,12 @@
 	import { sendMagicLink, signIn, signUp } from '#lib/supabase/gm.svelte.ts';
 	import { resetPassword } from '#lib/supabase/reset.ts';
 
-	// emailLink: the GM-only fallback. Supabase's built-in email can only reach
+	// emailLink: the admin-only fallback. Supabase's built-in email can only reach
 	// the project's team, so players never see this option (#65).
-	let { emailLink = false }: { emailLink?: boolean } = $props();
+	let { emailLink = false, start = 'sign-in' }: { emailLink?: boolean; start?: 'sign-in' | 'create' } = $props();
 
-	let mode = $state<'sign-in' | 'create' | 'reset'>('sign-in');
+	// svelte-ignore state_referenced_locally (only the starting mode; the buttons change it after)
+	let mode = $state<'sign-in' | 'create' | 'reset'>(start);
 	const creating = $derived(mode === 'create');
 	let email = $state('');
 	let password = $state('');
@@ -80,7 +81,7 @@
 	{:else}
 		<button type="button" class="link" onclick={() => switchTo('sign-in')}>Back to sign in</button>
 	{/if}
-	{#if emailLink}<button type="button" class="link" disabled={busy} onclick={sendLink}>GM: email me a link</button>{/if}
+	{#if emailLink}<button type="button" class="link" disabled={busy} onclick={sendLink}>Admin: email me a link</button>{/if}
 </p>
 
 <style>

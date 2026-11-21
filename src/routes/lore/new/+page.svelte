@@ -28,7 +28,7 @@
 {#if !gm.ready}
 	<Panel><p class="dim">CHECKING…</p></Panel>
 {:else if !gm.isGm}
-	<Panel><p class="dim">Only the GM can write lore. <a href="/gm">Sign in</a>.</p></Panel>
+	<Panel><p class="dim">Only the GM can write lore. <a href="/account">Sign in</a>.</p></Panel>
 {:else}
 	<LoreEditor
 		initial={{ title: '', type: 'location', summary: '', body: '', visible: false }}
