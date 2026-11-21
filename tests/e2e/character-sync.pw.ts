@@ -212,7 +212,7 @@ test('signing out takes account characters off the device; the cloud keeps them'
 	await synced(page);
 	await seedDeviceOnly(page, 'local', 'Device Only');
 
-	await page.goto('/gm');
+	await page.goto('/account');
 	await page.getByRole('button', { name: 'SIGN OUT' }).click();
 	await expect(page.getByRole('button', { name: 'SIGN IN', exact: true })).toBeVisible();
 	await page.goto('/characters');

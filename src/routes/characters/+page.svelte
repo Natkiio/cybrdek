@@ -196,7 +196,7 @@
 	<p class="sync" role="status">{statusText[characterSync.status]}</p>
 	{#if characterSync.message}<p class="dim">{characterSync.message}</p>{/if}
 {:else if gm.ready && !gm.email}
-	<p class="dim">Saved on this device only. <a href="/gm">Sign in</a> to keep characters in your account.</p>
+	<p class="dim">Saved on this device only. <a href="/account">Sign in</a> to keep characters in your account.</p>
 {/if}
 
 <Panel title="ROSTER">

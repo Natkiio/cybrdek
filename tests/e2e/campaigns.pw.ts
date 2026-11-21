@@ -170,7 +170,7 @@ test('private lore: leaves the screen and the device when a player signs out', a
 	// Sign out in a second tab: this tab has to notice by itself.
 	member = false;
 	const other = await context.newPage();
-	await other.goto('/gm');
+	await other.goto('/account');
 	await other.getByRole('button', { name: 'SIGN OUT' }).click();
 	await expect(page.getByText('Members Only')).toHaveCount(0);
 	expect(await privateCopies()).toEqual([]);

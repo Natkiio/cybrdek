@@ -142,7 +142,7 @@
 		<p class="dim small">You'll be its GM. New campaigns are private: only people you invite can see them.</p>
 		{#if error}<p class="error" aria-live="polite">{error}</p>{/if}
 	{:else}
-		<p class="dim"><a href="/gm">Sign in</a> to create a campaign of your own.</p>
+		<p class="dim"><a href="/account">Sign in</a> to create a campaign of your own.</p>
 	{/if}
 </Panel>
 

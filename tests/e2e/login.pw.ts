@@ -95,7 +95,7 @@ test('a returning player signs in; a wrong password says so and joins nothing', 
 
 test('an email that already has an account is told to sign in', async ({ page }) => {
 	await fakeSupabase(page, fresh({ 'player@example.com': 'right-password' }));
-	await page.goto('/gm');
+	await page.goto('/account');
 	await page.getByRole('button', { name: 'Create an account' }).click();
 	await fill(page, 'player@example.com', 'another-password');
 	await page.getByRole('button', { name: 'CREATE ACCOUNT' }).click();
@@ -105,9 +105,9 @@ test('an email that already has an account is told to sign in', async ({ page })
 test('the GM keeps the email link, then can set a password', async ({ page }) => {
 	const fake = fresh({ 'gm@example.com': 'old-password' });
 	await fakeSupabase(page, fake);
-	await page.goto('/gm');
+	await page.goto('/account');
 	await page.getByLabel('Email').fill('gm@example.com');
-	await page.getByRole('button', { name: 'GM: email me a link' }).click();
+	await page.getByRole('button', { name: 'Admin: email me a link' }).click();
 	await expect(page.getByText('Link sent.')).toBeVisible();
 	expect(fake.magicLinks).toBe(1);
 
@@ -117,4 +117,32 @@ test('the GM keeps the email link, then can set a password', async ({ page }) =>
 	await page.getByRole('button', { name: 'SET PASSWORD' }).click();
 	await expect(page.getByText('Password saved.')).toBeVisible();
 	expect(fake.passwords).toEqual(['a-new-password']);
+});
+
+test('signed out, home offers one account; CREATE ACCOUNT opens the welcome page ready to sign up (#109)', async ({ page }) => {
+	const fake = fresh();
+	await fakeSupabase(page, fake);
+	await page.goto('/');
+	await expect(page.getByRole('heading', { name: 'NEW HERE?' })).toBeVisible();
+	await page.getByRole('link', { name: 'CREATE ACCOUNT' }).click();
+	await expect(page).toHaveURL(/\/account\?new$/);
+	await expect(page.getByRole('heading', { name: 'WELCOME TO CYBRDEK' })).toBeVisible();
+	await expect(page.getByPlaceholder('Choose a password (8+ characters)')).toBeVisible();
+	await fill(page, 'new@example.com', 'long-enough');
+	await page.getByRole('button', { name: 'CREATE ACCOUNT' }).click();
+
+	// No account type to pick: the same account is a GM or a player per campaign.
+	await expect(page.getByRole('heading', { name: 'ACCOUNT', exact: true })).toBeVisible();
+	await expect(page.getByText('Signed in as')).toBeVisible();
+	await expect(page.getByText(/not in it/)).toBeVisible();
+	await page.goto('/');
+	await expect(page.getByRole('heading', { name: 'NEW HERE?' })).toHaveCount(0);
+	expect(fake.accounts['new@example.com']).toBe('long-enough');
+});
+
+test('old /gm links still work: they land on the account page with the rest of the URL', async ({ page }) => {
+	await fakeSupabase(page, fresh());
+	await page.goto('/gm?from=old#section');
+	await expect(page).toHaveURL(/\/account\?from=old#section$/);
+	await expect(page.getByRole('heading', { name: 'WELCOME TO CYBRDEK' })).toBeVisible();
 });

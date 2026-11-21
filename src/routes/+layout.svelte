@@ -25,7 +25,7 @@
 	];
 
 	const isHere = (href: string) => (href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href));
-	const here = $derived(nav.find((item) => isHere(item.href))?.label ?? (page.url.pathname === '/gm' ? 'ACCOUNT' : ''));
+	const here = $derived(nav.find((item) => isHere(item.href))?.label ?? (page.url.pathname === '/account' ? 'ACCOUNT' : ''));
 
 	// Who's signed in, as the account square shows it (the screen-reader name keeps the old words).
 	const accountName = $derived(gm.isGm ? 'GM MODE' : gm.email ? 'SIGNED IN' : 'SIGN IN');
@@ -83,7 +83,7 @@
 		<a href="/campaigns" class="campaign" aria-label="CAMPAIGN: {campaign.name}">
 			<span class="campaign-name">{campaign.name}</span> ▾
 		</a>
-		<a href="/gm" class="account" class:gm={gm.isGm} class:active={page.url.pathname === '/gm'} aria-label={accountName}>
+		<a href="/account" class="account" class:gm={gm.isGm} class:active={page.url.pathname === '/account'} aria-label={accountName}>
 			{#if gm.email}{initials || 'ME'}{#if gm.isGm}<span class="gm-tag">GM</span>{/if}{:else}SIGN IN{/if}
 		</a>
 		<button
@@ -108,7 +108,7 @@
 					{#if isHere(item.href)}<span class="tag" aria-hidden="true">HERE</span>{/if}
 				</a>
 			{/each}
-			<a href="/gm" class="menu-account">
+			<a href="/account" class="menu-account">
 				<span class="num" aria-hidden="true">··</span>{gm.email ? 'ACCOUNT' : 'SIGN IN'}
 				{#if gm.isGm}<span class="tag">GM OF {campaign.name}</span>{/if}
 			</a>

@@ -66,8 +66,8 @@ async function refreshGm(mine: number) {
 	gm.ready = true;
 }
 
-/** Email a magic sign-in link that comes back to `path` (default /gm). */
-export async function sendMagicLink(email: string, path = '/gm'): Promise<string | null> {
+/** Email a magic sign-in link that comes back to `path` (default /account). */
+export async function sendMagicLink(email: string, path = '/account'): Promise<string | null> {
 	const { error } = await supabase().auth.signInWithOtp({
 		email: email.trim(),
 		options: { emailRedirectTo: `${location.origin}${path}` }

@@ -7,6 +7,7 @@
 	import { summarise, type PartyMember } from '#lib/campaigns/party.ts';
 	import { listCharacters } from '#lib/storage/characters.ts';
 	import { characterSync } from '#lib/sync/characters.svelte.ts';
+	import { gm } from '#lib/supabase/gm.svelte.ts';
 
 	let me = $state<{ id: string; summary: PartyMember } | null>(null);
 	let loaded = $state(false);
@@ -40,6 +41,18 @@
 <svelte:head><title>CYBRDEK</title></svelte:head>
 
 <h1 class="sr-only">Home</h1>
+
+{#if gm.ready && !gm.email}
+	<!-- Signed out (#109): one account for everything, or carry on without one. -->
+	<section class="welcome" aria-labelledby="welcome-title">
+		<h2 id="welcome-title" class="section-title">NEW HERE?</h2>
+		<p class="dim">One account keeps your characters safe and lets you join a campaign or run your own as its GM.</p>
+		<div class="choices">
+			<a href="/account">LOG IN</a>
+			<a href="/account?new" class="primary">CREATE ACCOUNT</a>
+		</div>
+	</section>
+{/if}
 
 {#if !loaded}
 	<p class="dim">LOADING…</p>
@@ -83,6 +96,39 @@
 </section>
 
 <style>
+	.welcome {
+		border: 1px solid var(--frame-dim);
+		padding: 0.75rem;
+		margin-bottom: 1rem;
+	}
+
+	.welcome p {
+		margin: 0.25rem 0 0.75rem;
+	}
+
+	.choices {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.choices a {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 44px;
+		padding: 0 1rem;
+		border: 1px solid var(--frame-dim);
+		color: var(--value);
+		flex: 1 1 10rem;
+		text-decoration: none;
+	}
+
+	.choices .primary {
+		color: var(--bright);
+		border-color: var(--bright);
+	}
+
 	.me {
 		border: 1px solid var(--red);
 		background: var(--bg-1);

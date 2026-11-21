@@ -55,6 +55,14 @@ export async function inviteCode(campaignId: string): Promise<string | null> {
 	return (data as { code: string } | null)?.code ?? null;
 }
 
+/** This account's role in a campaign: null when not a member, 'unknown' when it couldn't be checked. */
+export async function myRole(campaignId: string, userId: string): Promise<CampaignRole | null | 'unknown'> {
+	const { data, error } = await supabase().from('campaign_members').select('role')
+		.eq('campaign_id', campaignId).eq('user_id', userId).maybeSingle();
+	if (error) return 'unknown';
+	return data ? (data.role as CampaignRole) : null;
+}
+
 /** The current member's chosen name at this table; null when not a member. */
 export async function campaignDisplayName(campaignId: string, userId: string): Promise<string | null> {
 	const { data, error } = await supabase().from('campaign_members').select('display_name')
