@@ -15,7 +15,7 @@
 	let password = $state('');
 	let saved = $state(false);
 	let error = $state('');
-	let role = $state<CampaignRole | null | undefined>(undefined); // undefined: still checking
+	let role = $state<CampaignRole | null | 'unknown' | undefined>(undefined); // undefined: still checking
 
 	$effect(() => {
 		const userId = gm.userId;
@@ -54,6 +54,8 @@
 				<span class="ok">You're the GM of {campaign.name}.</span> You can manage it, its players and its content.
 			{:else if role === 'player'}
 				You play in <strong>{campaign.name}</strong>.
+			{:else if role === 'unknown'}
+				<span class="dim">Couldn't check your role in {campaign.name}. Check your connection.</span>
 			{:else if role === null}
 				<span class="dim">
 					You're looking at {campaign.name}{campaign.id === VOYAGE_CITY_ID ? ', the public demo campaign' : ''}, but you're not in it.
