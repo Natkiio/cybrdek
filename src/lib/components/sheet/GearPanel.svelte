@@ -56,6 +56,10 @@
 	}
 
 	function save(item: GearItem) {
+		// The gear editor snapshots metadata when opened. Loadouts can change in
+		// the deck panel meanwhile, so retain the current configuration on save.
+		const current = editing?.isNew ? undefined : gear.find((g) => g.id === item.id);
+		if (current?.cyberdeck) item = { ...item, quantity: 1, cyberdeck: current.cyberdeck };
 		const next = editing?.isNew ? [...gear, item] : gear.map((g) => (g.id === item.id ? item : g));
 		onchange(item.kind === 'armor' ? equipArmor(next, item.id, item.equipped !== false) : next);
 		editing = null;

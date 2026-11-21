@@ -1,5 +1,7 @@
 // Core pp. 196, 202–204, 208. Names/numbers and original summaries only.
 // Every rule value awaits Nathan's manual Core Rulebook check in the PR.
+// Core pp. 201, 208: preparation time, separate from NET activation/deactivation.
+export const DECK_INSTALL_HOURS = 1;
 export const DECK_TYPES = [
 	{ id: 'poor', name: 'Poor Quality', slots: 5, cost: 100 },
 	{ id: 'standard', name: 'Standard', slots: 7, cost: 500 },

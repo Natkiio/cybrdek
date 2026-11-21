@@ -129,3 +129,40 @@ test('an in-flight account sync cannot acknowledge away a newer program edit', a
  expect(cloud.data.extra.keep).toBe('private note');
  await page.reload(); await expect(deck.getByRole('button', { name: 'Unload Sword', exact: true })).toHaveCount(2);
 });
+
+for (const alreadyConfigured of [true, false]) {
+test(`saving gear metadata preserves loadout edits (${alreadyConfigured ? 'existing deck' : 'configured while editing'})`, async ({ page }) => {
+ await seed(page, true);
+ const deck = panel(page);
+ if (alreadyConfigured) {
+  await deck.getByLabel('Existing gear for deck').selectOption('spare-deck');
+  await deck.getByRole('button', { name: 'CONFIGURE AS DECK', exact: true }).click();
+ }
+ await openFold(page, 'GEAR');
+ const gear = page.locator('section.panel').filter({ has: page.getByText('GEAR', { exact: true }) });
+ await gear.locator('li').filter({ hasText: 'Existing deck gear' }).getByRole('button', { name: 'EDIT', exact: true }).click();
+ await gear.getByLabel('NAME', { exact: true }).fill('My deck');
+ await gear.getByLabel('NOTES', { exact: true }).fill('Custom case');
+ if (!alreadyConfigured) {
+  await gear.getByLabel('QUANTITY', { exact: true }).fill('4');
+  await deck.getByLabel('Existing gear for deck').selectOption('spare-deck');
+  await deck.getByRole('button', { name: 'CONFIGURE AS DECK', exact: true }).click();
+ }
+ await deck.getByLabel('Program to add').selectOption('sword');
+ await addCopy(page);
+ await deck.getByRole('button', { name: 'FIT HARDWARE', exact: true }).click();
+ await expect(deck.getByRole('button', { name: 'Remove Backup Drive', exact: true })).toBeVisible();
+ await gear.getByRole('button', { name: 'SAVE', exact: true }).click();
+ await expect(deck.getByRole('button', { name: 'Unload Sword', exact: true })).toHaveCount(1);
+ await expect(deck.getByRole('button', { name: 'Remove Backup Drive', exact: true })).toBeVisible();
+ const saved = (await stored(page)).extra.gear.find((g: any) => g.cyberdeck);
+ expect(saved.quantity).toBe(1);
+ expect(saved.name).toBe('My deck');
+ expect(saved.notes).toBe('Custom case');
+ expect(saved.cyberdeck.programs).toHaveLength(1);
+ expect(saved.cyberdeck.hardware).toHaveLength(1);
+ await page.reload();
+ await expect(deck.getByRole('button', { name: 'Unload Sword', exact: true })).toHaveCount(1);
+ await expect(deck.getByRole('button', { name: 'Remove Backup Drive', exact: true })).toBeVisible();
+});
+}

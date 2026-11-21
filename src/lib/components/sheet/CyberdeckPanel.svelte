@@ -2,7 +2,7 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import type { GearItem } from '#lib/rulesets/red/gear.ts';
 	import type { InstalledCyberware } from '#lib/rulesets/red/cyberware.ts';
-	import { DECK_TYPES, PROGRAMS, HARDWARE } from '#lib/rulesets/red/programs.ts';
+	import { DECK_TYPES, PROGRAMS, HARDWARE, DECK_INSTALL_HOURS } from '#lib/rulesets/red/programs.ts';
 	import { deckItems, newDeck, slotsOf, deckChangeProblem, isBodyweightSuit, type Cyberdeck } from '#lib/rulesets/red/cyberdeck.ts';
 	let { gear, cyberware, onchange }: { gear: GearItem[]; cyberware: InstalledCyberware[]; onchange: (gear: GearItem[]) => void | Promise<void> } = $props();
 	let selectedId = $state('');
@@ -61,6 +61,7 @@
 
 <Panel title="CYBERDECK">
 	<p class="dim">Plan your loadout here. Loaded means installed on the deck; it does not mean running in the NET. Equipment costs are references, not automatic purchases.</p>
+	<p class="dim">Allow {DECK_INSTALL_HOURS} hour to install or remove each program or hardware piece (Core pp. 201, 208). This panel records the loadout; it does not track elapsed time.</p>
 	<fieldset disabled={busy}>
 		{#if decks.length}
 			<label>Deck <select aria-label="Configured deck" value={item?.id} onchange={e => { selectedId = e.currentTarget.value; error = ''; confirming = ''; }}>
