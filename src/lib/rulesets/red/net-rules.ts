@@ -36,16 +36,16 @@ export const NET_RULES: readonly RuleSection[] = [
 		title: 'Interface Abilities',
 		pages: '198–201',
 		points: [
-			'Roll Interface + 1d10 vs the DV. Scanner is a Meat Action; the rest each cost a NET Action.',
+			'Most abilities cost one NET Action. Scanner is a Meat Action instead, and a Virus can take several. Roll Interface + 1d10 against whatever the ability says: a DV, an opposed roll, or no DV at all.',
 			...INTERFACE_ABILITIES.map((a) => `${a.name}: ${a.summary}`)
 		]
 	},
 	{
 		id: 'architecture',
 		title: 'Architectures',
-		pages: '209–210',
+		pages: '209–211',
 		points: [
-			'A stack of floors you go down, one thing per floor: a Password, File, Control Node, Black ICE or a Demon.',
+			'A stack of floors you go down. Floors hold Passwords, Files, Control Nodes and security (Black ICE, sometimes two or three together, or a Demon).',
 			'Usually 3d6 floors. It can branch after floor 2; the longest branch has the bottom, the only place a Virus can go.',
 			'The top two floors are the Lobby. Deeper floors hold the better Files and Control Nodes.',
 			'Difficulty sets the DV of Passwords, Files and Control Nodes: Basic 6, Standard 8, Uncommon 10, Advanced 12.',
