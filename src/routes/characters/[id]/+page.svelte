@@ -4,6 +4,9 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import RollLog from '#lib/components/RollLog.svelte';
 	import CyberdeckPanel from '#lib/components/sheet/CyberdeckPanel.svelte';
+	import InterfacePanel from '#lib/components/sheet/InterfacePanel.svelte';
+	import { deckItems } from '#lib/rulesets/red/cyberdeck.ts';
+	import { loadedBoosters, netActions } from '#lib/rulesets/red/interface.ts';
 	import CyberwarePanel from '#lib/components/sheet/CyberwarePanel.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
@@ -197,6 +200,13 @@
 		};
 	}
 
+	/** Plain damage dice with no crit check, e.g. Zap's 1d6 to a Program's REZ or a brain. */
+	function rollPlainDamage(label: string, count: number, sides: number) {
+		const result = roll(count, sides, 0);
+		logRoll({ characterId: character?.id, label, kind: 'damage', result });
+		lastRoll = { label, result, crit: false, fumble: false };
+	}
+
 	function rollDeathSave() {
 		if (!character) return;
 		const save = resolveDeathSave(rollDie(10), deathSavePenalty, character.stats.BODY);
@@ -344,6 +354,16 @@
 				<Fold id="armor" title="ARMOR" summary="SP head {armorSp.head} · body {armorSp.body}">
 					<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
 				</Fold>
+				{#if role?.id === 'netrunner'}
+					<Fold id="interface" title="INTERFACE" summary="rank {roleRank} · {netActions(roleRank)} NET actions">
+						<InterfacePanel
+							rank={roleRank}
+							boosters={loadedBoosters(deckItems(gear).map((g) => g.cyberdeck!))}
+							oncheck={(label, base) => check(label, base, 'skill')}
+							ondamage={rollPlainDamage}
+						/>
+					</Fold>
+				{/if}
 				<Fold id="cyberdeck" title="CYBERDECK" summary={gear.some((g) => g.cyberdeck) ? 'loaded' : 'none'}>
 					<CyberdeckPanel {gear} {cyberware} onchange={(next) => update({ gear: next })} />
 				</Fold>
