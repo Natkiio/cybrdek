@@ -1,22 +1,18 @@
 <script lang="ts">
 	import Panel from '#lib/components/Panel.svelte';
-	import SecurityReference from '#lib/components/net/SecurityReference.svelte';
+	import NetSetup from './NetSetup.svelte';
+	import NetProgramStates from './NetProgramStates.svelte';
 	import { PROGRAMS } from '#lib/rulesets/red/programs.ts';
-	import { BLACK_ICE, DEMONS } from '#lib/rulesets/red/net-security.ts';
 	import {
-		runnerNet,
-		securityCombatant,
 		netAttack,
 		encounterIce,
 		slideIce,
-		programState,
 		jackRunner,
 		enterRunner,
 		meatNetAction,
 		type NetOutcome
 	} from '#lib/rulesets/red/net-combat.ts';
-	import { addCombatants, makeNpc, type Encounter } from '#lib/combat/encounter.ts';
-	import { rollDie } from '#lib/engine/dice.ts';
+	import type { Encounter } from '#lib/combat/encounter.ts';
 	let {
 		encounter,
 		disabled,
@@ -30,15 +26,6 @@
 	let targetId = $state('');
 	let weapon = $state('zap');
 	let targetProgram = $state('');
-	let securityKind = $state<'ice' | 'demon'>('ice');
-	let securityId = $state('hellhound');
-	let runnerId = $state('');
-	let deckId = $state('');
-	let rank = $state(4);
-	let npcName = $state('Enemy Netrunner');
-	let npcHp = $state(40);
-	let npcRef = $state(6);
-	let npcPrograms = $state(['sword', 'armor']);
 	let attackModifier = $state(0);
 	let defenseModifier = $state(0);
 	const modifiers = () => ({ attack: attackModifier ?? 0, defense: defenseModifier ?? 0 });
@@ -51,12 +38,6 @@
 			participants[0]
 	);
 	const target = $derived(participants.find((c) => c.id === targetId && c.id !== actor?.id));
-	const candidates = $derived(
-		encounter.combatants.filter((c) => !c.net && c.gear.some((g) => g.cyberdeck))
-	);
-	const runner = $derived(candidates.find((c) => c.id === runnerId) ?? candidates[0]);
-	const decks = $derived(runner?.gear.filter((g) => g.cyberdeck) ?? []);
-	const selectedDeck = $derived(decks.find((g) => g.id === deckId) ?? decks[0]);
 	async function perform(fn: () => Encounter | NetOutcome) {
 		error = '';
 		notice = '';
@@ -75,39 +56,6 @@
 			error = e instanceof Error ? e.message : 'Could not resolve NET action.';
 		}
 	}
-	function attach() {
-		if (!runner || !selectedDeck) return;
-		void perform(() => ({
-			...encounter,
-			combatants: encounter.combatants.map((c) =>
-				c.id === runner.id ? { ...c, net: runnerNet(selectedDeck, rank) } : c
-			)
-		}));
-	}
-	function addNpc() {
-		void perform(() => {
-			const c = makeNpc(crypto.randomUUID(), {
-				name: npcName,
-				hp: npcHp,
-				ref: npcRef,
-				spHead: 0,
-				spBody: 0
-			});
-			const deck = {
-				id: crypto.randomUUID(),
-				name: 'NPC deck',
-				kind: 'item' as const,
-				cyberdeck: {
-					quality: 'standard' as const,
-					hardware: [],
-					programs: npcPrograms.map((defId) => ({ id: crypto.randomUUID(), defId, loaded: true }))
-				}
-			};
-			c.gear = [deck];
-			c.net = runnerNet(deck, rank);
-			return addCombatants(encounter, [c], () => rollDie(10));
-		});
-	}
 </script>
 
 <Panel title="NET COMBAT">
@@ -125,67 +73,7 @@
 	</p>
 	{#if error}<p role="alert" class="error">{error}</p>{/if}
 	{#if notice}<p role="status">{notice}</p>{/if}
-	<details open={!encounter.started}>
-		<summary>SETUP NET PARTICIPANTS</summary>
-		<fieldset {disabled}>
-			<legend>SETUP</legend>
-			<label>Interface rank <input type="number" min="1" max="10" bind:value={rank} /></label>
-			{#if runner && selectedDeck}
-				<label
-					>Runner snapshot <select bind:value={runnerId}
-						>{#each candidates as c}<option value={c.id}>{c.name}</option>{/each}</select
-					></label
-				>
-				<label
-					>Deck snapshot <select bind:value={deckId}
-						>{#each decks as d}<option value={d.id}>{d.name}</option>{/each}</select
-					></label
-				>
-				<button type="button" onclick={attach}>ATTACH RUNNER NET SNAPSHOT</button>
-			{/if}
-			<details>
-				<summary>ADD NPC NETRUNNER</summary>
-				<label>NPC runner name <input maxlength="100" bind:value={npcName} /></label>
-				<label>NPC runner HP <input type="number" min="1" max="10000" bind:value={npcHp} /></label>
-				<label>NPC runner REF <input type="number" min="0" max="100" bind:value={npcRef} /></label>
-				<label
-					>NPC programs (up to 7 slots) <select multiple bind:value={npcPrograms}
-						>{#each PROGRAMS as p}<option value={p.id}>{p.name}</option>{/each}</select
-					></label
-				>
-				<button
-					type="button"
-					disabled={!npcName.trim() || !npcHp || npcPrograms.length > 7}
-					onclick={addNpc}>ADD NPC RUNNER</button
-				>
-			</details>
-			<label
-				>Security kind <select
-					bind:value={securityKind}
-					onchange={() => (securityId = securityKind === 'ice' ? 'hellhound' : 'imp')}
-					><option value="ice">Black ICE</option><option value="demon">Demon</option></select
-				></label
-			>
-			<label
-				>Security <select bind:value={securityId}
-					>{#each securityKind === 'ice' ? BLACK_ICE : DEMONS as d}<option value={d.id}
-							>{d.name}</option
-						>{/each}</select
-				></label
-			>
-			<button
-				type="button"
-				onclick={() =>
-					perform(() =>
-						addCombatants(
-							encounter,
-							[securityCombatant(crypto.randomUUID(), securityKind, securityId)],
-							() => rollDie(10)
-						)
-					)}>ADD NET SECURITY</button
-			>
-		</fieldset>
-	</details>
+	<NetSetup {encounter} {disabled} oncommand={perform} />
 	{#if participants.length}
 		<fieldset {disabled}>
 			<legend>NET ACTION</legend>
@@ -328,70 +216,7 @@
 			{/if}
 		</fieldset>
 	{/if}
-	{#each participants as c (c.id)}
-		<section aria-label={`NET state ${c.name}`}>
-			<h3>{c.name} · {c.net?.kind === 'runner' ? `${c.hp} HP` : `${c.hp} REZ`}</h3>
-			{#if c.net?.kind !== 'runner'}<SecurityReference
-					type={c.net?.kind === 'ice' ? 'black-ice' : 'demon'}
-					refId={c.net?.defId ?? null}
-				/>{/if}
-			{#if c.net?.kind === 'runner'}
-				{#if c.net.fire}<p class="error">ON FIRE · 2 HP at end of Turn until extinguished.</p>{/if}
-				{#if c.net.glue}<p class="error">
-						Movement / safe Jack Out blocked. GM clears at the stated effect expiry.
-					</p>
-					<button
-						type="button"
-						{disabled}
-						onclick={() =>
-							perform(() => ({
-								...encounter,
-								combatants: encounter.combatants.map((x) =>
-									x.id === c.id ? { ...x, net: { ...x.net!, glue: 0 } } : x
-								)
-							}))}>CLEAR HOLD</button
-					>{/if}
-				{#each c.net.conditions as condition, i}<p>
-						{condition}
-						<button
-							type="button"
-							{disabled}
-							onclick={() =>
-								perform(() => ({
-									...encounter,
-									combatants: encounter.combatants.map((x) =>
-										x.id === c.id
-											? {
-													...x,
-													net: {
-														...x.net!,
-														conditions: x.net!.conditions.filter((_, n) => n !== i)
-													}
-												}
-											: x
-									)
-								}))}>CLEAR CONDITION</button
-						>
-					</p>{/each}
-				<ul>
-					{#each c.net.programs as p (p.id)}
-						<li>
-							{PROGRAMS.find((d) => d.id === p.defId)?.name} · {p.id.slice(0, 6)} · {p.rez} REZ · {p.phase}
-							{#if PROGRAMS.find((d) => d.id === p.defId)?.category !== 'Attacker'}
-								<button
-									type="button"
-									disabled={disabled || !['inactive', 'active', 'derezzed'].includes(p.phase)}
-									onclick={() =>
-										perform(() => programState(encounter, c.id, p.id, p.phase === 'inactive'))}
-									>{p.phase === 'inactive' ? 'ACTIVATE' : 'DEACTIVATE'}</button
-								>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</section>
-	{/each}
+	<NetProgramStates {encounter} {disabled} oncommand={perform} />
 </Panel>
 
 <style>
@@ -412,8 +237,7 @@
 	}
 	button,
 	input,
-	select,
-	summary {
+	select {
 		min-height: 44px;
 	}
 	.actions {
@@ -426,15 +250,5 @@
 	}
 	.error {
 		color: var(--red-soft);
-	}
-	li,
-	section {
-		overflow-wrap: anywhere;
-	}
-	h3 {
-		color: var(--value);
-	}
-	ul {
-		padding-left: 1rem;
 	}
 </style>
