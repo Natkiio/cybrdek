@@ -39,6 +39,10 @@
 	import { wornSp } from '#lib/rulesets/red/armor.ts';
 	import { getCharacter, isInAccount, saveCharacter } from '#lib/storage/characters.ts';
 	import { characterSync } from '#lib/sync/characters.svelte.ts';
+	import NetRunPanel from '#lib/components/sheet/NetRunPanel.svelte';
+	import { netRunOf, positionOf, seesMeatspace, type NetRun } from '#lib/rulesets/red/netrun.ts';
+	import { campaign } from '#lib/campaigns/current.svelte.ts';
+	import { gm } from '#lib/supabase/gm.svelte.ts';
 
 	let character = $state<Character | undefined>(undefined);
 	let loaded = $state(false);
@@ -104,6 +108,8 @@
 	const gear = $derived(character ? gearOf(character.extra) : []);
 
 	const cyberware = $derived(character ? cyberwareOf(character.extra) : []);
+	const netRun = $derived(netRunOf(character?.extra ?? {}));
+	const saveRun = (next: NetRun) => update({ netRun: next });
 	// One-line summaries for the folded sections.
 	const injuryNames = $derived(injuries.map((i) => CRITICAL_INJURIES[i.location][i.roll]?.name ?? 'Injury').join(', '));
 	const armorSp = $derived(wornSp(gear));
@@ -355,10 +361,26 @@
 					<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
 				</Fold>
 				{#if role?.id === 'netrunner'}
+					<Fold
+						id="netrun"
+						title="IN THE NET"
+						summary={netRun.jackedIn ? `JACKED IN · ${positionOf(netRun)}` : 'not jacked in'}
+						alert={netRun.jackedIn}
+					>
+						<NetRunPanel
+							run={netRun}
+							seesMeat={seesMeatspace(gear, cyberware)}
+							campaignId={campaign.id}
+							signedIn={!!gm.userId}
+							onchange={saveRun}
+						/>
+					</Fold>
 					<Fold id="interface" title="INTERFACE" summary="rank {roleRank} · {netActions(roleRank)} NET actions">
 						<InterfacePanel
 							rank={roleRank}
 							boosters={loadedBoosters(deckItems(gear).map((g) => g.cyberdeck!))}
+							running={netRun.running}
+							onrunning={(running) => saveRun({ ...netRun, running })}
 							oncheck={(label, base) => check(label, base, 'skill')}
 							ondamage={rollPlainDamage}
 						/>
