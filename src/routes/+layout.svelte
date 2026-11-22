@@ -18,6 +18,7 @@
 		{ href: '/characters', label: 'CHARACTERS' },
 		{ href: '/dice', label: 'DICE' },
 		{ href: '/combat', label: 'COMBAT' },
+		{ href: '/net', label: 'NET' },
 		{ href: '/map', label: 'MAP' },
 		{ href: '/lore', label: 'LORE' },
 		{ href: '/rules', label: 'RULES' },
