@@ -1,27 +1,31 @@
 <script lang="ts">
 	// A Netrunner's Interface (#100, part 3): NET Actions per Turn and a button
 	// per ability. Each rolls Interface + 1d10 into the shared roll log. Boosters
-	// count only while running, which you mark here for this sitting.
-	import { SvelteSet } from 'svelte/reactivity';
+	// count only while running, which you mark here. It's saved with the run
+	// (see NetRunPanel), and jacking out clears it.
 	import { PROGRAMS } from '#lib/rulesets/red/programs.ts';
 	import { boosterBonus, INTERFACE_ABILITIES, netActions, type InterfaceAbility } from '#lib/rulesets/red/interface.ts';
 
 	let {
 		rank,
 		boosters,
+		running,
+		onrunning,
 		oncheck,
 		ondamage
 	}: {
 		rank: number;
 		boosters: string[]; // loaded Booster program ids
+		running: readonly string[]; // the ones marked running
+		onrunning: (next: string[]) => void;
 		oncheck: (label: string, base: number) => void;
 		ondamage: (label: string, count: number, sides: number) => void;
 	} = $props();
 
-	// Running isn't saved: it only lasts while you're in the NET.
-	const running = new SvelteSet<string>();
+	const runningSet = $derived(new Set(running));
 	const nameOf = (id: string) => PROGRAMS.find((p) => p.id === id)?.name ?? id;
-	const bonus = (a: InterfaceAbility) => boosterBonus(a, running);
+	const bonus = (a: InterfaceAbility) => boosterBonus(a, runningSet);
+	const toggle = (id: string, on: boolean) => onrunning(on ? [...running.filter((r) => r !== id), id] : running.filter((r) => r !== id));
 	const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
 	function use(a: InterfaceAbility) {
@@ -41,7 +45,7 @@
 		<legend>BOOSTERS RUNNING</legend>
 		{#each boosters as id (id)}
 			<label>
-				<input type="checkbox" checked={running.has(id)} onchange={(e) => (e.currentTarget.checked ? running.add(id) : running.delete(id))} />
+				<input type="checkbox" checked={runningSet.has(id)} onchange={(e) => toggle(id, e.currentTarget.checked)} />
 				{nameOf(id)}
 			</label>
 		{/each}

@@ -39,6 +39,10 @@
 	import { wornSp } from '#lib/rulesets/red/armor.ts';
 	import { getCharacter, isInAccount, saveCharacter } from '#lib/storage/characters.ts';
 	import { characterSync } from '#lib/sync/characters.svelte.ts';
+	import NetRunPanel from '#lib/components/sheet/NetRunPanel.svelte';
+	import { accessRange, netRunOf, positionOf, seesMeatspace, stillRunning, type NetRun } from '#lib/rulesets/red/netrun.ts';
+	import { campaign } from '#lib/campaigns/current.svelte.ts';
+	import { gm } from '#lib/supabase/gm.svelte.ts';
 
 	let character = $state<Character | undefined>(undefined);
 	let loaded = $state(false);
@@ -104,6 +108,14 @@
 	const gear = $derived(character ? gearOf(character.extra) : []);
 
 	const cyberware = $derived(character ? cyberwareOf(character.extra) : []);
+	const decks = $derived(deckItems(gear).map((g) => g.cyberdeck!));
+	const boosters = $derived(loadedBoosters(decks));
+	// A Booster unloaded since it was marked running no longer counts.
+	const netRun = $derived.by(() => {
+		const run = netRunOf(character?.extra ?? {});
+		return { ...run, running: stillRunning(run.running, boosters) };
+	});
+	const saveRun = (next: NetRun) => update({ netRun: next });
 	// One-line summaries for the folded sections.
 	const injuryNames = $derived(injuries.map((i) => CRITICAL_INJURIES[i.location][i.roll]?.name ?? 'Injury').join(', '));
 	const armorSp = $derived(wornSp(gear));
@@ -141,6 +153,12 @@
 	async function update(extra: Record<string, unknown>) {
 		if (!character) return;
 		character.extra = { ...character.extra, ...extra };
+		// Unloading or removing a Booster stops it running in the saved run too.
+		if ('gear' in extra && character.extra.netRun) {
+			const run = netRunOf(character.extra);
+			const loaded = loadedBoosters(deckItems(gearOf(character.extra)).map((g) => g.cyberdeck!));
+			character.extra.netRun = { ...run, running: stillRunning(run.running, loaded) };
+		}
 		await persist();
 	}
 
@@ -355,10 +373,27 @@
 					<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
 				</Fold>
 				{#if role?.id === 'netrunner'}
+					<Fold
+						id="netrun"
+						title="IN THE NET"
+						summary={netRun.jackedIn ? `JACKED IN · ${positionOf(netRun)}` : 'not jacked in'}
+						alert={netRun.jackedIn}
+					>
+						<NetRunPanel
+							run={netRun}
+							seesMeat={seesMeatspace(gear, cyberware)}
+							range={accessRange(decks)}
+							campaignId={campaign.id}
+							signedIn={!!gm.userId}
+							onchange={saveRun}
+						/>
+					</Fold>
 					<Fold id="interface" title="INTERFACE" summary="rank {roleRank} · {netActions(roleRank)} NET actions">
 						<InterfacePanel
 							rank={roleRank}
-							boosters={loadedBoosters(deckItems(gear).map((g) => g.cyberdeck!))}
+							{boosters}
+							running={netRun.running}
+							onrunning={(running) => saveRun({ ...netRun, running })}
 							oncheck={(label, base) => check(label, base, 'skill')}
 							ondamage={rollPlainDamage}
 						/>
