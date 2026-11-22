@@ -95,7 +95,7 @@ begin
      for e in select * from jsonb_array_elements(f->'entries') loop
       -- Explicit allowlist, including on revealed floors. GM notes never leave.
       entries := entries || jsonb_build_array(jsonb_build_object('id',e->'id','type',e->'type','name',e->'name',
-       'dv',e->'dv','refId',e->'refId','playerText',e->'playerText'));
+       'refId',e->'refId','playerText',e->'playerText'));
      end loop;
      floors := floors || jsonb_build_array(jsonb_build_object('id',f->'id','label',f->'label','entries',entries));
     end if;
