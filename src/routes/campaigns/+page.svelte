@@ -83,6 +83,7 @@
 <svelte:head><title>CAMPAIGNS // CYBRDEK</title></svelte:head>
 
 <h1>CAMPAIGNS</h1>
+<p><a href="/net">NET ARCHITECTURES →</a></p>
 
 {#if gm.userId && displayName !== null}
 	<Panel title="YOUR NAME AT THIS TABLE">
