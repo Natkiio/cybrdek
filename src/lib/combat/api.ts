@@ -5,7 +5,9 @@ import { parseEncounter, type Encounter } from './encounter.ts';
 
 export interface VisibleCombatant {
 	id: string; name: string; side: 'pc' | 'npc';
-	wound: 'unhurt' | 'lightly' | 'seriously' | 'mortally' | 'dead';
+	wound: 'unhurt' | 'lightly' | 'seriously' | 'mortally' | 'dead' | 'derezzed';
+	netKind?: 'runner' | 'ice' | 'demon';
+	netStatus?: { jackedIn: boolean; fire: boolean; glue: number; programs: { id: string; defId: string; rez: number; phase: string }[] };
 	// These fields exist only for the authenticated owner's PC. No raw gear/stats.
 	characterId?: string; hp?: number; maxHp?: number; sp?: { head: number; body: number };
 }

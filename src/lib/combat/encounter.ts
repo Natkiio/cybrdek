@@ -16,12 +16,14 @@ import { armoredStats, validArmorState, wornSp } from '#lib/rulesets/red/armor.t
 import { gearOf, type ArmorLocation, type GearItem } from '#lib/rulesets/red/gear.ts';
 import { derivedStats } from '#lib/rulesets/red/derived.ts';
 import { clampHp, takeArmoredDamage } from '#lib/rulesets/red/wounds.ts';
+import { validNetUnit, type NetUnit } from '#lib/rulesets/red/net-combat.ts';
 import type { Character } from '#lib/engine/types.ts';
 
 /** A d10 (or a fake one in tests). */
 export type Die = () => number;
 
 export interface Combatant {
+	net?: NetUnit;
 	id: string;
 	name: string;
 	/** Set for a character saved on this device; damage is written back to it. */
@@ -49,7 +51,12 @@ export interface Encounter {
 	combatants: Combatant[]; // kept in queue order once started
 }
 
-export const newEncounter = (): Encounter => ({ started: false, round: 0, currentId: null, combatants: [] });
+export const newEncounter = (): Encounter => ({
+	started: false,
+	round: 0,
+	currentId: null,
+	combatants: []
+});
 
 export interface NpcInput {
 	name: string;
@@ -62,7 +69,18 @@ export interface NpcInput {
 /** A quick NPC. Its SP becomes armor, so it ablates like anyone else's. */
 export function makeNpc(id: string, input: NpcInput): Combatant {
 	const armor = (location: ArmorLocation, sp: number): GearItem[] =>
-		sp > 0 ? [{ id: `${id}-${location}`, kind: 'armor', name: `${location} armor`, sp, location, penalty: 0 }] : [];
+		sp > 0
+			? [
+					{
+						id: `${id}-${location}`,
+						kind: 'armor',
+						name: `${location} armor`,
+						sp,
+						location,
+						penalty: 0
+					}
+				]
+			: [];
 	return {
 		id,
 		name: input.name.trim(),
@@ -80,7 +98,9 @@ export function makeNpc(id: string, input: NpcInput): Combatant {
 /** Several NPCs at once: "Ganger 1", "Ganger 2"… Each gets its own Turn. */
 export function makeNpcs(newId: () => string, input: NpcInput, count: number): Combatant[] {
 	if (count <= 1) return [makeNpc(newId(), input)];
-	return Array.from({ length: count }, (_, i) => makeNpc(newId(), { ...input, name: `${input.name.trim()} ${i + 1}` }));
+	return Array.from({ length: count }, (_, i) =>
+		makeNpc(newId(), { ...input, name: `${input.name.trim()} ${i + 1}` })
+	);
 }
 
 /** A saved character. REF includes the armor penalty, as it does on the sheet. */
@@ -145,12 +165,24 @@ function rollOff(tied: Combatant[], die: Die): Combatant[] {
 		const roll = die();
 		byRoll.set(roll, [...(byRoll.get(roll) ?? []), c]);
 	}
-	return [...byRoll.entries()].sort(([a], [b]) => b - a).flatMap(([, again]) => rollOff(again, die));
+	return [...byRoll.entries()]
+		.sort(([a], [b]) => b - a)
+		.flatMap(([, again]) => rollOff(again, die));
 }
 
 /** Roll for anyone without initiative, build the queue and start Round 1. */
 export function startEncounter(encounter: Encounter, die: Die): Encounter {
-	const rolled = encounter.combatants.map((c) => (c.initiative === null ? rollInitiative(c, die) : c));
+	const rolled = encounter.combatants.map((c) =>
+		c.initiative === null && c.net?.kind !== 'ice' && c.net?.kind !== 'demon'
+			? rollInitiative(c, die)
+			: { ...c }
+	);
+	let top = Math.max(0, ...rolled.map((c) => c.initiative ?? 0));
+	for (const c of rolled)
+		if (c.initiative === null && (c.net?.kind === 'ice' || c.net?.kind === 'demon')) {
+			c.initiative = ++top;
+			c.roll = null;
+		}
 	const combatants = orderQueue(rolled, die);
 	const first = combatants.find((c) => !c.out);
 	if (!first) return encounter;
@@ -158,9 +190,20 @@ export function startEncounter(encounter: Encounter, die: Die): Encounter {
 }
 
 /** Add someone. Mid-fight they roll in and take their place in the queue. */
-export function addCombatants(encounter: Encounter, added: readonly Combatant[], die: Die): Encounter {
+export function addCombatants(
+	encounter: Encounter,
+	added: readonly Combatant[],
+	die: Die
+): Encounter {
 	if (!encounter.started) return { ...encounter, combatants: [...encounter.combatants, ...added] };
-	const rolled = added.map((c) => (c.initiative === null ? rollInitiative(c, die) : c));
+	let top = Math.max(0, ...encounter.combatants.map((c) => c.initiative ?? 0));
+	const rolled = added.map((c) =>
+		c.net?.kind === 'ice' || c.net?.kind === 'demon'
+			? { ...c, initiative: ++top }
+			: c.initiative === null
+				? rollInitiative(c, die)
+				: c
+	);
 	return { ...encounter, combatants: orderQueue([...encounter.combatants, ...rolled], die) };
 }
 
@@ -190,7 +233,10 @@ export const nextTurn = (encounter: Encounter) => step(encounter, 1);
 export const previousTurn = (encounter: Encounter) => step(encounter, -1);
 
 function update(encounter: Encounter, id: string, change: (c: Combatant) => Combatant): Encounter {
-	return { ...encounter, combatants: encounter.combatants.map((c) => (c.id === id ? change(c) : c)) };
+	return {
+		...encounter,
+		combatants: encounter.combatants.map((c) => (c.id === id ? change(c) : c))
+	};
 }
 
 /** Roll for one combatant during setup. */
@@ -220,16 +266,24 @@ export function removeCombatant(encounter: Encounter, id: string): Encounter {
 	};
 }
 
-const setOutOnly = (encounter: Encounter, id: string) => update(encounter, id, (c) => ({ ...c, out: true }));
+const setOutOnly = (encounter: Encounter, id: string) =>
+	update(encounter, id, (c) => ({ ...c, out: true }));
 
 /** Where a hit lands. 'direct' skips armor, like the sheet's option. */
 export type HitLocation = ArmorLocation | 'direct';
 
 /** Armor first, then HP, using the same rules as the character sheet. */
-export function damage(encounter: Encounter, id: string, amount: number, location: HitLocation): Encounter {
+export function damage(
+	encounter: Encounter,
+	id: string,
+	amount: number,
+	location: HitLocation
+): Encounter {
 	return update(encounter, id, (c) => {
 		if (location === 'direct') return { ...c, hp: clampHp(c.hp - amount, c.maxHp) };
-		const result = takeArmoredDamage(c.hp, c.maxHp, c.gear, amount, location, { headMultiplier: c.headMultiplier });
+		const result = takeArmoredDamage(c.hp, c.maxHp, c.gear, amount, location, {
+			headMultiplier: c.headMultiplier
+		});
 		return { ...c, hp: result.hp, gear: result.gear };
 	});
 }
@@ -250,7 +304,12 @@ export function parseEncounter(value: unknown): Encounter {
 	const started = v.started === true && Number.isInteger(v.round) && (v.round as number) >= 1;
 	const current = v.combatants.some((c) => c.id === v.currentId) ? (v.currentId as string) : null;
 	if (started && !current) return { ...newEncounter(), combatants: v.combatants };
-	return { started, round: started ? (v.round as number) : 0, currentId: current, combatants: v.combatants };
+	return {
+		started,
+		round: started ? (v.round as number) : 0,
+		currentId: current,
+		combatants: v.combatants
+	};
 }
 
 function isCombatant(value: unknown): value is Combatant {
@@ -258,6 +317,7 @@ function isCombatant(value: unknown): value is Combatant {
 	const c = value as Record<string, unknown>;
 	const whole = (n: unknown) => typeof n === 'number' && Number.isFinite(n);
 	return (
+		(c.net === undefined || validNetUnit(c.net)) &&
 		typeof c.id === 'string' &&
 		typeof c.name === 'string' &&
 		whole(c.ref) &&

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { PROGRAMS } from '#lib/rulesets/red/programs.ts';
 	import Panel from '#lib/components/Panel.svelte';
 	import type { PlayerEncounter } from '#lib/combat/api.ts';
 	import { WOUND_LABELS } from '#lib/rulesets/red/wounds.ts';
@@ -15,10 +16,14 @@
 				<li class:current={c.id === encounter.currentId}>
 					<div><strong>{c.name}</strong> <span class="dim">{c.side === 'pc' ? 'PC' : 'NPC'}</span>
 						{#if c.id === encounter.currentId}<span class="turn">TURN</span>{/if}</div>
-					<div>{c.wound === 'dead' ? 'Dead' : WOUND_LABELS[c.wound]}</div>
+					<div>{c.wound === 'dead' ? 'Dead' : c.wound === 'derezzed' ? 'Derezzed' : c.netKind === 'ice' || c.netKind === 'demon' ? (c.wound === 'unhurt' ? 'Rezzed' : 'Damaged') : WOUND_LABELS[c.wound]}</div>
 					{#if c.hp !== undefined && c.sp}
 						<div class="own">YOUR CHARACTER · HP {c.hp}/{c.maxHp} · SP {c.sp.head}/{c.sp.body}</div>
 					{/if}
+					{#if c.netStatus}
+                        <div class="own">YOUR NET SNAPSHOT · {c.netStatus.jackedIn ? 'JACKED IN' : 'JACKED OUT'}{c.netStatus.fire ? ' · ON FIRE' : ''}{c.netStatus.glue ? ' · MOVEMENT / SAFE EXIT BLOCKED' : ''}</div>
+                        <ul>{#each c.netStatus.programs as p (p.id)}<li>{PROGRAMS.find(d => d.id === p.defId)?.name ?? p.defId} · {p.rez} REZ · {p.phase}</li>{/each}</ul>
+                    {/if}
 				</li>
 			{/each}
 		</ol>
