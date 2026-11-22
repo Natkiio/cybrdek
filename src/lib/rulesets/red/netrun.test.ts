@@ -9,6 +9,8 @@ import {
 	netRunOf,
 	NOT_JACKED_IN,
 	positionOf,
+	accessRange,
+	stillRunning,
 	seesMeatspace
 } from './netrun.ts';
 import type { GearItem } from './gear.ts';
@@ -73,5 +75,21 @@ describe('Meatspace (Core pp. 197–198)', () => {
 		expect(meatspaceRisks(false)[0]).toMatch(/Unconscious/);
 		expect(meatspaceRisks(true).some((r) => /Unconscious/.test(r))).toBe(false);
 		expect(meatspaceRisks(true).some((r) => /6 m\/yds/.test(r))).toBe(true);
+	});
+});
+
+describe('range and loaded Boosters', () => {
+	const deck = (hardware: string[]) => ({ quality: 'standard' as const, programs: [], hardware: hardware.map((defId, i) => ({ id: `h${i}`, defId })) });
+
+	it('a Range Upgrade stretches 6 m/yds to 8 (Core p. 208)', () => {
+		expect(accessRange([])).toBe('6 m/yds');
+		expect(accessRange([deck([])])).toBe('6 m/yds');
+		expect(accessRange([deck(['range-upgrade'])])).toBe('8 m/yds');
+		expect(accessRange([deck(['range-upgrade']), deck([])])).toBe('6 m/yds (8 with your Range Upgrade deck)');
+		expect(meatspaceRisks(true, '8 m/yds').some((r) => /within 8 m\/yds/.test(r))).toBe(true);
+	});
+
+	it('only loaded Boosters stay running', () => {
+		expect(stillRunning(['worm', 'eraser'], ['eraser', 'see-ya'])).toEqual(['eraser']);
 	});
 });

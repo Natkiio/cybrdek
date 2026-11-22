@@ -21,12 +21,14 @@
 	let {
 		run,
 		seesMeat,
+		range,
 		campaignId,
 		signedIn,
 		onchange
 	}: {
 		run: NetRun;
 		seesMeat: boolean;
+		range: string; // e.g. '6 m/yds', see accessRange
 		campaignId: string;
 		signedIn: boolean;
 		onchange: (next: NetRun) => void;
@@ -106,7 +108,7 @@
 <p class="dim small">
 	{run.jackedIn
 		? 'Jack Out is a NET Action. LEFT RANGE is for when you moved away or were dragged off first.'
-		: 'Jack In is a NET Action, within 6 m/yds of an access point (Core p. 198).'}
+		: `Jack In is a NET Action, within ${range} of an access point (Core p. 198).`}
 </p>
 
 {#if notice}<p class="notice" role="status">{notice}</p>{/if}
@@ -152,7 +154,7 @@
 	<p class="dim small">Moving between floors is free, unless something like a Password blocks the way (Core p. 198).</p>
 
 	<ul class="risks" aria-label="Meatspace risks">
-		{#each meatspaceRisks(seesMeat) as risk (risk)}<li>{risk}</li>{/each}
+		{#each meatspaceRisks(seesMeat, range) as risk (risk)}<li>{risk}</li>{/each}
 	</ul>
 {/if}
 

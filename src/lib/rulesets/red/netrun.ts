@@ -3,6 +3,8 @@
 // character so it survives a reload and works offline. Core pp. 196–198.
 import type { GearItem } from './gear.ts';
 import type { InstalledCyberware } from './cyberware.ts';
+import type { Cyberdeck } from './cyberdeck.ts';
+import { HARDWARE } from './programs.ts';
 
 export interface NetRun {
 	jackedIn: boolean;
@@ -89,11 +91,30 @@ export function seesMeatspace(gear: readonly GearItem[], cyberware: readonly Ins
 	return gear.some((g) => /virtuality/i.test(g.name)) || cyberware.some((c) => c.defId === 'virtuality');
 }
 
+const BASE_RANGE = 6; // m/yds from an access point (Core p. 198)
+const UPGRADED_RANGE = HARDWARE.find((h) => h.id === 'range-upgrade')!.numbers['Access-point range (m)']; // Core p. 208
+
+/**
+ * How far from the access point you can be. A Range Upgrade stretches it
+ * (Core p. 208); with several decks and only some upgraded, say both, since
+ * the sheet doesn't know which deck is in use.
+ */
+export function accessRange(decks: readonly Cyberdeck[]): string {
+	const upgraded = decks.filter((d) => d.hardware.some((h) => h.defId === 'range-upgrade')).length;
+	if (upgraded && upgraded === decks.length) return `${UPGRADED_RANGE} m/yds`;
+	if (upgraded) return `${BASE_RANGE} m/yds (${UPGRADED_RANGE} with your Range Upgrade deck)`;
+	return `${BASE_RANGE} m/yds`;
+}
+
+/** Only Boosters still loaded can be running, whatever was saved. */
+export const stillRunning = (running: readonly string[], loaded: readonly string[]): string[] =>
+	running.filter((id) => loaded.includes(id));
+
 /** What to keep in mind in Meatspace while jacked in. Our own short wording. */
-export function meatspaceRisks(seesMeat: boolean): string[] {
+export function meatspaceRisks(seesMeat: boolean, range = `${BASE_RANGE} m/yds`): string[] {
 	return [
 		...(seesMeat ? [] : ['No Virtuality: you count as Unconscious in Meatspace until you Jack Out (Core p. 197).']),
-		'Stay within 6 m/yds of the access point, with no wall in between (Core p. 198).',
+		`Stay within ${range} of the access point, with no wall in between (Core pp. 198, 208).`,
 		'Leaving that range jacks you out unsafely: every enemy Black ICE you met and didn’t Derez gets you first (Core p. 198).',
 		'Each Turn: one Meat Action or your NET Actions, plus your Move Action (Core p. 197).'
 	];

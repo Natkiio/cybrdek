@@ -115,3 +115,61 @@ test('signed in: run a revealed campaign Architecture floor by floor', async ({ 
 	await page.getByRole('button', { name: 'JACK OUT' }).click();
 	await expect(page.locator('.notice')).toContainText('resets');
 });
+
+test('a Booster unloaded after it was marked running stops counting, even after a reload', async ({ page }) => {
+	await page.context().route(/supabase\.co/, (route) => route.abort());
+	await seed(page);
+	await openFold(page, 'INTERFACE');
+	await page.getByRole('group', { name: 'BOOSTERS RUNNING' }).getByLabel('Worm').check();
+	await expect(page.getByRole('button', { name: 'Roll Backdoor' })).toContainText('+6');
+	// Unload Worm straight in the saved character, as the CYBERDECK panel does.
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve, reject) => {
+				const req = indexedDB.open('cybrdek');
+				req.onsuccess = () => {
+					const tx = req.result.transaction('characters', 'readwrite');
+					const store = tx.objectStore('characters');
+					const get = store.get('runner');
+					get.onsuccess = () => {
+						const c = get.result;
+						c.extra.gear[0].cyberdeck.programs[0].loaded = false;
+						store.put(c);
+					};
+					tx.oncomplete = () => { req.result.close(); resolve(); };
+					tx.onerror = () => reject(tx.error);
+				};
+			})
+	);
+	await page.reload();
+	await expect(page.getByRole('group', { name: 'BOOSTERS RUNNING' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Roll Backdoor' })).toContainText('+4');
+});
+
+test('a deck with a Range Upgrade gives 8 m/yds of range', async ({ page }) => {
+	await page.context().route(/supabase\.co/, (route) => route.abort());
+	await seed(page);
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve, reject) => {
+				const req = indexedDB.open('cybrdek');
+				req.onsuccess = () => {
+					const tx = req.result.transaction('characters', 'readwrite');
+					const store = tx.objectStore('characters');
+					const get = store.get('runner');
+					get.onsuccess = () => {
+						const c = get.result;
+						c.extra.gear[0].cyberdeck.hardware = [{ id: 'h1', defId: 'range-upgrade' }];
+						store.put(c);
+					};
+					tx.oncomplete = () => { req.result.close(); resolve(); };
+					tx.onerror = () => reject(tx.error);
+				};
+			})
+	);
+	await page.reload();
+	await openFold(page, 'IN THE NET');
+	await expect(page.getByText(/within 8 m\/yds of an access point/)).toBeVisible();
+	await page.getByRole('button', { name: 'JACK IN' }).click();
+	await expect(page.getByRole('list', { name: 'Meatspace risks' })).toContainText('Stay within 8 m/yds');
+});
