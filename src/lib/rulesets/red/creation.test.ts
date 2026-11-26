@@ -15,6 +15,7 @@ import { slotsOf } from './cyberdeck.ts';
 import { loadedBoosters } from './interface.ts';
 import { seesMeatspace } from './netrun.ts';
 import { defaultPicks } from './starter-kits.ts';
+import { cyberwareDef, cyberwareOf, effectiveEmp, installProblem } from './cyberware.ts';
 
 /** Default STATs (60 points) plus 2 more, so exactly 62 are spent. */
 function validStats() {
@@ -104,8 +105,23 @@ describe('the Netrunner starter kit (Core p. 103)', () => {
 		expect(loadedBoosters([gear[0].cyberdeck!])).toEqual(['eraser']);
 	});
 
+	it('installs the Neural Link and Interface Plugs a deck needs, with the Streetrat Humanity Loss (Core pp. 117, 196)', () => {
+		const c = buildCharacter({ ...input, netrunnerKit: defaultPicks() }, red, 'n');
+		const cyberware = cyberwareOf(c.extra);
+		expect(cyberware.map((i) => i.defId)).toEqual(['neural-link', 'interface-plugs', 'shift-tacts']);
+		const [link, plugs] = cyberware;
+		expect(plugs.hostId).toBe(link.id);
+		expect(cyberware.reduce((n, i) => n + i.hl, 0)).toBe(14);
+		expect(c.extra.humanity).toBe(c.stats.EMP * 10 - 14); // EMP 6: 60 → 46
+		expect(effectiveEmp(c.stats.EMP, c.extra.humanity as number)).toBe(4); // −2 EMP, as p. 117 says
+		// Each piece is a valid install on top of the ones before it.
+		cyberware.forEach((piece, i) =>
+			expect(installProblem(cyberware.slice(0, i), cyberwareDef(piece.defId)!, piece.hostId ? [piece.hostId] : [])).toBeNull()
+		);
+	});
+
 	it('is optional, only for Netrunners, and checks the picks', () => {
-		expect(buildCharacter({ ...input, netrunnerKit: null }, red, 'n').extra.gear).toBeUndefined();
+		expect(buildCharacter({ ...input, netrunnerKit: null }, red, 'n').extra).toEqual({ role: 'netrunner', roleRank: 4, method: 'complete-package' });
 		expect(buildCharacter({ ...input, role: 'solo', netrunnerKit: defaultPicks() }, red, 's').extra.gear).toBeUndefined();
 		expect(validateCreation({ ...input, netrunnerKit: ['worm', 'sword', 'worm'] })).toEqual(['Pick one program from each starter pair.']);
 		expect(validateCreation({ ...input, netrunnerKit: ['see-ya'] })).toHaveLength(1);

@@ -21,7 +21,7 @@
 		validateStats
 	} from '#lib/rulesets/red/creation.ts';
 	import { derivedStats } from '#lib/rulesets/red/derived.ts';
-	import { defaultPicks, NETRUNNER_KIT, programName } from '#lib/rulesets/red/starter-kits.ts';
+	import { defaultPicks, kitHumanityLoss, NETRUNNER_KIT, netrunnerKitCyberware, programName } from '#lib/rulesets/red/starter-kits.ts';
 	import { saveCharacter } from '#lib/storage/characters.ts';
 
 	const ruleset = red;
@@ -36,6 +36,7 @@
 	// A Netrunner's starter kit (Core p. 103): on by default, one pick per pair.
 	let takeKit = $state(true);
 	let kitPicks = $state(defaultPicks());
+	const KIT_HL = kitHumanityLoss(netrunnerKitCyberware());
 	let saving = $state(false);
 	let saveError = $state('');
 
@@ -146,8 +147,9 @@
 			</label>
 			{#if takeKit}
 				<p class="dim">
-					A Standard Cyberdeck (7 slots) with {NETRUNNER_KIT.programs.map(programName).join(' and ')}, plus Virtuality
-					Goggles. Pick one program from each pair:
+					A Standard Cyberdeck (7 slots) with {NETRUNNER_KIT.programs.map(programName).join(' and ')}, Virtuality Goggles,
+					and the cyberware a deck needs: Neural Link, Interface Plugs and Shift Tacts (Core p. {NETRUNNER_KIT.cyberwarePage},
+					{KIT_HL} Humanity Loss). Pick one program from each pair:
 				</p>
 				{#each NETRUNNER_KIT.choices as pair, i (i)}
 					<fieldset class="kit-pick">
@@ -158,7 +160,7 @@
 					</fieldset>
 				{/each}
 				<p class="dim small">
-					Complete Package characters normally buy gear with 2,550eb (Core p. 86). Take this kit instead, or untick it and
+					Complete Package characters normally buy gear and cyberware with 2,550eb (Core p. 104). Take this kit instead, or untick it and
 					add a deck on your sheet.
 				</p>
 			{/if}
@@ -233,7 +235,10 @@
 			{#if role === 'netrunner' && takeKit}
 				<div>
 					<dt>STARTER DECK</dt>
-					<dd>Standard Cyberdeck: {[...NETRUNNER_KIT.programs, ...kitPicks].map(programName).join(' · ')} · Virtuality Goggles</dd>
+					<dd>
+						Standard Cyberdeck: {[...NETRUNNER_KIT.programs, ...kitPicks].map(programName).join(' · ')} · Virtuality Goggles
+						· Neural Link with Interface Plugs · Shift Tacts (Humanity {sheet.humanity - KIT_HL})
+					</dd>
 				</div>
 			{/if}
 			<div>

@@ -21,10 +21,13 @@ test('creating a Netrunner with the starter kit gives a working deck', async ({ 
 	await page.getByRole('button', { name: 'Raise INT' }).click();
 	await page.getByRole('button', { name: 'NEXT →' }).click();
 	await page.getByRole('button', { name: 'NEXT →' }).click();
-	await expect(page.getByText(/Standard Cyberdeck: Armor · Sword · Eraser · Vrizzbolt · Worm · Virtuality Goggles/)).toBeVisible();
+	const kit = page.locator('dd', { hasText: 'Standard Cyberdeck' });
+	await expect(kit).toContainText('Armor · Sword · Eraser · Vrizzbolt · Worm · Virtuality Goggles');
+	await expect(kit).toContainText('Neural Link with Interface Plugs · Shift Tacts (Humanity 46)');
 	await page.getByRole('button', { name: 'CREATE CHARACTER' }).click();
 
 	await expect(page.getByRole('heading', { name: 'Kit Runner', exact: true, level: 1 })).toBeVisible();
+	await expect(page.locator('details.fold summary', { hasText: 'CYBERWARE & HUMANITY' })).toContainText('3 installed · 46/');
 	await openFold(page, 'INTERFACE');
 	await expect(page.getByRole('group', { name: 'BOOSTERS RUNNING' }).getByLabel('Eraser')).toBeVisible();
 	await openFold(page, 'IN THE NET');

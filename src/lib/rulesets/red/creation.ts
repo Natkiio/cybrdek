@@ -11,7 +11,7 @@ import type { Character, Ruleset } from '#lib/engine/types.ts';
 import { roles } from './roles.ts';
 import { skills } from './skills.ts';
 import { stats } from './stats.ts';
-import { netrunnerKit, validatePicks, type KitPicks } from './starter-kits.ts';
+import { kitHumanityLoss, netrunnerKit, netrunnerKitCyberware, validatePicks, type KitPicks } from './starter-kits.ts';
 
 export const STAT_POINTS = 62;
 export const SKILL_POINTS = 86;
@@ -106,6 +106,8 @@ export function validateCreation(input: CreationInput): string[] {
 export function buildCharacter(input: CreationInput, ruleset: Ruleset, id: string): Character {
 	const problems = validateCreation(input);
 	if (problems.length) throw new Error(`Invalid character: ${problems.join(' ')}`);
+	const kit = input.role === 'netrunner' && input.netrunnerKit ? input.netrunnerKit : null;
+	const cyberware = kit ? netrunnerKitCyberware() : [];
 	return {
 		id,
 		name: input.handle.trim(),
@@ -117,7 +119,9 @@ export function buildCharacter(input: CreationInput, ruleset: Ruleset, id: strin
 			role: input.role,
 			roleRank: STARTING_ROLE_RANK,
 			method: 'complete-package',
-			...(input.role === 'netrunner' && input.netrunnerKit ? { gear: netrunnerKit(input.netrunnerKit) } : {})
+			...(kit
+				? { gear: netrunnerKit(kit), cyberware, humanity: input.stats.EMP * 10 - kitHumanityLoss(cyberware) }
+				: {})
 		}
 	};
 }
