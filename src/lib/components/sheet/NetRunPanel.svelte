@@ -112,6 +112,7 @@
 </p>
 
 {#if notice}<p class="notice" role="status">{notice}</p>{/if}
+<p class="small"><a href="/rules/net">NET RULES →</a></p>
 
 <label class="arch">
 	<span>ARCHITECTURE</span>
