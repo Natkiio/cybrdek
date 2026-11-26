@@ -66,5 +66,8 @@ test('a Netrunner rolls Interface abilities; a running Booster adds its bonus', 
 
 test('other Roles have no Interface section', async ({ page }) => {
 	await seed(page, 'solo', 4);
-	await expect(page.locator('details.fold summary .title', { hasText: /^INTERFACE$/ })).toHaveCount(0);
+	const bar = page.getByRole('navigation', { name: 'Sheet sections' });
+	await expect(bar.getByRole('button', { name: /COMBAT$/ })).toBeVisible();
+	await expect(bar.getByRole('button', { name: /NET$/ })).toHaveCount(0);
+	await expect(page.getByText('INTERFACE', { exact: true })).toHaveCount(0);
 });

@@ -28,7 +28,11 @@ test('creating a Netrunner with the starter kit gives a working deck', async ({ 
 	await page.getByRole('button', { name: 'CREATE CHARACTER' }).click();
 
 	await expect(page.getByRole('heading', { name: 'Kit Runner', exact: true, level: 1 })).toBeVisible();
-	await expect(page.locator('details.fold summary', { hasText: 'CYBERWARE & HUMANITY' })).toContainText('3 installed · 46/');
+	await expect(page.getByRole('group', { name: 'Status' }).getByRole('button', { name: /HUM/ })).toContainText('46');
+	await openFold(page, 'CYBERWARE & HUMANITY');
+	const cyber = page.locator('section.panel').filter({ has: page.getByText('CYBERWARE & HUMANITY', { exact: true }) });
+	await expect(cyber).toContainText('Neural Link');
+	await expect(cyber).toContainText('Interface Plugs');
 	await openFold(page, 'INTERFACE');
 	await expect(page.getByRole('group', { name: 'BOOSTERS RUNNING' }).getByLabel('Eraser')).toBeVisible();
 	await openFold(page, 'IN THE NET');
@@ -54,5 +58,7 @@ test('a Netrunner can skip the kit and start with no gear', async ({ page }) => 
 	await page.getByRole('button', { name: 'CREATE CHARACTER' }).click();
 	await expect(page.getByRole('heading', { name: 'Bare Runner', exact: true, level: 1 })).toBeVisible();
 	await openFold(page, 'CYBERDECK');
-	await expect(page.locator('details.fold summary', { hasText: 'CYBERDECK' })).toContainText('none');
+	const deck = page.locator('section.panel').filter({ has: page.getByText('CYBERDECK', { exact: true }) });
+	await expect(deck.getByRole('button', { name: '+ CYBERDECK', exact: true })).toBeVisible();
+	await expect(deck.getByLabel('Deck quality')).toHaveCount(0);
 });

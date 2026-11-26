@@ -56,8 +56,6 @@ async function open(page: Page) {
 	await expect(page.getByRole('heading', { name: 'Vex', level: 1 })).toBeVisible();
 }
 
-const fold = (page: Page, title: string) =>
-	page.locator('details.fold').filter({ has: page.locator('summary .title', { hasText: new RegExp(`^${title}$`) }) });
 const section = (page: Page, title: string) => page.locator('section.panel').filter({ has: page.getByText(title, { exact: true }) });
 
 test('up front: HP, stats, weapons and skills; the damage form waits behind a button', async ({ page }) => {
@@ -75,60 +73,98 @@ test('up front: HP, stats, weapons and skills; the damage form waits behind a bu
 	await expect(weapons.getByRole('button', { name: '+ ARMOR' })).toHaveCount(0);
 });
 
-test('the rest is folded, with a one-line summary, and each fold remembers being open', async ({ page }) => {
+const bar = (page: Page) => page.getByRole('navigation', { name: 'Sheet sections' });
+const status = (page: Page) => page.getByRole('group', { name: 'Status' });
+
+test('status chips sum up the sheet; KIT holds the gear; the section survives a reload', async ({ page }) => {
 	await open(page);
-	const injuries = fold(page, 'CRITICAL INJURIES');
-	await expect(injuries.locator('summary')).toContainText('1 · Broken Ribs');
-	await expect(fold(page, 'ARMOR').locator('summary')).toContainText('SP head 11 · body 11');
-	await expect(injuries).not.toHaveAttribute('open', '');
+	await expect(bar(page).getByRole('button', { name: /COMBAT$/ })).toHaveAttribute('aria-current', 'page');
+	await expect(status(page).getByRole('button', { name: /INJ/ })).toContainText('1');
+	await expect(status(page).getByRole('button', { name: /SP/ })).toContainText('11/11');
+	await expect(section(page, 'CRITICAL INJURIES')).toContainText('Broken Ribs');
 
 	await openFold(page, 'GEAR');
 	const gear = section(page, 'GEAR');
 	await expect(gear).toContainText('Light Armorjack');
 	await expect(gear).toContainText('Agent');
 	await expect(gear).not.toContainText('Very Heavy Pistol');
+	await expect(section(page, 'HIT POINTS')).toHaveCount(0); // one section at a time
+	await expect(page).toHaveURL(/#kit$/);
 
 	await page.reload();
-	await expect(fold(page, 'GEAR')).toHaveAttribute('open', '');
-	await expect(injuries).not.toHaveAttribute('open', '');
+	await expect(bar(page).getByRole('button', { name: /KIT$/ })).toHaveAttribute('aria-current', 'page');
+	await expect(section(page, 'GEAR')).toContainText('Light Armorjack');
+
+	// A chip jumps to its section.
+	await status(page).getByRole('button', { name: /HP/ }).click();
+	await expect(section(page, 'HIT POINTS')).toBeVisible();
 });
 
-test('on a laptop the sheet fills the screen in three columns', async ({ page }) => {
+test('on a laptop: a rail on the left, the section in the middle, STATS and ROLL LOG on the right', async ({ page }) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await open(page);
+	const rail = (await bar(page).boundingBox())!;
 	const hp = (await section(page, 'HIT POINTS').boundingBox())!;
-	const skills = (await section(page, 'SKILLS').boundingBox())!;
+	const stats = (await section(page, 'STATS').boundingBox())!;
 	const rolls = (await section(page, 'ROLL LOG').boundingBox())!;
-	expect(hp.x).toBeLessThan(skills.x);
-	expect(skills.x).toBeLessThan(rolls.x);
-	expect(Math.abs(hp.y - rolls.y)).toBeLessThan(40); // side by side, not stacked
+	expect(rail.x).toBeLessThan(hp.x);
+	expect(hp.x).toBeLessThan(stats.x);
+	expect(Math.abs(hp.y - stats.y)).toBeLessThan(40); // side by side, not stacked
+	expect(rolls.y).toBeGreaterThan(stats.y); // the log sits under STATS
 	expect(rolls.x + rolls.width).toBeGreaterThan(1300); // uses the width, not a 960 px column
+	// STATS stay on the right whatever the section; SKILLS doesn't repeat them.
+	await openFold(page, 'SKILLS');
+	await expect(section(page, 'STATS')).toHaveCount(1);
+	// Scrolled down a long section, the rail stays below the site header, fully clickable.
+	await page.getByLabel('all skills').check();
+	await page.mouse.wheel(0, 1200);
+	await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(600);
+	const header = (await page.locator('header.bar').boundingBox())!;
+	const combat = (await bar(page).getByRole('button', { name: /COMBAT$/ }).boundingBox())!;
+	expect(combat.y).toBeGreaterThanOrEqual(header.y + header.height);
+	await bar(page).getByRole('button', { name: /COMBAT$/ }).click();
+	await expect(section(page, 'HIT POINTS')).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test('on a phone it is one column with no sideways scroll', async ({ page }) => {
+test('on a phone the app bar is pinned to the bottom, with no sideways scroll', async ({ page }) => {
 	await open(page);
-	const hp = (await section(page, 'HIT POINTS').boundingBox())!;
-	const skills = (await section(page, 'SKILLS').boundingBox())!;
-	expect(skills.y).toBeGreaterThan(hp.y);
+	const box = (await bar(page).boundingBox())!;
+	const height = page.viewportSize()!.height;
+	expect(Math.round(box.y + box.height)).toBe(height);
+	await page.mouse.wheel(0, 2000);
+	expect(Math.round((await bar(page).boundingBox())!.y + box.height)).toBe(height); // still there after scrolling
+	await expect(section(page, 'SKILLS')).toHaveCount(0);
+	await openFold(page, 'SKILLS');
+	await expect(section(page, 'STATS')).toBeVisible(); // on a phone STATS live in SKILLS
+	await expect(section(page, 'SKILLS')).toBeVisible();
+	await openFold(page, 'ROLL LOG');
+	await expect(section(page, 'ROLL LOG')).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test('every critical damage roll reopens the injuries fold, even two in a row', async ({ page }) => {
+test('keyboard: Tab moves through the sections with a visible focus ring', async ({ page }) => {
+	await open(page);
+	const combat = bar(page).getByRole('button', { name: /COMBAT$/ });
+	const skills = bar(page).getByRole('button', { name: /SKILLS$/ });
+	await combat.focus();
+	await page.keyboard.press('Tab');
+	await expect(skills).toBeFocused();
+	expect(await skills.evaluate((b) => getComputedStyle(b).outlineStyle)).toBe('dashed');
+	await page.keyboard.press('Enter');
+	await expect(skills).toHaveAttribute('aria-current', 'page');
+	await expect(section(page, 'SKILLS')).toBeVisible();
+});
+
+test('a critical damage roll offers the injury roll in COMBAT, every time', async ({ page }) => {
 	await page.addInitScript(() => {
 		Math.random = () => 0.99; // every die rolls its highest: 4d6 shows four 6s, a critical
 	});
 	await open(page);
-	const injuries = fold(page, 'CRITICAL INJURIES');
 	const damage = section(page, 'WEAPONS').getByRole('button', { name: /^DMG/ });
-
 	await damage.click();
-	await expect(injuries).toHaveAttribute('open', '');
 	await expect(page.getByRole('button', { name: 'ROLL INJURY FOR TARGET' })).toBeVisible();
-
-	await injuries.locator('summary').click(); // the player closes it
-	await expect(injuries).not.toHaveAttribute('open', '');
 	await damage.click(); // another crit straight away
-	await expect(injuries).toHaveAttribute('open', '');
 	await expect(page.getByRole('button', { name: 'ROLL INJURY FOR TARGET' })).toBeVisible();
+	await expect(bar(page).getByRole('button', { name: /COMBAT$/ })).toHaveAttribute('aria-current', 'page');
 });
