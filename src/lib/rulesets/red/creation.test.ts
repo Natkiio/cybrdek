@@ -10,6 +10,11 @@ import {
 	validateStats
 } from './creation.ts';
 import { red } from './index.ts';
+import type { GearItem } from './gear.ts';
+import { slotsOf } from './cyberdeck.ts';
+import { loadedBoosters } from './interface.ts';
+import { seesMeatspace } from './netrun.ts';
+import { defaultPicks } from './starter-kits.ts';
 
 /** Default STATs (60 points) plus 2 more, so exactly 62 are spent. */
 function validStats() {
@@ -80,5 +85,29 @@ describe('buildCharacter', () => {
 	it('refuses to build an invalid character', () => {
 		expect(validateCreation({ ...input, handle: '', role: 'nope' })).toHaveLength(2);
 		expect(() => buildCharacter({ ...input, stats: defaultStats() }, red, 'x')).toThrow();
+	});
+});
+
+describe('the Netrunner starter kit (Core p. 103)', () => {
+	const input = { handle: 'Alt', role: 'netrunner', stats: validStats(), skills: defaultSkills() };
+	const programs = (c: ReturnType<typeof buildCharacter>) =>
+		(c.extra.gear as GearItem[]).find((g) => g.cyberdeck)!.cyberdeck!.programs.map((p) => [p.defId, p.loaded]);
+
+	it('gives a loaded Standard deck and Virtuality Goggles', () => {
+		const c = buildCharacter({ ...input, netrunnerKit: ['eraser', 'vrizzbolt', 'sword'] }, red, 'n');
+		const gear = c.extra.gear as GearItem[];
+		expect(gear.map((g) => g.name)).toEqual(['Cyberdeck', 'Virtuality Goggles']);
+		expect(gear[0].cyberdeck!.quality).toBe('standard');
+		expect(programs(c)).toEqual([['armor', true], ['sword', true], ['eraser', true], ['vrizzbolt', true], ['sword', true]]);
+		expect(slotsOf(gear[0], gear, []).free).toBe(2); // 5 of 7 slots used
+		expect(seesMeatspace(gear, [])).toBe(true);
+		expect(loadedBoosters([gear[0].cyberdeck!])).toEqual(['eraser']);
+	});
+
+	it('is optional, only for Netrunners, and checks the picks', () => {
+		expect(buildCharacter({ ...input, netrunnerKit: null }, red, 'n').extra.gear).toBeUndefined();
+		expect(buildCharacter({ ...input, role: 'solo', netrunnerKit: defaultPicks() }, red, 's').extra.gear).toBeUndefined();
+		expect(validateCreation({ ...input, netrunnerKit: ['worm', 'sword', 'worm'] })).toEqual(['Pick one program from each starter pair.']);
+		expect(validateCreation({ ...input, netrunnerKit: ['see-ya'] })).toHaveLength(1);
 	});
 });

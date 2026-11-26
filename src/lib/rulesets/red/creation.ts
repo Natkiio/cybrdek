@@ -11,6 +11,7 @@ import type { Character, Ruleset } from '#lib/engine/types.ts';
 import { roles } from './roles.ts';
 import { skills } from './skills.ts';
 import { stats } from './stats.ts';
+import { netrunnerKit, validatePicks, type KitPicks } from './starter-kits.ts';
 
 export const STAT_POINTS = 62;
 export const SKILL_POINTS = 86;
@@ -81,6 +82,13 @@ export interface CreationInput {
 	role: string;
 	stats: Record<string, number>;
 	skills: Record<string, number>;
+	/** A Netrunner's starter kit picks (Core p. 103), or null to start with no gear. */
+	netrunnerKit?: KitPicks | null;
+}
+
+/** Problems with the starter kit, if a Netrunner takes one. */
+export function validateKit(input: Pick<CreationInput, 'role' | 'netrunnerKit'>): string[] {
+	return input.role === 'netrunner' && input.netrunnerKit ? validatePicks(input.netrunnerKit) : [];
 }
 
 /** Every problem across every step. */
@@ -88,6 +96,7 @@ export function validateCreation(input: CreationInput): string[] {
 	return [
 		...validateHandle(input.handle),
 		...validateRole(input.role),
+		...validateKit(input),
 		...validateStats(input.stats),
 		...validateSkills(input.skills)
 	];
@@ -104,6 +113,11 @@ export function buildCharacter(input: CreationInput, ruleset: Ruleset, id: strin
 		stats: { ...input.stats },
 		// Only keep skills the character actually has.
 		skills: Object.fromEntries(Object.entries(input.skills).filter(([, level]) => level > 0)),
-		extra: { role: input.role, roleRank: STARTING_ROLE_RANK, method: 'complete-package' }
+		extra: {
+			role: input.role,
+			roleRank: STARTING_ROLE_RANK,
+			method: 'complete-package',
+			...(input.role === 'netrunner' && input.netrunnerKit ? { gear: netrunnerKit(input.netrunnerKit) } : {})
+		}
 	};
 }
