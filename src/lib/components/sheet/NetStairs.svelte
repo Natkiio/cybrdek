@@ -20,12 +20,14 @@
 		steps,
 		current,
 		deeper,
+		canAct = true,
 		onmove,
 		onability
 	}: {
 		steps: Step[];
 		current: number; // index into steps
 		deeper: boolean; // draw a dark step below the last one
+		canAct?: boolean; // false when no NET Actions are left this Turn
 		onmove: (index: number) => void;
 		onability: (abilityId: string) => void;
 	} = $props();
@@ -88,7 +90,7 @@
 					{#if abilitiesHere.length}
 						<div class="abilities">
 							{#each abilitiesHere as id (id)}
-								<button type="button" class="ability" onclick={() => onability(id)} aria-label="Roll {abilityName(id)} here">
+								<button type="button" class="ability" disabled={!canAct} onclick={() => onability(id)} aria-label="Roll {abilityName(id)} here">
 									ROLL {abilityName(id).toUpperCase()}
 								</button>
 							{/each}

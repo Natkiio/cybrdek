@@ -40,7 +40,7 @@
 	import { getCharacter, isInAccount, saveCharacter } from '#lib/storage/characters.ts';
 	import { characterSync } from '#lib/sync/characters.svelte.ts';
 	import NetRunPanel from '#lib/components/sheet/NetRunPanel.svelte';
-	import { accessRange, netRunOf, positionOf, seesMeatspace, stillRunning, type NetRun } from '#lib/rulesets/red/netrun.ts';
+	import { accessRange, actionsLeft, netRunOf, positionOf, seesMeatspace, spendAction, stillRunning, type NetRun } from '#lib/rulesets/red/netrun.ts';
 	import { campaign } from '#lib/campaigns/current.svelte.ts';
 	import { gm } from '#lib/supabase/gm.svelte.ts';
 
@@ -116,6 +116,14 @@
 		return { ...run, running: stillRunning(run.running, boosters) };
 	});
 	const saveRun = (next: NetRun) => update({ netRun: next });
+	// NET Actions this Turn, counted only while jacked in (null otherwise).
+	const netLeft = $derived(netRun.jackedIn ? actionsLeft(netRun, netActions(roleRank)) : null);
+	/** Roll an Interface Ability; every one but Scanner (a Meat Action) uses a NET Action. */
+	function useAbility(id: string) {
+		const roll = abilityRoll(id, roleRank, new Set(netRun.running));
+		check(roll.label, roll.base, 'skill');
+		if (id !== 'scanner') void saveRun(spendAction(netRun));
+	}
 	// One-line summaries for the folded sections.
 	const injuryNames = $derived(injuries.map((i) => CRITICAL_INJURIES[i.location][i.roll]?.name ?? 'Injury').join(', '));
 	const armorSp = $derived(wornSp(gear));
@@ -386,10 +394,8 @@
 							campaignId={campaign.id}
 							signedIn={!!gm.userId}
 							onchange={saveRun}
-							onability={(id) => {
-								const roll = abilityRoll(id, roleRank, new Set(netRun.running));
-								check(roll.label, roll.base, 'skill');
-							}}
+							perTurn={netActions(roleRank)}
+							onability={useAbility}
 						/>
 					</Fold>
 					<Fold id="interface" title="INTERFACE" summary="rank {roleRank} · {netActions(roleRank)} NET actions">
@@ -397,7 +403,9 @@
 							rank={roleRank}
 							{boosters}
 							running={netRun.running}
-							onrunning={(running) => saveRun({ ...netRun, running })}
+							actionsLeft={netLeft}
+							onrunning={(running) => saveRun(spendAction({ ...netRun, running }))}
+							onuse={useAbility}
 							oncheck={(label, base) => check(label, base, 'skill')}
 							ondamage={rollPlainDamage}
 						/>

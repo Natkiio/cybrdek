@@ -194,3 +194,44 @@ test('a deck with a Range Upgrade gives 8 m/yds of range', async ({ page }) => {
 	await page.getByRole('button', { name: 'JACK IN' }).click();
 	await expect(page.getByRole('list', { name: 'Meatspace risks' })).toContainText('Stay within 8 m/yds');
 });
+
+test('NET Actions run out, END TURN refills them, and Jack Out climbs back to the top', async ({ page }) => {
+	await page.context().route(/supabase\.co/, (route) => route.abort());
+	await page.clock.install(); // step the climb ourselves
+	await seed(page);
+	await openFold(page, 'IN THE NET');
+	await page.getByRole('button', { name: 'JACK IN' }).click(); // 1 of 3
+	const pips = page.getByRole('img', { name: /NET Actions left this Turn/ });
+	await expect(pips).toHaveAccessibleName('2 of 3 NET Actions left this Turn');
+	await page.getByRole('button', { name: '▼ DOWN' }).click(); // moving is free
+	await page.getByRole('button', { name: '▼ DOWN' }).click();
+	await expect(pips).toHaveAccessibleName('2 of 3 NET Actions left this Turn');
+
+	await openFold(page, 'INTERFACE');
+	await page.getByRole('button', { name: 'Roll Backdoor' }).click(); // 2 of 3
+	await page.getByRole('button', { name: 'Roll Zap' }).click(); // 3 of 3
+	await expect(pips).toHaveAccessibleName('0 of 3 NET Actions left this Turn');
+	await expect(page.getByText('No NET Actions left this Turn.')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Roll Backdoor' })).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'Roll Scanner' })).toBeEnabled(); // a Meat Action
+	await expect(page.getByRole('group', { name: 'BOOSTERS RUNNING' }).getByLabel('Worm')).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'JACK OUT' })).toBeDisabled(); // Jack Out is a NET Action too
+
+	await page.getByRole('button', { name: 'END TURN' }).click();
+	await expect(pips).toHaveAccessibleName('3 of 3 NET Actions left this Turn');
+	await page.reload();
+	await expect(page.getByRole('img', { name: /NET Actions left this Turn/ })).toHaveAccessibleName('3 of 3 NET Actions left this Turn');
+
+	// From Floor 3 the marker climbs 3 → 2 → 1 before the run resets.
+	const current = page.getByRole('list', { name: 'Floors' }).locator('[aria-current="step"]');
+	await expect(current).toContainText('Floor 3');
+	await page.getByRole('button', { name: 'JACK OUT' }).click();
+	await page.clock.runFor(160);
+	await expect(current).toContainText('Floor 2');
+	await expect(page.locator('.status')).toContainText('JACKED IN · Floor 3'); // still in until the climb ends
+	await page.clock.runFor(160);
+	await expect(current).toContainText('Floor 1');
+	await page.clock.runFor(160);
+	await expect(page.locator('.status')).toHaveText('NOT JACKED IN');
+	await expect(page.locator('.notice')).toContainText('resets');
+});
