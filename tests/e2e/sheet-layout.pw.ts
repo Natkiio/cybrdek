@@ -115,6 +115,15 @@ test('on a laptop: a rail on the left, the section in the middle, STATS and ROLL
 	// STATS stay on the right whatever the section; SKILLS doesn't repeat them.
 	await openFold(page, 'SKILLS');
 	await expect(section(page, 'STATS')).toHaveCount(1);
+	// Scrolled down a long section, the rail stays below the site header, fully clickable.
+	await page.getByLabel('all skills').check();
+	await page.mouse.wheel(0, 1200);
+	await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(600);
+	const header = (await page.locator('header.bar').boundingBox())!;
+	const combat = (await bar(page).getByRole('button', { name: /COMBAT$/ }).boundingBox())!;
+	expect(combat.y).toBeGreaterThanOrEqual(header.y + header.height);
+	await bar(page).getByRole('button', { name: /COMBAT$/ }).click();
+	await expect(section(page, 'HIT POINTS')).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -132,6 +141,19 @@ test('on a phone the app bar is pinned to the bottom, with no sideways scroll', 
 	await openFold(page, 'ROLL LOG');
 	await expect(section(page, 'ROLL LOG')).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('keyboard: Tab moves through the sections with a visible focus ring', async ({ page }) => {
+	await open(page);
+	const combat = bar(page).getByRole('button', { name: /COMBAT$/ });
+	const skills = bar(page).getByRole('button', { name: /SKILLS$/ });
+	await combat.focus();
+	await page.keyboard.press('Tab');
+	await expect(skills).toBeFocused();
+	expect(await skills.evaluate((b) => getComputedStyle(b).outlineStyle)).toBe('dashed');
+	await page.keyboard.press('Enter');
+	await expect(skills).toHaveAttribute('aria-current', 'page');
+	await expect(section(page, 'SKILLS')).toBeVisible();
 });
 
 test('a critical damage roll offers the injury roll in COMBAT, every time', async ({ page }) => {

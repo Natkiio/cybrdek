@@ -38,6 +38,22 @@ async function seed(page: Page, extraGear: unknown[] = []) {
 	await expect(page.getByRole('heading', { name: 'Runner', exact: true, level: 1 })).toBeVisible();
 }
 
+/** The run as saved on the device, so a reload doesn't race the save. */
+const savedRun = (page: Page) =>
+	page.evaluate(
+		() =>
+			new Promise<{ spent?: number; running?: string[] } | undefined>((resolve) => {
+				const req = indexedDB.open('cybrdek');
+				req.onsuccess = () => {
+					const get = req.result.transaction('characters').objectStore('characters').get('runner');
+					get.onsuccess = () => {
+						req.result.close();
+						resolve(get.result?.extra?.netRun);
+					};
+				};
+			})
+	);
+
 test('offline: jack in, go deeper, the run and running Boosters survive a reload, and an unsafe Jack Out resets them', async ({ page }) => {
 	await page.context().route(/supabase\.co/, (route) => route.abort());
 	await seed(page);
@@ -55,6 +71,7 @@ test('offline: jack in, go deeper, the run and running Boosters survive a reload
 	await openFold(page, 'INTERFACE');
 	await page.getByRole('group', { name: 'BOOSTERS RUNNING' }).getByLabel('Worm').check();
 	await expect(page.getByRole('button', { name: 'Roll Backdoor' })).toContainText('+6');
+	await expect.poll(async () => (await savedRun(page))?.running).toEqual(['worm']);
 
 	await page.reload();
 	await expect(page.getByRole('group', { name: 'Status' }).getByRole('button', { name: /NET/ })).toContainText('Floor 3');
@@ -220,23 +237,7 @@ test('NET Actions run out, END TURN refills them, and Jack Out climbs back to th
 	await page.getByRole('button', { name: 'END TURN' }).click();
 	await expect(pips).toHaveAccessibleName('3 of 3 NET Actions left this Turn');
 	// Wait for the save to reach the device before reloading.
-	await expect
-		.poll(() =>
-			page.evaluate(
-				() =>
-					new Promise<number>((resolve) => {
-						const req = indexedDB.open('cybrdek');
-						req.onsuccess = () => {
-							const get = req.result.transaction('characters').objectStore('characters').get('runner');
-							get.onsuccess = () => {
-								req.result.close();
-								resolve(get.result?.extra?.netRun?.spent ?? -1);
-							};
-						};
-					})
-			)
-		)
-		.toBe(0);
+	await expect.poll(async () => (await savedRun(page))?.spent).toBe(0);
 	await page.reload();
 	await expect(page.getByRole('img', { name: /NET Actions left this Turn/ })).toHaveAccessibleName('3 of 3 NET Actions left this Turn');
 

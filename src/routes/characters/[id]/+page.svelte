@@ -150,6 +150,17 @@
 	$effect(() => {
 		if (lastRoll?.damageCritical) untrack(() => go('combat'));
 	});
+	// The rail sticks just below the site's own sticky header, whatever its height.
+	let headerHeight = $state(0);
+	onMount(() => {
+		const bar = document.querySelector('header.bar');
+		if (!bar) return;
+		const measure = () => (headerHeight = bar.getBoundingClientRect().height);
+		measure();
+		const watch = new ResizeObserver(measure);
+		watch.observe(bar);
+		return () => watch.disconnect();
+	});
 	// Laptop: a left rail and a right column for STATS and the ROLL LOG.
 	let wide = $state(false);
 	onMount(() => {
@@ -369,7 +380,7 @@
 	</div>
 
 	<div class="sheet">
-		<nav class="appbar" aria-label="Sheet sections">
+		<nav class="appbar" aria-label="Sheet sections" style:--header-h="{headerHeight}px">
 			{#each sections as sec (sec.id)}
 				<button type="button" aria-current={section === sec.id ? 'page' : undefined} onclick={() => go(sec.id)}>
 					<i aria-hidden="true">{sec.icon}</i><span>{sec.label}</span>
@@ -715,6 +726,12 @@
 		border-top-color: var(--red);
 	}
 
+	/* Keyboard focus: a white ring inside the button, distinct from the red current-section mark. */
+	.appbar button:focus-visible {
+		outline: 1px dashed var(--bright);
+		outline-offset: -5px;
+	}
+
 	/* Laptop: a rail on the left, the section in the middle, STATS and the
 	   ROLL LOG on the right. */
 	@media (min-width: 1000px) {
@@ -728,7 +745,7 @@
 
 		.appbar {
 			position: sticky;
-			top: 1rem;
+			top: calc(var(--header-h, 0px) + 1rem);
 			flex-direction: column;
 			background: transparent;
 			border-top: 0;
