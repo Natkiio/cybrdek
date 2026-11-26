@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boosterBonus, INTERFACE_ABILITIES, loadedBoosters, netActions } from './interface.ts';
+import { abilityRoll, ABILITIES_FOR, boosterBonus, INTERFACE_ABILITIES, loadedBoosters, netActions } from './interface.ts';
 import type { Cyberdeck } from './cyberdeck.ts';
 
 const ability = (id: string) => INTERFACE_ABILITIES.find((a) => a.id === id)!;
@@ -44,5 +44,18 @@ describe('Interface abilities', () => {
 			{ quality: 'poor', hardware: [], programs: [{ id: '5', defId: 'see-ya', loaded: true }] }
 		];
 		expect(loadedBoosters(decks)).toEqual(['worm', 'see-ya']);
+	});
+});
+
+describe('ability rolls shared by the sheet and the NET stairs', () => {
+	it('labels the roll and adds a running Booster', () => {
+		expect(abilityRoll('backdoor', 4, new Set())).toEqual({ label: 'Backdoor (Interface)', base: 4 });
+		expect(abilityRoll('backdoor', 4, new Set(['worm']))).toEqual({ label: 'Backdoor (Interface + Worm)', base: 6 });
+		expect(() => abilityRoll('nope', 4, new Set())).toThrow();
+	});
+
+	it('maps every floor entry type to real abilities', () => {
+		for (const ids of Object.values(ABILITIES_FOR)) for (const id of ids) expect(INTERFACE_ABILITIES.some((a) => a.id === id)).toBe(true);
+		expect(ABILITIES_FOR['black-ice']).toEqual(['zap', 'slide']);
 	});
 });

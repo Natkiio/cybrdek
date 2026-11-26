@@ -4,6 +4,7 @@
 	// Meatspace risks in view. Players only ever get floors the GM revealed
 	// (the database redacts the rest), so the floor list is those floors.
 	import { readArchitectures } from '#lib/net/api.ts';
+	import NetStairs, { type Step } from './NetStairs.svelte';
 	import type { PlayerEntry } from '#lib/net/architecture.ts';
 	import { chooseArchitecture, jackIn, jackOut, meatspaceRisks, moveTo, moveToFloor, positionOf, type NetRun } from '#lib/rulesets/red/netrun.ts';
 
@@ -24,7 +25,8 @@
 		range,
 		campaignId,
 		signedIn,
-		onchange
+		onchange,
+		onability
 	}: {
 		run: NetRun;
 		seesMeat: boolean;
@@ -32,6 +34,7 @@
 		campaignId: string;
 		signedIn: boolean;
 		onchange: (next: NetRun) => void;
+		onability: (abilityId: string) => void; // roll an Interface Ability from the floor you're on
 	} = $props();
 
 	let architectures = $state<Runnable[] | null>(null); // null: not loaded
@@ -67,7 +70,17 @@
 	});
 
 	const current = $derived(architectures?.find((a) => a.id === run.architectureId));
-	const floor = $derived(current?.floors.find((f) => f.id === run.floorId));
+	// The stairs: the revealed floors of the chosen Architecture, or the floors
+	// you've counted so far when you run without one.
+	const steps: Step[] = $derived(
+		current
+			? current.floors.map((f) => ({ key: f.id, label: f.label, entries: f.entries }))
+			: Array.from({ length: run.floor }, (_, i) => ({ key: `floor-${i + 1}`, label: `Floor ${i + 1}`, entries: null }))
+	);
+	const here = $derived(current ? Math.max(0, current.floors.findIndex((f) => f.id === run.floorId)) : run.floor - 1);
+	function move(index: number) {
+		onchange(current ? moveToFloor(run, current.floors[index]) : moveTo(run, index + 1));
+	}
 
 	function choose(id: string) {
 		const a = architectures?.find((x) => x.id === id) ?? null;
@@ -130,22 +143,10 @@
 </label>
 
 {#if run.jackedIn}
-	{#if current}
-		<ul class="floors" aria-label="Revealed floors">
-			{#each current.floors as f (f.id)}
-				<li>
-					<button type="button" aria-pressed={f.id === run.floorId} onclick={() => onchange(moveToFloor(run, f))}>{f.label}</button>
-				</li>
-			{/each}
-		</ul>
-		{#if floor?.entries.length}
-			<ul class="entries" aria-label="On this floor">
-				{#each floor.entries as e (e.id)}
-					<li><strong>{e.name}</strong> <span class="dim">· {e.type}</span>{#if e.playerText}<br /><span class="small">{e.playerText}</span>{/if}</li>
-				{/each}
-			</ul>
-		{/if}
-	{:else if !run.architectureId}
+	{#if current || !run.architectureId}
+		<NetStairs {steps} current={here} deeper onmove={move} {onability} />
+	{/if}
+	{#if !current && !run.architectureId}
 		<div class="row">
 			<button type="button" onclick={() => onchange(moveTo(run, run.floor - 1))} disabled={run.floor <= 1}>▲ UP</button>
 			<span>{positionOf(run)}</span>
@@ -209,18 +210,8 @@
 		padding: 0;
 	}
 
-	.floors {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
-	}
 
-	.floors button[aria-pressed='true'] {
-		color: var(--bright);
-		border-color: var(--bright);
-	}
 
-	.entries,
 	.risks {
 		display: grid;
 		gap: 0.3rem;

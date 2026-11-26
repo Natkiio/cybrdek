@@ -55,3 +55,21 @@ export function loadedBoosters(decks: readonly Cyberdeck[]): string[] {
 			if (copy.loaded && PROGRAMS.find((p) => p.id === copy.defId)?.category === 'Booster') ids.add(copy.defId);
 	return [...ids];
 }
+
+/** The roll for an ability: its log label and Interface plus any running Booster's bonus. */
+export function abilityRoll(id: string, rank: number, running: ReadonlySet<string>): { label: string; base: number } {
+	const a = INTERFACE_ABILITIES.find((x) => x.id === id);
+	if (!a) throw new Error(`Unknown Interface Ability: ${id}`);
+	const extra = boosterBonus(a, running);
+	const booster = a.booster ? PROGRAMS.find((p) => p.id === a.booster)?.name : undefined;
+	return { label: `${a.name} (Interface${extra && booster ? ` + ${booster}` : ''})`, base: rank + extra };
+}
+
+/** Which abilities fit what's on a floor (Core pp. 199–201). */
+export const ABILITIES_FOR: Readonly<Record<string, readonly string[]>> = {
+	password: ['backdoor'],
+	file: ['eye-dee'],
+	'control-node': ['control'],
+	'black-ice': ['zap', 'slide'],
+	demon: ['zap']
+};

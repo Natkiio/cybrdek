@@ -69,6 +69,7 @@ test('offline: jack in, go deeper, the run and running Boosters survive a reload
 });
 
 test('signed in: run a revealed campaign Architecture floor by floor', async ({ page }) => {
+	await page.setViewportSize({ width: 375, height: 812 });
 	await page.context().addInitScript((user) => {
 		localStorage.setItem(
 			'sb-hntlvhspyllaaidvxlox-auth-token',
@@ -88,6 +89,13 @@ test('signed in: run a revealed campaign Architecture floor by floor', async ({ 
 				{ id: 'f1', label: 'Lobby', entries: [{ id: 'e1', type: 'password', name: 'Door Code', refId: null, playerText: 'A blinking keypad.' }] },
 				{ id: 'f2', label: 'Vault', entries: [{ id: 'e2', type: 'file', name: 'Payroll', refId: null, playerText: '' }] }
 			]
+		}, {
+			// A 100-character unbroken floor name must wrap inside its step on a phone.
+			id: 'long', revision: 1, name: 'Long Names',
+			floors: [
+				{ id: 'l1', label: 'Lobby'.repeat(20), entries: [] },
+				{ id: 'l2', label: 'Vault', entries: [] }
+			]
 		}]
 	};
 	await page.context().route(/supabase\.co/, (route) =>
@@ -105,13 +113,26 @@ test('signed in: run a revealed campaign Architecture floor by floor', async ({ 
 	const here = page.getByRole('list', { name: 'On this floor' });
 	await expect(here).toContainText('Door Code');
 	await expect(here).toContainText('A blinking keypad.');
+	// The stairs: the current step is marked, a dark step hints at more below,
+	// and the Password offers Backdoor right there, rolled into the log.
+	const floors = page.getByRole('list', { name: 'Floors' });
+	await expect(floors.locator('[aria-current="step"]')).toContainText('Lobby');
+	await expect(floors.getByLabel('Deeper floors not revealed')).toBeVisible();
+	await page.getByRole('button', { name: 'Roll Backdoor here' }).click();
+	await expect(page.locator('.last-roll .label')).toHaveText('Backdoor (Interface)');
 	await page.getByRole('button', { name: 'Vault' }).click();
 	await expect(page.locator('.status')).toHaveText(/Vault/);
 	await expect(here).toContainText('Payroll');
+	await expect(floors.locator('[aria-current="step"]')).toContainText('Vault');
+	await expect(page.getByRole('button', { name: 'Roll Eye-Dee here' })).toBeVisible();
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 	// Goggles on: no Unconscious warning, but the range warning stays.
 	const risks = page.getByRole('list', { name: 'Meatspace risks' });
 	await expect(risks).not.toContainText('Unconscious');
 	await expect(risks).toContainText('6 m/yds');
+	await page.getByRole('combobox').selectOption({ label: 'Long Names' });
+	await page.getByRole('list', { name: 'Floors' }).getByRole('button', { name: /Vault/ }).click();
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 	await page.getByRole('button', { name: 'JACK OUT' }).click();
 	await expect(page.locator('.notice')).toContainText('resets');
 });
