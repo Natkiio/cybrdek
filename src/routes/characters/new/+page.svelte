@@ -15,11 +15,13 @@
 		STAT_POINTS,
 		statPointsSpent,
 		validateHandle,
+		validateKit,
 		validateRole,
 		validateSkills,
 		validateStats
 	} from '#lib/rulesets/red/creation.ts';
 	import { derivedStats } from '#lib/rulesets/red/derived.ts';
+	import { defaultPicks, kitHumanityLoss, NETRUNNER_KIT, netrunnerKitCyberware, programName } from '#lib/rulesets/red/starter-kits.ts';
 	import { saveCharacter } from '#lib/storage/characters.ts';
 
 	const ruleset = red;
@@ -31,6 +33,10 @@
 	let role = $state('');
 	let stats = $state(defaultStats());
 	let skills = $state(defaultSkills());
+	// A Netrunner's starter kit (Core p. 103): on by default, one pick per pair.
+	let takeKit = $state(true);
+	let kitPicks = $state(defaultPicks());
+	const KIT_HL = kitHumanityLoss(netrunnerKitCyberware());
 	let saving = $state(false);
 	let saveError = $state('');
 
@@ -43,7 +49,7 @@
 	// Problems blocking each step. Review shows everything.
 	const problemsByStep = $derived([
 		validateHandle(handle),
-		validateRole(role),
+		[...validateRole(role), ...validateKit({ role, netrunnerKit: takeKit ? kitPicks : null })],
 		validateStats(stats),
 		validateSkills(skills),
 		[]
@@ -73,7 +79,7 @@
 		try {
 			// $state.snapshot turns the reactive proxies back into plain objects.
 			const character = buildCharacter(
-				$state.snapshot({ handle, role, stats, skills }),
+				$state.snapshot({ handle, role, stats, skills, netrunnerKit: takeKit ? kitPicks : null }),
 				ruleset,
 				crypto.randomUUID()
 			);
@@ -133,6 +139,33 @@
 			{/each}
 		</div>
 	</Panel>
+	{#if role === 'netrunner'}
+		<Panel title="STARTER DECK">
+			<label class="kit-toggle">
+				<input type="checkbox" bind:checked={takeKit} />
+				Start with the Netrunner kit (Streetrat gear, Core p. {NETRUNNER_KIT.page})
+			</label>
+			{#if takeKit}
+				<p class="dim">
+					A Standard Cyberdeck (7 slots) with {NETRUNNER_KIT.programs.map(programName).join(' and ')}, Virtuality Goggles,
+					and the cyberware a deck needs: Neural Link, Interface Plugs and Shift Tacts (Core p. {NETRUNNER_KIT.cyberwarePage},
+					{KIT_HL} Humanity Loss). Pick one program from each pair:
+				</p>
+				{#each NETRUNNER_KIT.choices as pair, i (i)}
+					<fieldset class="kit-pick">
+						<legend>PROGRAM {i + 1}</legend>
+						{#each pair as id (id)}
+							<label><input type="radio" name="kit-{i}" value={id} bind:group={kitPicks[i]} /> {programName(id)}</label>
+						{/each}
+					</fieldset>
+				{/each}
+				<p class="dim small">
+					Complete Package characters normally buy gear and cyberware with 2,550eb (Core p. 104). Take this kit instead, or untick it and
+					add a deck on your sheet.
+				</p>
+			{/if}
+		</Panel>
+	{/if}
 {:else if step === 2}
 	<Panel title="03 // STATS">
 		<div class="pool" class:empty={statsLeft === 0}>
@@ -198,7 +231,16 @@
 				<dt>STATS</dt>
 				<dd>{ruleset.stats.map((s) => `${s.id} ${stats[s.id]}`).join(' · ')}</dd>
 			</div>
-			<div><dt>HP</dt><dd>{sheet.hp} · Humanity {sheet.humanity}</dd></div>
+			<div><dt>HP</dt><dd>{sheet.hp} · Humanity {role === 'netrunner' && takeKit ? sheet.humanity - KIT_HL : sheet.humanity}</dd></div>
+			{#if role === 'netrunner' && takeKit}
+				<div>
+					<dt>STARTER DECK</dt>
+					<dd>
+						Standard Cyberdeck: {[...NETRUNNER_KIT.programs, ...kitPicks].map(programName).join(' · ')} · Virtuality Goggles
+						· Neural Link with Interface Plugs · Shift Tacts (−{KIT_HL} Humanity)
+					</dd>
+				</div>
+			{/if}
 			<div>
 				<dt>SKILLS</dt>
 				<dd>
@@ -335,6 +377,33 @@
 	.role.selected {
 		border-color: var(--red);
 		box-shadow: 0 0 12px var(--red-glow);
+	}
+
+	.kit-toggle,
+	.kit-pick label {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		min-height: 44px;
+	}
+
+	.kit-pick {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1.25rem;
+		border: 1px solid var(--frame-dim);
+		margin: 0.5rem 0;
+		min-width: 0;
+		padding: 0.3rem 0.6rem;
+	}
+
+	.kit-pick legend {
+		color: var(--muted);
+		font-size: 0.75rem;
+	}
+
+	.small {
+		font-size: 0.8rem;
 	}
 
 	.role-name {
