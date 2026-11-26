@@ -4,7 +4,7 @@
 	// count only while running, which you mark here. It's saved with the run
 	// (see NetRunPanel), and jacking out clears it.
 	import { PROGRAMS } from '#lib/rulesets/red/programs.ts';
-	import { boosterBonus, INTERFACE_ABILITIES, netActions, type InterfaceAbility } from '#lib/rulesets/red/interface.ts';
+	import { abilityRoll, boosterBonus, INTERFACE_ABILITIES, netActions, type InterfaceAbility } from '#lib/rulesets/red/interface.ts';
 
 	let {
 		rank,
@@ -29,8 +29,8 @@
 	const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
 	function use(a: InterfaceAbility) {
-		const extra = bonus(a);
-		oncheck(`${a.name} (Interface${extra ? ` + ${nameOf(a.booster ?? '')}` : ''})`, rank + extra);
+		const roll = abilityRoll(a.id, rank, runningSet);
+		oncheck(roll.label, roll.base);
 	}
 </script>
 

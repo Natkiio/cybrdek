@@ -6,7 +6,7 @@
 	import CyberdeckPanel from '#lib/components/sheet/CyberdeckPanel.svelte';
 	import InterfacePanel from '#lib/components/sheet/InterfacePanel.svelte';
 	import { deckItems } from '#lib/rulesets/red/cyberdeck.ts';
-	import { loadedBoosters, netActions } from '#lib/rulesets/red/interface.ts';
+	import { abilityRoll, loadedBoosters, netActions } from '#lib/rulesets/red/interface.ts';
 	import CyberwarePanel from '#lib/components/sheet/CyberwarePanel.svelte';
 	import GearPanel from '#lib/components/sheet/GearPanel.svelte';
 	import ArmorPanel from '#lib/components/sheet/ArmorPanel.svelte';
@@ -386,6 +386,10 @@
 							campaignId={campaign.id}
 							signedIn={!!gm.userId}
 							onchange={saveRun}
+							onability={(id) => {
+								const roll = abilityRoll(id, roleRank, new Set(netRun.running));
+								check(roll.label, roll.base, 'skill');
+							}}
 						/>
 					</Fold>
 					<Fold id="interface" title="INTERFACE" summary="rank {roleRank} · {netActions(roleRank)} NET actions">
