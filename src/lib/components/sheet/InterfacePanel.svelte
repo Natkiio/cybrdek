@@ -10,14 +10,18 @@
 		rank,
 		boosters,
 		running,
+		actionsLeft = null,
 		onrunning,
+		onuse,
 		oncheck,
 		ondamage
 	}: {
 		rank: number;
 		boosters: string[]; // loaded Booster program ids
 		running: readonly string[]; // the ones marked running
-		onrunning: (next: string[]) => void;
+		actionsLeft?: number | null; // NET Actions left this Turn while jacked in, else null
+		onrunning: (next: string[]) => void; // switching a Booster on or off is a NET Action
+		onuse?: (abilityId: string) => void; // when set, rolls go through here so the sheet can count NET Actions
 		oncheck: (label: string, base: number) => void;
 		ondamage: (label: string, count: number, sides: number) => void;
 	} = $props();
@@ -29,15 +33,22 @@
 	const signed = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
 	function use(a: InterfaceAbility) {
+		if (onuse) return onuse(a.id);
 		const roll = abilityRoll(a.id, rank, runningSet);
 		oncheck(roll.label, roll.base);
 	}
+	const out = $derived(actionsLeft === 0); // jacked in with nothing left this Turn
 </script>
 
 <p class="actions-line">
 	<span>INTERFACE <strong>{rank}</strong></span>
 	<span><strong>{netActions(rank)}</strong> NET ACTIONS PER TURN</span>
 </p>
+{#if actionsLeft !== null}
+	<p class="left" class:none={out} aria-live="polite">
+		{out ? 'No NET Actions left this Turn. End your Turn in IN THE NET.' : `${actionsLeft} NET ${actionsLeft === 1 ? 'Action' : 'Actions'} left this Turn`}
+	</p>
+{/if}
 <p class="dim small">Roll Interface + 1d10. Moving and saving a copy of a File are free (Core pp. 197–198).</p>
 
 {#if boosters.length}
@@ -45,7 +56,7 @@
 		<legend>BOOSTERS RUNNING</legend>
 		{#each boosters as id (id)}
 			<label>
-				<input type="checkbox" checked={runningSet.has(id)} onchange={(e) => toggle(id, e.currentTarget.checked)} />
+				<input type="checkbox" checked={runningSet.has(id)} disabled={out} onchange={(e) => toggle(id, e.currentTarget.checked)} />
 				{nameOf(id)}
 			</label>
 		{/each}
@@ -55,7 +66,7 @@
 <ul>
 	{#each INTERFACE_ABILITIES as a (a.id)}
 		<li>
-			<button type="button" onclick={() => use(a)} aria-label="Roll {a.name}">
+			<button type="button" onclick={() => use(a)} aria-label="Roll {a.name}" disabled={out && !a.meatAction}>
 				<span class="name">{a.name}</span>
 				<span class="num">{signed(rank + bonus(a))}</span>
 			</button>
@@ -84,6 +95,15 @@
 
 	strong {
 		color: var(--bright);
+	}
+
+	.left {
+		margin: 0.25rem 0 0;
+		color: var(--bright);
+	}
+
+	.left.none {
+		color: var(--red);
 	}
 
 	.boosters {

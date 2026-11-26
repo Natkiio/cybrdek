@@ -6,7 +6,7 @@
 	import { readArchitectures } from '#lib/net/api.ts';
 	import NetStairs, { type Step } from './NetStairs.svelte';
 	import type { PlayerEntry } from '#lib/net/architecture.ts';
-	import { chooseArchitecture, jackIn, jackOut, meatspaceRisks, moveTo, moveToFloor, positionOf, type NetRun } from '#lib/rulesets/red/netrun.ts';
+	import { actionsLeft, chooseArchitecture, jackIn, jackOut, newTurn, meatspaceRisks, moveTo, moveToFloor, positionOf, type NetRun } from '#lib/rulesets/red/netrun.ts';
 
 	interface RunnableFloor {
 		id: string;
@@ -25,6 +25,7 @@
 		range,
 		campaignId,
 		signedIn,
+		perTurn,
 		onchange,
 		onability
 	}: {
@@ -33,6 +34,7 @@
 		range: string; // e.g. '6 m/yds', see accessRange
 		campaignId: string;
 		signedIn: boolean;
+		perTurn: number; // NET Actions per Turn from Interface
 		onchange: (next: NetRun) => void;
 		onability: (abilityId: string) => void; // roll an Interface Ability from the floor you're on
 	} = $props();
@@ -78,6 +80,12 @@
 			: Array.from({ length: run.floor }, (_, i) => ({ key: `floor-${i + 1}`, label: `Floor ${i + 1}`, entries: null }))
 	);
 	const here = $derived(current ? Math.max(0, current.floors.findIndex((f) => f.id === run.floorId)) : run.floor - 1);
+	const left = $derived(actionsLeft(run, perTurn));
+	// Jacking out is saved at once (so no more NET Actions can be squeezed in);
+	// then the marker replays the climb to the top on a snapshot of the stairs.
+	let climbing = $state<number | null>(null);
+	let exitSteps = $state<Step[]>([]);
+	const reduceMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 	function move(index: number) {
 		onchange(current ? moveToFloor(run, current.floors[index]) : moveTo(run, index + 1));
 	}
@@ -95,10 +103,21 @@
 	}
 
 	function leave(safe: boolean) {
+		if (climbing !== null) return;
+		const from = here;
+		exitSteps = steps;
 		notice = safe
 			? 'Jacked out. The Architecture resets: a new run starts from the top (Core p. 198).'
 			: 'Unsafe Jack Out: every enemy Black ICE you met and didn’t Derez takes effect on you now (Core p. 198). The Architecture resets.';
-		onchange(jackOut(run));
+		onchange(jackOut(run, safe));
+		if (from <= 0 || reduceMotion()) return;
+		climbing = from;
+		const step = () => {
+			if (climbing === null) return;
+			climbing = climbing > 0 ? climbing - 1 : null;
+			if (climbing !== null) setTimeout(step, 160);
+		};
+		setTimeout(step, 160);
 	}
 </script>
 
@@ -112,10 +131,10 @@
 
 <div class="row">
 	{#if run.jackedIn}
-		<button type="button" onclick={() => leave(true)}>JACK OUT</button>
+		<button type="button" onclick={() => leave(true)} disabled={left === 0}>JACK OUT</button>
 		<button type="button" class="danger" onclick={() => leave(false)}>LEFT RANGE</button>
 	{:else}
-		<button type="button" onclick={enter}>JACK IN</button>
+		<button type="button" onclick={enter} disabled={left === 0 || climbing !== null}>JACK IN</button>
 	{/if}
 </div>
 <p class="dim small">
@@ -142,9 +161,24 @@
 	{#if signedIn}<button type="button" class="small-btn" onclick={() => reload++} aria-label="Refresh Architectures">↻</button>{/if}
 </label>
 
+{#if climbing !== null}
+	<!-- Replay of the climb out; the run is already saved as jacked out. -->
+	<NetStairs steps={exitSteps} current={climbing} deeper canAct={false} onmove={() => {}} onability={() => {}} />
+{/if}
+
+{#if run.jackedIn || run.spent > 0}
+	<div class="turn">
+		<span class="pips" role="img" aria-label="{left} of {perTurn} NET Actions left this Turn">
+			{#each Array.from({ length: perTurn }, (_, i) => i) as i (i)}<span class="pip" class:on={i < left}></span>{/each}
+		</span>
+		<span class="small">{left} / {perTurn} NET ACTIONS</span>
+		<button type="button" onclick={() => onchange(newTurn(run))}>END TURN</button>
+	</div>
+{/if}
+
 {#if run.jackedIn}
 	{#if current || !run.architectureId}
-		<NetStairs {steps} current={here} deeper onmove={move} {onability} />
+		<NetStairs {steps} current={here} deeper canAct={left > 0} onmove={move} {onability} />
 	{/if}
 	{#if !current && !run.architectureId}
 		<div class="row">
@@ -180,6 +214,34 @@
 	button,
 	select {
 		min-height: 44px;
+	}
+
+	.turn {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem 0.75rem;
+		margin: 0.5rem 0 0;
+	}
+
+	.turn button {
+		margin-left: auto;
+	}
+
+	.pips {
+		display: inline-flex;
+		gap: 4px;
+	}
+
+	.pip {
+		width: 10px;
+		height: 10px;
+		border: 1px solid var(--bright);
+	}
+
+	.pip.on {
+		background: var(--bright);
+		box-shadow: 0 0 6px var(--bright-glow);
 	}
 
 	.danger {

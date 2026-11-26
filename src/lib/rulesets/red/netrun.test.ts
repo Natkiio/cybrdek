@@ -10,6 +10,9 @@ import {
 	NOT_JACKED_IN,
 	positionOf,
 	accessRange,
+	actionsLeft,
+	newTurn,
+	spendAction,
 	stillRunning,
 	seesMeatspace
 } from './netrun.ts';
@@ -37,7 +40,7 @@ describe('jacking in and out (Core p. 198)', () => {
 	});
 
 	it('jacking out resets the Architecture and stops every Program', () => {
-		expect(jackOut({ ...deep, architectureId: 'a', architectureName: 'Biotechnica' })).toEqual({
+		expect(jackOut({ ...deep, spent: 0, architectureId: 'a', architectureName: 'Biotechnica' })).toEqual({
 			...NOT_JACKED_IN,
 			architectureId: 'a',
 			architectureName: 'Biotechnica'
@@ -91,5 +94,29 @@ describe('range and loaded Boosters', () => {
 
 	it('only loaded Boosters stay running', () => {
 		expect(stillRunning(['worm', 'eraser'], ['eraser', 'see-ya'])).toEqual(['eraser']);
+	});
+});
+
+describe('NET Actions this Turn (Core pp. 197–198)', () => {
+	it('jacking in uses one; each spend uses one more; a new Turn gives them all back', () => {
+		let run = jackIn(NOT_JACKED_IN);
+		expect(actionsLeft(run, 3)).toBe(2);
+		run = spendAction(spendAction(run));
+		expect(actionsLeft(run, 3)).toBe(0);
+		expect(actionsLeft(spendAction(run), 3)).toBe(0); // never below zero
+		expect(actionsLeft(newTurn(run), 3)).toBe(3);
+	});
+
+	it('rolls only count while jacked in; leaving and coming back in the same Turn gives nothing back', () => {
+		expect(spendAction(NOT_JACKED_IN)).toEqual(NOT_JACKED_IN);
+		expect(actionsLeft(NOT_JACKED_IN, 3)).toBe(3);
+		// Jack In, safe Jack Out, Jack In: three NET Actions, the whole Turn at Interface 4.
+		const again = jackIn(jackOut(jackIn(NOT_JACKED_IN), true));
+		expect(actionsLeft(again, 3)).toBe(0);
+		// An unsafe exit costs nothing but refunds nothing.
+		expect(jackOut(spendAction(jackIn(NOT_JACKED_IN))).spent).toBe(2);
+		expect(newTurn(jackOut(jackIn(NOT_JACKED_IN), true)).spent).toBe(0);
+		expect(netRunOf({ netRun: { spent: -1 } }).spent).toBe(0);
+		expect(netRunOf({ netRun: { jackedIn: true, spent: 2 } }).spent).toBe(2);
 	});
 });
