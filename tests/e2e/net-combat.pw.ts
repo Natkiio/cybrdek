@@ -163,6 +163,18 @@ test('NET and meatspace share a persisted GM fight, with real SQL redaction for 
 	await net.getByLabel(/^NET target/).selectOption('runner');
 	await net.getByRole('button', { name: 'ENCOUNTER / SPEED CONTEST' }).click();
 	await expect(net.getByRole('region', { name: 'NET state Runner' })).toContainText('32 HP');
+	// A rejected save must refresh the authoritative fight and never announce a hit.
+	const saveUrl = '**/rest/v1/rpc/save_campaign_encounter';
+	let rejectSave = true;
+	await page.route(saveUrl, async (route) => {
+		if (!rejectSave) return route.fallback();
+		rejectSave = false;
+		await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: '40001', message: 'Conflict' }) });
+	});
+	await net.getByRole('button', { name: 'RESOLVE NET ATTACK' }).click();
+	await expect(net.getByRole('alert')).toContainText('NET action was not saved');
+	await expect(net.getByRole('status')).toHaveCount(0);
+	await expect(net.getByRole('region', { name: 'NET state Runner' })).toContainText('32 HP');
 	await net.getByRole('button', { name: 'RESOLVE NET ATTACK' }).click();
 	await expect(net.getByRole('region', { name: 'NET state Runner' })).toContainText('24 HP');
 	await page.getByRole('button', { name: 'NEXT TURN →' }).click();

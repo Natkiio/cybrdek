@@ -39,22 +39,24 @@ export function encounterSession(campaign: string, owner: string) {
 			else state.party = result;
 		} catch { if (active && version === writeVersion) state.error = 'Could not load campaign characters.'; }
 	}
-	async function save(next: Encounter, finish = false, create = false) {
+	async function save(next: Encounter, finish = false, create = false): Promise<boolean> {
 		const view = state.view;
-		if (!active || state.busy || !view?.canManage) return;
+		if (!active || state.busy || !view?.canManage) return false;
 		state.busy = true; state.error = '';
 		++request; ++writeVersion; // older reads must not undo a successful write
 		try {
 			const result = await writeEncounter(campaign, owner, create ? { id: null, revision: 0, ended: false } : view, next, finish);
-			if (!active) return;
+			if (!active) return false;
 			++request; ++writeVersion;
 			if ('error' in result) {
 				// Refetch after rejection too: GM rights may have been revoked.
 				await refresh();
 				if (active) state.error = result.error;
-			} else { state.view = result; state.loading = false; }
+				return false;
+			} else { state.view = result; state.loading = false; return true; }
 		} catch {
 			if (active) { await refresh(); if (active) state.error = 'Could not save the fight. Refresh before trying again.'; }
+			return false;
 		} finally { if (active) state.busy = false; }
 	}
 	function start() {
