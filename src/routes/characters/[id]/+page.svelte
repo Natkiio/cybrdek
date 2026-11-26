@@ -34,7 +34,6 @@
 		type DeathSaveResult
 	} from '#lib/rulesets/red/wounds.ts';
 	import CharacterHistory from '#lib/components/sheet/CharacterHistory.svelte';
-	import Fold from '#lib/components/Fold.svelte';
 	import { CRITICAL_INJURIES } from '#lib/rulesets/red/injuries.ts';
 	import { wornSp } from '#lib/rulesets/red/armor.ts';
 	import { getCharacter, isInAccount, saveCharacter } from '#lib/storage/characters.ts';
@@ -118,6 +117,49 @@
 	const saveRun = (next: NetRun) => update({ netRun: next });
 	// NET Actions this Turn, counted only while jacked in (null otherwise).
 	const netLeft = $derived(netRun.jackedIn ? actionsLeft(netRun, netActions(roleRank)) : null);
+	// ---- sections and the app bar
+	type SectionId = 'combat' | 'skills' | 'net' | 'kit' | 'file';
+	const isRunner = $derived(role?.id === 'netrunner');
+	const sections = $derived(
+		[
+			{ id: 'combat', label: 'COMBAT', icon: '✚' },
+			{ id: 'skills', label: 'SKILLS', icon: '◈' },
+			...(isRunner ? [{ id: 'net', label: 'NET', icon: '◆' }] : []),
+			{ id: 'kit', label: 'KIT', icon: '▣' },
+			{ id: 'file', label: 'FILE', icon: '≡' }
+		] as { id: SectionId; label: string; icon: string }[]
+	);
+	let chosen = $state<SectionId>('combat');
+	// A NET link on a non-Netrunner falls back to COMBAT.
+	const section = $derived(sections.some((x) => x.id === chosen) ? chosen : 'combat');
+	/** Show a section; the address keeps it (#skills), so a reload or a shared link opens there. */
+	function go(id: SectionId) {
+		chosen = id;
+		try {
+			history.replaceState(history.state, '', `#${id}`);
+		} catch {
+			// no history API: the section just isn't remembered
+		}
+		window.scrollTo?.({ top: 0 });
+	}
+	onMount(() => {
+		const fromHash = location.hash.slice(1);
+		if (['combat', 'skills', 'net', 'kit', 'file'].includes(fromHash)) chosen = fromHash as SectionId;
+	});
+	// A damage roll that offers a Critical Injury brings you to COMBAT, where it's recorded.
+	$effect(() => {
+		if (lastRoll?.damageCritical) untrack(() => go('combat'));
+	});
+	// Laptop: a left rail and a right column for STATS and the ROLL LOG.
+	let wide = $state(false);
+	onMount(() => {
+		const query = matchMedia('(min-width: 1000px)');
+		const sync = () => (wide = query.matches);
+		sync();
+		query.addEventListener('change', sync);
+		return () => query.removeEventListener('change', sync);
+	});
+
 	/** Roll an Interface Ability; every one but Scanner (a Meat Action) uses a NET Action. */
 	function useAbility(id: string) {
 		const roll = abilityRoll(id, roleRank, new Set(netRun.running));
@@ -286,179 +328,177 @@
 		</div>
 	{/if}
 
-	<!-- Three columns on a laptop; on a phone they stack in this order (#101):
-	     what you check every turn, what you roll, then the rest folded away. -->
+	{#snippet statsPanel(c: Character)}
+	<Panel title="STATS">
+		<p class="hint dim">Tap to roll d10 + STAT{penalty ? ` (${penalty} wounds/injuries)` : ''}.</p>
+		<div class="stats">
+			{#each ruleset.stats as s (s.id)}
+				{@const value = c.stats[s.id]}
+				{@const shown = s.id === 'MOVE' ? Math.min(effectiveStats.MOVE, Math.max(1, woundedMove(effectiveStats.MOVE, wound) + injuryMods.move)) : effectiveStats[s.id]}
+				<button type="button" class="stat" onclick={() => check(s.id, shown, 'stat')} title={s.name}>
+					<span class="stat-id">{s.id}</span>
+					<span class="stat-value" class:reduced={shown !== value}>{shown}</span>
+				</button>
+			{/each}
+		</div>
+		<dl class="derived">
+			<div><dt>HUMANITY</dt><dd>{humanity}/{maxHumanity(c.stats.EMP, cyberware)}</dd></div>
+			<div><dt>DEATH SAVE</dt><dd>{sheet.deathSave}</dd></div>
+			<div><dt>SERIOUSLY WOUNDED</dt><dd>{sheet.seriouslyWounded}</dd></div>
+		</dl>
+	</Panel>
+	{/snippet}
+
+	<!-- The sheet in five sections with an app bar: at the bottom of a phone,
+	     down the left of a laptop. On a laptop STATS and the ROLL LOG stay in a
+	     column on the right; on a phone they live in SKILLS and FILE. -->
+	<div class="vitals" role="group" aria-label="Status">
+		<button type="button" class="chip" class:hurt={wound !== 'unhurt'} onclick={() => go('combat')}>
+			<span>HP</span><strong>{hp}/{maxHp}</strong>
+		</button>
+		<button type="button" class="chip" onclick={() => go('combat')}><span>SP</span><strong>{armorSp.head}/{armorSp.body}</strong></button>
+		<button type="button" class="chip" onclick={() => go('kit')}><span>HUM</span><strong>{humanity}</strong></button>
+		{#if injuries.length}
+			<button type="button" class="chip alert" title={injuryNames} onclick={() => go('combat')}><span>INJ</span><strong>{injuries.length}</strong></button>
+		{/if}
+		{#if isRunner}
+			<button type="button" class="chip" class:alert={netRun.jackedIn} onclick={() => go('net')}>
+				<span>NET</span><strong>{netRun.jackedIn ? positionOf(netRun) : 'OUT'}</strong>
+			</button>
+		{/if}
+	</div>
+
 	<div class="sheet">
-		<div class="col">
-			<HpTracker
-				{hp}
-				{maxHp}
-				seriouslyWounded={sheet.seriouslyWounded}
-				deathSave={sheet.deathSave}
-				{deathSavePenalty}
-				baseDeathSavePenalty={injuryMods.deathSave}
-				onchange={(next) => update({ currentHp: next })}
-				ondamage={takeDamage}
-				ondeathsave={rollDeathSave}
-				onresetpenalty={() => update({ deathSavePenalty: 0 })}
-			/>
-			{#if damageNotice}<p role="status">{damageNotice}</p>{/if}
-			{#if lastDeathSave && wound === 'mortally'}
-				<p class="death-result" class:fail={!lastDeathSave.survived}>
-					Death Save: {lastDeathSave.die} + {lastDeathSave.penalty} = {lastDeathSave.total} vs BODY {lastDeathSave.body}
-					→ <strong>{lastDeathSave.survived ? 'SURVIVED' : 'FAILED. Flatlined.'}</strong>
-				</p>
-			{/if}
+		<nav class="appbar" aria-label="Sheet sections">
+			{#each sections as sec (sec.id)}
+				<button type="button" aria-current={section === sec.id ? 'page' : undefined} onclick={() => go(sec.id)}>
+					<i aria-hidden="true">{sec.icon}</i><span>{sec.label}</span>
+				</button>
+			{/each}
+		</nav>
 
-			<Panel title="STATS">
-				<p class="hint dim">Tap to roll d10 + STAT{penalty ? ` (${penalty} wounds/injuries)` : ''}.</p>
-				<div class="stats">
-					{#each ruleset.stats as s (s.id)}
-						{@const value = character.stats[s.id]}
-						{@const shown = s.id === 'MOVE' ? Math.min(effectiveStats.MOVE, Math.max(1, woundedMove(effectiveStats.MOVE, wound) + injuryMods.move)) : effectiveStats[s.id]}
-						<button type="button" class="stat" onclick={() => check(s.id, shown, 'stat')} title={s.name}>
-							<span class="stat-id">{s.id}</span>
-							<span class="stat-value" class:reduced={shown !== value}>{shown}</span>
-						</button>
+		<div class="main">
+			{#if section === 'combat'}
+				<HpTracker
+					{hp}
+					{maxHp}
+					seriouslyWounded={sheet.seriouslyWounded}
+					deathSave={sheet.deathSave}
+					{deathSavePenalty}
+					baseDeathSavePenalty={injuryMods.deathSave}
+					onchange={(next) => update({ currentHp: next })}
+					ondamage={takeDamage}
+					ondeathsave={rollDeathSave}
+					onresetpenalty={() => update({ deathSavePenalty: 0 })}
+				/>
+				{#if damageNotice}<p role="status">{damageNotice}</p>{/if}
+				{#if lastDeathSave && wound === 'mortally'}
+					<p class="death-result" class:fail={!lastDeathSave.survived}>
+						Death Save: {lastDeathSave.die} + {lastDeathSave.penalty} = {lastDeathSave.total} vs BODY {lastDeathSave.body}
+						→ <strong>{lastDeathSave.survived ? 'SURVIVED' : 'FAILED. Flatlined.'}</strong>
+					</p>
+				{/if}
+				<GearPanel
+					{gear}
+					kinds={['weapon']}
+					title="WEAPONS"
+					{attackBase}
+					onchange={(next) => update({ gear: next })}
+					onattack={attackWith}
+					ondamage={rollDamage}
+				/>
+				<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
+				<CriticalInjuries {injuries} {hp} {maxHp} characterId={character.id} offered={lastRoll?.damageCritical ?? false} onchange={update} />
+			{:else if section === 'skills'}
+				{#if !wide}{@render statsPanel(character)}{/if}
+				<Panel title="SKILLS">
+					<div class="skills-head">
+						<p class="hint dim">Tap a skill to roll. Base = STAT + level.</p>
+						<label class="toggle"><input type="checkbox" bind:checked={showAllSkills} /> all skills</label>
+					</div>
+					{#each skillGroups as group (group.category)}
+						<h3>{group.category}</h3>
+						<ul class="skills">
+							{#each group.skills as s (s.id)}
+								<li>
+									<button
+										type="button"
+										class="skill"
+										class:untrained={s.level === 0}
+										onclick={() => check(s.name, s.base, 'skill')}
+									>
+										<span class="name">{s.name}{#if s.costMultiplier === 2}<span class="x2">x2</span>{/if}</span>
+										<span class="calc dim">{s.stat} {s.statValue} + {s.level}</span>
+										<span class="base">{s.base + penalty}</span>
+									</button>
+								</li>
+							{/each}
+						</ul>
 					{/each}
-				</div>
-				<dl class="derived">
-					<div><dt>HUMANITY</dt><dd>{humanity}/{maxHumanity(character.stats.EMP, cyberware)}</dd></div>
-					<div><dt>DEATH SAVE</dt><dd>{sheet.deathSave}</dd></div>
-					<div><dt>SERIOUSLY WOUNDED</dt><dd>{sheet.seriouslyWounded}</dd></div>
-				</dl>
-			</Panel>
+				</Panel>
+			{:else if section === 'net'}
+				<Panel title="IN THE NET">
+					<NetRunPanel
+						run={netRun}
+						seesMeat={seesMeatspace(gear, cyberware)}
+						range={accessRange(decks)}
+						campaignId={campaign.id}
+						signedIn={!!gm.userId}
+						onchange={saveRun}
+						perTurn={netActions(roleRank)}
+						onability={useAbility}
+					/>
+				</Panel>
+				<Panel title="INTERFACE">
+					<InterfacePanel
+						rank={roleRank}
+						{boosters}
+						running={netRun.running}
+						actionsLeft={netLeft}
+						onrunning={(running) => saveRun(spendAction({ ...netRun, running }))}
+						onuse={useAbility}
+						oncheck={(label, base) => check(label, base, 'skill')}
+						ondamage={rollPlainDamage}
+					/>
+				</Panel>
+			{:else if section === 'kit'}
+				<CyberdeckPanel {gear} {cyberware} onchange={(next) => update({ gear: next })} />
+				<GearPanel
+					{gear}
+					kinds={['armor', 'item']}
+					{attackBase}
+					onchange={(next) => update({ gear: next })}
+					onattack={attackWith}
+					ondamage={rollDamage}
+				/>
+				<CyberwarePanel
+					installed={cyberware}
+					{humanity}
+					baseEmp={character.stats.EMP}
+					onchange={(change) => update(change)}
+				/>
+			{:else}
+				<ImprovementPanel
+					ip={ipOf(character.extra)}
+					ipLog={ipLogOf(character.extra)}
+					skills={ruleset.skills}
+					skillCategories={ruleset.skillCategories}
+					levels={character.skills}
+					roleAbility={role?.ability}
+					{roleRank}
+					onchange={improve}
+				/>
+				{#if inAccount && character}<CharacterHistory id={character.id} onrestore={restore} />{/if}
+				{#if !wide}<RollLog characterId={character.id} />{/if}
+			{/if}
 		</div>
 
-		<div class="col">
-			<GearPanel
-				{gear}
-				kinds={['weapon']}
-				title="WEAPONS"
-				{attackBase}
-				onchange={(next) => update({ gear: next })}
-				onattack={attackWith}
-				ondamage={rollDamage}
-			/>
-
-			<Panel title="SKILLS">
-				<div class="skills-head">
-					<p class="hint dim">Tap a skill to roll. Base = STAT + level.</p>
-					<label class="toggle"><input type="checkbox" bind:checked={showAllSkills} /> all skills</label>
-				</div>
-				{#each skillGroups as group (group.category)}
-					<h3>{group.category}</h3>
-					<ul class="skills">
-						{#each group.skills as s (s.id)}
-							<li>
-								<button
-									type="button"
-									class="skill"
-									class:untrained={s.level === 0}
-									onclick={() => check(s.name, s.base, 'skill')}
-								>
-									<span class="name">{s.name}{#if s.costMultiplier === 2}<span class="x2">x2</span>{/if}</span>
-									<span class="calc dim">{s.stat} {s.statValue} + {s.level}</span>
-									<span class="base">{s.base + penalty}</span>
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{/each}
-			</Panel>
-
-			<div class="folds">
-				<Fold
-					id="injuries"
-					title="CRITICAL INJURIES"
-					summary={injuries.length ? `${injuries.length} · ${injuryNames}` : 'none'}
-					alert={injuries.length > 0}
-					openOn={lastRoll?.damageCritical ? lastRoll : null}
-				>
-					<CriticalInjuries {injuries} {hp} {maxHp} characterId={character.id} offered={lastRoll?.damageCritical ?? false} onchange={update} />
-				</Fold>
-				<Fold id="armor" title="ARMOR" summary="SP head {armorSp.head} · body {armorSp.body}">
-					<ArmorPanel {gear} onchange={(next) => update({ gear: next })} />
-				</Fold>
-				{#if role?.id === 'netrunner'}
-					<Fold
-						id="netrun"
-						title="IN THE NET"
-						summary={netRun.jackedIn ? `JACKED IN · ${positionOf(netRun)}` : 'not jacked in'}
-						alert={netRun.jackedIn}
-					>
-						<NetRunPanel
-							run={netRun}
-							seesMeat={seesMeatspace(gear, cyberware)}
-							range={accessRange(decks)}
-							campaignId={campaign.id}
-							signedIn={!!gm.userId}
-							onchange={saveRun}
-							perTurn={netActions(roleRank)}
-							onability={useAbility}
-						/>
-					</Fold>
-					<Fold id="interface" title="INTERFACE" summary="rank {roleRank} · {netActions(roleRank)} NET actions">
-						<InterfacePanel
-							rank={roleRank}
-							{boosters}
-							running={netRun.running}
-							actionsLeft={netLeft}
-							onrunning={(running) => saveRun(spendAction({ ...netRun, running }))}
-							onuse={useAbility}
-							oncheck={(label, base) => check(label, base, 'skill')}
-							ondamage={rollPlainDamage}
-						/>
-					</Fold>
-				{/if}
-				<Fold id="cyberdeck" title="CYBERDECK" summary={gear.some((g) => g.cyberdeck) ? 'loaded' : 'none'}>
-					<CyberdeckPanel {gear} {cyberware} onchange={(next) => update({ gear: next })} />
-				</Fold>
-				<Fold
-					id="cyberware"
-					title="CYBERWARE & HUMANITY"
-					summary="{cyberware.length} installed · {humanity}/{maxHumanity(character.stats.EMP, cyberware)}"
-				>
-					<CyberwarePanel
-						installed={cyberware}
-						{humanity}
-						baseEmp={character.stats.EMP}
-						onchange={(change) => update(change)}
-					/>
-				</Fold>
-				<Fold id="gear" title="GEAR" summary="{gear.filter((g) => g.kind !== 'weapon').length} items">
-					<GearPanel
-						{gear}
-						kinds={['armor', 'item']}
-						{attackBase}
-						onchange={(next) => update({ gear: next })}
-						onattack={attackWith}
-						ondamage={rollDamage}
-					/>
-				</Fold>
-				<Fold id="improvement" title="IMPROVEMENT POINTS" summary="{ipOf(character.extra)} IP">
-					<ImprovementPanel
-						ip={ipOf(character.extra)}
-						ipLog={ipLogOf(character.extra)}
-						skills={ruleset.skills}
-						skillCategories={ruleset.skillCategories}
-						levels={character.skills}
-						roleAbility={role?.ability}
-						{roleRank}
-						onchange={improve}
-					/>
-				</Fold>
-				{#if inAccount && character}
-					<Fold id="history" title="PAST VERSIONS">
-						<CharacterHistory id={character.id} onrestore={restore} />
-					</Fold>
-				{/if}
-			</div>
-		</div>
-
-		<div class="col">
-			<RollLog characterId={character.id} />
-		</div>
+		{#if wide}
+			<aside class="side">
+				{@render statsPanel(character)}
+				<RollLog characterId={character.id} />
+			</aside>
+		{/if}
 	</div>
 {/if}
 
@@ -580,39 +620,136 @@
 		min-height: 44px;
 	}
 
-	/* Phone: one column. Tablet: two. Laptop: three, filling the screen (#101). */
+	/* Status chips under the name: tap one to jump to its section. */
+	.vitals {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin: 0 0 1rem;
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.4rem;
+		min-height: 36px;
+		padding: 0.3rem 0.6rem;
+		font-family: var(--f-mono);
+		letter-spacing: 0;
+		text-transform: none;
+	}
+
+	.chip span {
+		font-family: var(--f-label);
+		font-size: 0.55rem;
+		letter-spacing: 0.12em;
+		color: var(--muted);
+	}
+
+	.chip strong {
+		color: var(--bright);
+		font-weight: normal;
+	}
+
+	.chip.hurt strong,
+	.chip.alert strong {
+		color: var(--red);
+	}
+
+	.chip.alert {
+		border-color: var(--red);
+	}
+
+	/* Phone: one column, the app bar fixed to the bottom of the screen. */
 	.sheet {
 		display: grid;
-		gap: 0 clamp(1rem, 2.5vw, 3.5rem);
+		gap: 0 clamp(1rem, 2.5vw, 2.5rem);
 		align-items: start;
 	}
 
-	.col {
+	/* Room under everything (the site footer too) for the fixed app bar. */
+	:global(body:has(.appbar)) {
+		padding-bottom: calc(3.8rem + env(safe-area-inset-bottom, 0px));
+	}
+
+	.main,
+	.side {
 		min-width: 0;
 	}
 
-	.folds {
+	.appbar {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 20;
+		display: flex;
+		background: var(--bg-1);
 		border-top: 1px solid var(--frame-dim);
-		margin-bottom: 1.75rem;
+		padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 	}
 
-	@media (min-width: 760px) {
-		.sheet {
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-		}
-
-		.sheet > .col:last-child {
-			grid-column: 1 / -1;
-		}
+	.appbar button {
+		flex: 1;
+		display: grid;
+		justify-items: center;
+		align-content: center;
+		gap: 0.15rem;
+		min-height: 3.6rem;
+		border: 0;
+		border-top: 2px solid transparent;
+		background: transparent;
+		font-size: 0.55rem;
+		box-shadow: none;
 	}
 
-	@media (min-width: 1200px) {
+	.appbar i {
+		font-style: normal;
+		font-family: var(--f-mono);
+		font-size: 1.15rem;
+		line-height: 1;
+	}
+
+	.appbar button[aria-current='page'] {
+		color: var(--red);
+		border-top-color: var(--red);
+	}
+
+	/* Laptop: a rail on the left, the section in the middle, STATS and the
+	   ROLL LOG on the right. */
+	@media (min-width: 1000px) {
 		.sheet {
-			grid-template-columns: minmax(18rem, 1fr) minmax(0, 2fr) minmax(16rem, 1fr);
+			grid-template-columns: 11rem minmax(0, 1fr) minmax(16rem, 22rem);
 		}
 
-		.sheet > .col:last-child {
-			grid-column: auto;
+		:global(body:has(.appbar)) {
+			padding-bottom: 0;
+		}
+
+		.appbar {
+			position: sticky;
+			top: 1rem;
+			flex-direction: column;
+			background: transparent;
+			border-top: 0;
+			border-right: 1px solid var(--frame-dim);
+			padding: 0;
+		}
+
+		.appbar button {
+			flex: none;
+			grid-template-columns: 1.75rem 1fr;
+			justify-items: start;
+			align-items: center;
+			min-height: 3rem;
+			padding: 0 0.9rem;
+			border-top: 0;
+			border-left: 2px solid transparent;
+			font-size: 0.62rem;
+		}
+
+		.appbar button[aria-current='page'] {
+			border-left-color: var(--red);
 		}
 	}
 

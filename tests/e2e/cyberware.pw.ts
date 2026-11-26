@@ -57,7 +57,10 @@ test('install cyberware, lose Humanity and EMP, keep the rules, reload', async (
 	await choose(page, 'Neuralware', 'Neural Link');
 	await page.getByRole('button', { name: 'INSTALL', exact: true }).click();
 	await expect(panel(page)).toContainText('/ 48 Humanity · EMP 4 (from 5)');
+	await expect(page.getByRole('group', { name: 'Status' }).getByRole('button', { name: /HUM/ })).toContainText('43');
+	await openFold(page, 'STATS');
 	await expect(page.locator('.stat').filter({ hasText: 'EMP' })).toContainText('4');
+	await openFold(page, 'CYBERWARE & HUMANITY');
 
 	await choose(page, 'Neuralware', 'Kerenzikov');
 	await page.getByLabel('Install in').selectOption({ label: 'Neural Link' });

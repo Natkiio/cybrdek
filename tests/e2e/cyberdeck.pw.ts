@@ -63,6 +63,7 @@ test('device loadout: duplicates, shared hardware budget, refusal restores quali
  await page.getByRole('link', { name: 'OPEN', exact: true }).click();
  await expect(page.getByRole('heading', { name: 'Runner', exact: true, level: 1 })).toBeVisible();
  await page.reload();
+ await openFold(page, 'CYBERDECK'); // a fresh visit opens on COMBAT
  await expect(deck.getByRole('status')).toContainText('5 program slots + 2 hardware slots used');
  expect((await stored(page)).extra.gear.find((g: any) => g.cyberdeck).cyberdeck).toEqual(config);
 });
