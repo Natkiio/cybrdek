@@ -23,7 +23,8 @@ test('creating a Netrunner with the starter kit gives a working deck', async ({ 
 	await page.getByRole('button', { name: 'NEXT →' }).click();
 	const kit = page.locator('dd', { hasText: 'Standard Cyberdeck' });
 	await expect(kit).toContainText('Armor · Sword · Eraser · Vrizzbolt · Worm · Virtuality Goggles');
-	await expect(kit).toContainText('Neural Link with Interface Plugs · Shift Tacts (Humanity 46)');
+	await expect(kit).toContainText('Neural Link with Interface Plugs · Shift Tacts (−14 Humanity)');
+	await expect(page.locator('dd', { hasText: /^\d+ · Humanity/ })).toContainText('Humanity 46');
 	await page.getByRole('button', { name: 'CREATE CHARACTER' }).click();
 
 	await expect(page.getByRole('heading', { name: 'Kit Runner', exact: true, level: 1 })).toBeVisible();

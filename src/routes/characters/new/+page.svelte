@@ -231,13 +231,13 @@
 				<dt>STATS</dt>
 				<dd>{ruleset.stats.map((s) => `${s.id} ${stats[s.id]}`).join(' · ')}</dd>
 			</div>
-			<div><dt>HP</dt><dd>{sheet.hp} · Humanity {sheet.humanity}</dd></div>
+			<div><dt>HP</dt><dd>{sheet.hp} · Humanity {role === 'netrunner' && takeKit ? sheet.humanity - KIT_HL : sheet.humanity}</dd></div>
 			{#if role === 'netrunner' && takeKit}
 				<div>
 					<dt>STARTER DECK</dt>
 					<dd>
 						Standard Cyberdeck: {[...NETRUNNER_KIT.programs, ...kitPicks].map(programName).join(' · ')} · Virtuality Goggles
-						· Neural Link with Interface Plugs · Shift Tacts (Humanity {sheet.humanity - KIT_HL})
+						· Neural Link with Interface Plugs · Shift Tacts (−{KIT_HL} Humanity)
 					</dd>
 				</div>
 			{/if}
