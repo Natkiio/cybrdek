@@ -185,6 +185,8 @@
 
 	.label {
 		color: var(--bright);
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 
 	.what {
