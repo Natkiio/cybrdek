@@ -1,3 +1,5 @@
+import { runnerNet, securityCombatant } from '../../src/lib/rulesets/red/net-combat.ts';
+import { newDeck } from '../../src/lib/rulesets/red/cyberdeck.ts';
 // Row-level security tests, on real Postgres (PGlite) with our real migrations.
 // A small stand-in provides the Supabase parts migrations rely on.
 import { readdirSync, readFileSync } from 'node:fs';
@@ -222,5 +224,62 @@ describe('owner-only damage offers from retained finished fights', () => {
 		// Starting another fight does not bring an accepted result back.
 		expect((await save(GM, newEncounter())).error).toBeNull();
 		expect((await as(PLAYER, 'select public.campaign_damage_offers($1,$2) as offers', [VOYAGE,PLAYER])).rows[0].offers).toEqual([]);
+	});
+});
+
+// NET combat extends the same protected fight snapshot, never a second public state.
+describe('NET combat snapshot protection', () => {
+	const netSnapshot = () => {
+		const runner = pc(PLAYER, 'net-runner') as ReturnType<typeof npc> & {
+			net?: import('../../src/lib/rulesets/red/net-combat.ts').NetUnit;
+		};
+		runner.net = runnerNet(
+			{
+				id: 'deck',
+				kind: 'item',
+				name: 'Deck',
+				cyberdeck: { ...newDeck(), programs: [{ id: 'worm-copy', defId: 'worm', loaded: true }] }
+			},
+			4
+		);
+		return {
+			...newEncounter(),
+			combatants: [runner, securityCombatant('security', 'ice', 'hellhound')]
+		};
+	};
+	it('validates NET fields in the real write path, with raw state denied to players', async () => {
+		const latest = (await view(GM)).rows[0].v as any;
+		const valid = netSnapshot();
+		const saved = await save(GM, valid, latest.id, latest.revision);
+		expect(saved.error).toBeNull();
+		const state = saved.rows[0].v as any;
+		const player = (await view(PLAYER)).rows[0].v as any;
+		expect(player.encounter.combatants.map((c: any) => c.netKind)).toEqual(['runner', 'ice']);
+		expect(player.encounter.combatants[0].netStatus.programs).toEqual([{ id:'worm-copy',defId:'worm',rez:7,phase:'inactive' }]);
+        expect(player.encounter.combatants[1]).not.toHaveProperty('netStatus');
+        expect(JSON.stringify(player)).not.toMatch(/"net":|hardware|targetId|conditions|activatedRound|savedPhase/);
+		expect(
+			(await as(PLAYER, 'select public.campaign_encounter_without_net($1,$2)', [VOYAGE, PLAYER]))
+				.error
+		).toBe('42501');
+		for (const patch of [
+			{ rank: 99 },
+			{ programs: [{ id: 'x', defId: 'invented' }] },
+			{ kind: 'hacked' },
+			{ fire: 'true' },
+			{ spent: -1 },
+			{ hardware: ['invented'] },
+			{ conditions: [{}] }
+		]) {
+			const bad = netSnapshot();
+			Object.assign(bad.combatants[0].net!, patch);
+			expect((await save(GM, bad, state.id, state.revision)).error).toBe('23514');
+		}
+		for (const user of [PLAYER, RIVAL, null])
+			expect((await save(user, valid, state.id, state.revision)).error).toBe('42501');
+		valid.combatants[1].hp = 0;
+		valid.combatants[1].out = true;
+		expect((await save(GM, valid, state.id, state.revision)).error).toBeNull();
+		expect(((await view(PLAYER)).rows[0].v as any).encounter.combatants[1].wound).toBe('derezzed');
 	});
 });

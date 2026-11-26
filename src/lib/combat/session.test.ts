@@ -35,13 +35,13 @@ it('does not let a late read undo an acknowledged GM edit', async () => {
 	stop = session.start(); await tick();
 	let finish!: (v: EncounterView) => void; fake.read.mockImplementationOnce(() => new Promise(r => { finish = r; }));
 	const pending = session.refresh();
-	await session.save(newEncounter()); expect(session.state.view?.revision).toBe(2);
+	expect(await session.save(newEncounter())).toBe(true); expect(session.state.view?.revision).toBe(2);
 	finish(view(1)); await pending; expect(session.state.view?.revision).toBe(2);
 });
 it('refuses client-side edits for a player and never loads party sheets for them', async () => {
 	fake.read.mockResolvedValue({ ...view(), canManage: false });
 	const { encounterSession } = await import('./session.svelte.ts'); const session = encounterSession('campaign','player');
-	stop = session.start(); await tick(); await session.save(newEncounter());
+	stop = session.start(); await tick(); expect(await session.save(newEncounter())).toBe(false);
 	expect(fake.write).not.toHaveBeenCalled(); expect(fake.party).not.toHaveBeenCalled();
 });
 it('discarded account reads and writes cannot repopulate a stopped session', async () => {
@@ -49,7 +49,7 @@ it('discarded account reads and writes cannot repopulate a stopped session', asy
 	stop = session.start(); await tick();
 	let finish!: (v: EncounterView) => void; fake.write.mockImplementationOnce(() => new Promise(r => { finish = r; }));
 	const pending = session.save(newEncounter()); stop(); stop = undefined;
-	finish(view(7)); await pending; expect(session.state.view).toBeNull(); expect(session.state.party).toEqual([]);
+	finish(view(7)); expect(await pending).toBe(false); expect(session.state.view).toBeNull(); expect(session.state.party).toEqual([]);
 });
 it('clears raw history and party sheets on access/network failures', async () => {
 	const { encounterSession } = await import('./session.svelte.ts'); const session = encounterSession('campaign','owner');
@@ -59,6 +59,16 @@ it('clears raw history and party sheets on access/network failures', async () =>
 it('refreshes after a stale-write rejection and never retries the stale operation', async () => {
 	const { encounterSession } = await import('./session.svelte.ts'); const session = encounterSession('campaign','owner');
 	stop = session.start(); await tick(); fake.write.mockResolvedValue({ error: 'Conflict', conflict: true }); fake.read.mockResolvedValue(view(5));
-	await session.save(newEncounter()); expect(session.state.view?.revision).toBe(5);
+	expect(await session.save(newEncounter())).toBe(false); expect(session.state.view?.revision).toBe(5);
 	expect(session.state.error).toBe('Conflict'); expect(fake.write).toHaveBeenCalledTimes(1);
+});
+
+it('reports failed saves after network errors so action panels cannot announce success', async () => {
+	const { encounterSession } = await import('./session.svelte.ts');
+	const session = encounterSession('campaign', 'owner');
+	stop = session.start(); await tick();
+	fake.write.mockRejectedValue(new Error('Network unavailable'));
+	expect(await session.save(newEncounter())).toBe(false);
+	expect(session.state.error).toContain('Could not save the fight');
+	expect(session.state.busy).toBe(false);
 });
