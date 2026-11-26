@@ -55,13 +55,21 @@ export function netRunOf(extra: Record<string, unknown>): NetRun {
 const TOP = { floor: 1, floorId: null, floorLabel: '' } as const;
 
 /** Jacking in starts at the top floor, and is itself a NET Action (Core p. 198). */
-export const jackIn = (run: NetRun): NetRun => ({ ...run, ...TOP, jackedIn: true, spent: 1 });
+export const jackIn = (run: NetRun): NetRun => ({ ...run, ...TOP, jackedIn: true, spent: run.spent + 1 });
 
 /**
  * Jacking out, safe or not, resets the Architecture: a new run starts from
  * the top. Your Programs leave with you, so nothing is still running (Core p. 198).
  */
-export const jackOut = (run: NetRun): NetRun => ({ ...run, ...TOP, jackedIn: false, running: [], spent: 0 });
+export const jackOut = (run: NetRun, safe = false): NetRun => ({
+	...run,
+	...TOP,
+	jackedIn: false,
+	running: [],
+	// A safe Jack Out is a NET Action; an unsafe one isn't, but neither gives
+	// the Turn's actions back. Only a new Turn does (Core p. 198).
+	spent: run.spent + (safe ? 1 : 0)
+});
 
 /** Move to a floor by number, never above the top. */
 export const moveTo = (run: NetRun, floor: number): NetRun => ({
@@ -124,9 +132,8 @@ export function meatspaceRisks(seesMeat: boolean, range = `${BASE_RANGE} m/yds`)
 	];
 }
 
-/** NET Actions still free this Turn, given the runner's Turn budget (see netActions). Only counts while jacked in. */
-export const actionsLeft = (run: NetRun, perTurn: number): number =>
-	run.jackedIn ? Math.max(0, perTurn - run.spent) : 0;
+/** NET Actions still free this Turn, given the runner's Turn budget (see netActions). */
+export const actionsLeft = (run: NetRun, perTurn: number): number => Math.max(0, perTurn - run.spent);
 
 /** Use one NET Action, if jacked in. */
 export const spendAction = (run: NetRun): NetRun => (run.jackedIn ? { ...run, spent: run.spent + 1 } : run);

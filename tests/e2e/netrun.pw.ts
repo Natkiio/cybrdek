@@ -225,13 +225,28 @@ test('NET Actions run out, END TURN refills them, and Jack Out climbs back to th
 	// From Floor 3 the marker climbs 3 → 2 → 1 before the run resets.
 	const current = page.getByRole('list', { name: 'Floors' }).locator('[aria-current="step"]');
 	await expect(current).toContainText('Floor 3');
-	await page.getByRole('button', { name: 'JACK OUT' }).click();
+	await page.getByRole('button', { name: 'JACK OUT' }).click(); // 1 of 3
+	// The exit is saved straight away, so nothing more can be squeezed into the Turn:
+	// INTERFACE rolls during the climb are ordinary rolls, not NET Actions.
+	await expect(page.locator('.status')).toHaveText('NOT JACKED IN');
+	await expect(page.getByText(/NET Actions? left this Turn/)).toHaveCount(0);
+	await page.getByRole('button', { name: 'Roll Backdoor' }).click();
+	await expect(pips).toHaveAccessibleName('2 of 3 NET Actions left this Turn');
+	// Meanwhile the marker replays the climb 3 → 2 → 1, then the stairs go.
 	await page.clock.runFor(160);
 	await expect(current).toContainText('Floor 2');
-	await expect(page.locator('.status')).toContainText('JACKED IN · Floor 3'); // still in until the climb ends
 	await page.clock.runFor(160);
 	await expect(current).toContainText('Floor 1');
 	await page.clock.runFor(160);
-	await expect(page.locator('.status')).toHaveText('NOT JACKED IN');
+	await expect(page.getByRole('list', { name: 'Floors' })).toHaveCount(0);
 	await expect(page.locator('.notice')).toContainText('resets');
+
+	// Jacking back in the same Turn doesn't refill it: In + Out + In is the whole Turn.
+	await page.getByRole('button', { name: 'JACK IN' }).click(); // 2 of 3
+	await expect(pips).toHaveAccessibleName('1 of 3 NET Actions left this Turn');
+	await page.getByRole('button', { name: 'JACK OUT' }).click(); // 3 of 3
+	await expect(pips).toHaveAccessibleName('0 of 3 NET Actions left this Turn');
+	await expect(page.getByRole('button', { name: 'JACK IN' })).toBeDisabled();
+	await page.getByRole('button', { name: 'END TURN' }).click();
+	await expect(page.getByRole('button', { name: 'JACK IN' })).toBeEnabled();
 });
