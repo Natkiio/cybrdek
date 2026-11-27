@@ -85,9 +85,15 @@
 	// The GM flag can be known before the list loads; it decides the header too.
 	const here = $derived(gm.isGm ? 'gm' : myRole);
 
-	async function toggleMapUploads(allowed: boolean) {
+	let savingMapUploads = $state(false);
+	/** Save the map-upload permission; on failure the box goes back to the saved value. */
+	async function toggleMapUploads(box: HTMLInputElement) {
+		const allowed = box.checked;
+		savingMapUploads = true; // locked until the reply, so replies can't arrive out of order
 		mapUploadsError = (await setPlayersUploadMaps(campaign.id, allowed)) ?? '';
-		if (!mapUploadsError) mapUploads = allowed;
+		savingMapUploads = false;
+		if (mapUploadsError) box.checked = mapUploads ?? false;
+		else mapUploads = allowed;
 	}
 
 	// Phone: THIS CAMPAIGN and ALL CAMPAIGNS are tabs (#all in the address).
@@ -144,9 +150,10 @@
 </section>
 
 {#if !wide}
-	<div class="tabs" role="tablist" aria-label="Campaigns">
-		<button type="button" role="tab" aria-selected={view === 'this'} onclick={() => show('this')}>THIS CAMPAIGN</button>
-		<button type="button" role="tab" aria-selected={view === 'all'} onclick={() => show('all')}>ALL CAMPAIGNS</button>
+	<!-- Plain view switches (not an ARIA tab widget): Tab and Enter, like any button. -->
+	<div class="tabs" role="group" aria-label="Show">
+		<button type="button" aria-pressed={view === 'this'} onclick={() => show('this')}>THIS CAMPAIGN</button>
+		<button type="button" aria-pressed={view === 'all'} onclick={() => show('all')}>ALL CAMPAIGNS</button>
 	</div>
 {/if}
 
@@ -197,7 +204,7 @@
 			{#if gm.isGm && mapUploads !== null}
 				<Panel title="SETTINGS">
 					<label class="setting">
-						<input type="checkbox" checked={mapUploads} onchange={(e) => toggleMapUploads(e.currentTarget.checked)} />
+						<input type="checkbox" checked={mapUploads} disabled={savingMapUploads} onchange={(e) => toggleMapUploads(e.currentTarget)} />
 						Players can upload maps
 					</label>
 					{#if mapUploadsError}<p class="error" role="status">{mapUploadsError}</p>{/if}
@@ -381,7 +388,7 @@
 		box-shadow: none;
 	}
 
-	.tabs button[aria-selected='true'] {
+	.tabs button[aria-pressed='true'] {
 		color: var(--red);
 		border-bottom-color: var(--red);
 	}
