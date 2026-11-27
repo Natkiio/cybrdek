@@ -52,7 +52,8 @@ test.afterAll(async () => {
 test.beforeEach(async () => {
 	await queue;
 	await db.exec(
-		'delete from public.net_architectures; delete from public.net_architecture_updates;'
+		`delete from public.net_architectures; delete from public.net_architecture_updates;
+		insert into public.campaign_members(campaign_id,user_id,role) values('${CAMPAIGN}','${PLAYER}','player') on conflict do nothing;`
 	);
 });
 async function connect(context: BrowserContext, user: string) {
@@ -214,6 +215,7 @@ test('stale GM draft cannot overwrite a newer reveal and the draft is retained f
 	const result = await rpc(PLAYER, 'select public.campaign_net_architectures($1) as v', [CAMPAIGN]);
 	expect((result.data as any).architectures).toEqual([]);
 	await page.getByRole('button', { name: 'CANCEL EDIT', exact: true }).click();
+	await page.getByText('MANAGE ARCHITECTURE', { exact: true }).click();
 	await page.getByRole('button', { name: 'DELETE ARCHITECTURE', exact: true }).click();
 	await page.getByRole('button', { name: 'CONFIRM DELETE ARCHITECTURE', exact: true }).click();
 	await expect(page.getByText('No Architectures saved yet.')).toBeVisible();
@@ -234,4 +236,113 @@ test('an open player view clears after campaign membership is revoked', async ({
 	await page.getByRole('button', { name: 'REFRESH ARCHITECTURES', exact: true }).click();
 	await expect(page.getByRole('alert')).toContainText('membership');
 	await expect(page.getByRole('region', { name: 'Fixture', exact: true })).toHaveCount(0);
+});
+
+
+async function layoutFixture() {
+	const ice = { ...newEntry('ice', 'black-ice'), name: 'Hellhound', refId: 'hellhound' };
+	const a = { ...newArchitecture(), name: 'Relay HQ', gmNotes: '   ', floors: [
+		{ ...newFloor('hidden', 'Hidden vault'), gmNotes: '   ', entries: [newEntry('secret', 'file')] },
+		{ ...newFloor('security', 'Security'), revealed: true, entries: [ice, { ...newEntry('gate', 'password'), dv: 8, playerText: 'A locked gateway' }] },
+		{ ...newFloor('archive', 'Archive'), revealed: true, gmNotes: 'Keep this note', entries: [{ ...newEntry('data', 'file'), gmNotes: 'Private entry note' }] }
+	] };
+	const result = await rpc(GM, 'select public.save_net_architecture($1,null,0,$2) as v', [CAMPAIGN, JSON.stringify(a)]);
+	expect(result.code).toBeUndefined();
+}
+
+for (const width of [390, 1280]) {
+	for (const user of [GM, PLAYER]) {
+		test(`Architecture layout at ${width}px as ${user === GM ? 'GM' : 'player'}`, async ({ page }, info) => {
+			await layoutFixture();
+			await connect(page.context(), user);
+			await page.setViewportSize({ width, height: 900 });
+			const errors: string[] = [];
+			page.on('pageerror', e => errors.push(e.message));
+			await open(page);
+			const architecture = page.getByRole('region', { name: 'Relay HQ', exact: true });
+			await expect(architecture.getByRole('heading', { name: 'Relay HQ', exact: true })).toBeVisible();
+			const index = architecture.getByRole('navigation');
+			if (width >= 1000) {
+				await expect(index).toBeVisible();
+				await expect(index.getByRole('link')).toHaveCount(user === GM ? 3 : 2);
+				await index.getByRole('link', { name: /Archive/ }).click();
+				await expect(architecture.locator('.floor').last()).toBeFocused();
+				expect((await architecture.locator('.floor').last().boundingBox())!.y).toBeGreaterThanOrEqual((await page.locator('header.bar').boundingBox())!.height);
+			} else await expect(index).not.toBeVisible();
+			if (user === GM) {
+				await expect(architecture.getByText('2 / 3 floors revealed', { exact: true })).toBeVisible();
+				await expect(architecture.locator('.notes')).toHaveCount(2);
+				await expect(architecture.getByText('GM notes: Keep this note', { exact: true })).toBeVisible();
+				const visibility = architecture.getByRole('group', { name: 'Visibility of Hidden vault', exact: true });
+				await expect(visibility.locator('.badge')).toHaveText('HIDDEN');
+				await expect(visibility.getByRole('button', { name: 'REVEAL FLOOR: Hidden vault', exact: true })).toBeVisible();
+				await expect(architecture.getByRole('button', { name: 'DELETE ARCHITECTURE', exact: true })).not.toBeVisible();
+				await expect(architecture.getByRole('button', { name: 'EDIT ARCHITECTURE', exact: true })).toBeVisible();
+			} else {
+				await expect(architecture.getByText('2 revealed floors', { exact: true })).toBeVisible();
+				await expect(architecture.locator('.floor .number')).toHaveText(['REVEALED FLOOR 01', 'REVEALED FLOOR 02']);
+				await expect(architecture.getByText('Hidden vault', { exact: true })).toHaveCount(0);
+				await expect(architecture.locator('.notes')).toHaveCount(0);
+				await expect(architecture.getByText(/DV 8/)).toHaveCount(0);
+				await expect(architecture.getByText('MANAGE ARCHITECTURE', { exact: true })).toHaveCount(0);
+				await expect(architecture.getByRole('button')).toHaveCount(0);
+			}
+			const stats = architecture.getByRole('group', { name: 'Hellhound stats', exact: true });
+			await expect(stats.locator('dt')).toHaveText(['PER', 'SPD', 'ATK', 'DEF', 'REZ']);
+			await expect(stats.locator('dd')).toHaveText(['6', '6', '6', '2', '20']);
+			const values = await stats.locator('dd').evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().y));
+			expect(Math.max(...values) - Math.min(...values)).toBeLessThan(1);
+			for (const button of await architecture.getByRole('button').all()) {
+				if (await button.isVisible()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+			}
+			expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+			await page.screenshot({ path: info.outputPath(`net-${width}-${user === GM ? 'gm' : 'player'}.png`), fullPage: true });
+			expect(errors).toEqual([]);
+		});
+	}
+}
+
+test('laptop floor index follows the editor draft; reveal and delete stay separate', async ({ page }) => {
+	await layoutFixture();
+	await connect(page.context(), GM);
+	await page.setViewportSize({ width: 1280, height: 900 });
+	await open(page);
+	const architecture = page.getByRole('region', { name: 'Relay HQ', exact: true });
+	const visibility = architecture.getByRole('group', { name: 'Visibility of Hidden vault', exact: true });
+	await visibility.getByRole('button', { name: 'REVEAL FLOOR: Hidden vault' }).click();
+	await expect(visibility.locator('.badge')).toHaveText('REVEALED');
+	await expect(architecture.getByText('3 / 3 floors revealed', { exact: true })).toBeVisible();
+	await architecture.getByRole('button', { name: 'EDIT ARCHITECTURE', exact: true }).click();
+	const editor = page.getByRole('group', { name: 'ARCHITECTURE EDITOR', exact: true });
+	const index = editor.getByRole('navigation');
+	await index.getByRole('link', { name: /Archive/ }).click();
+	const third = editor.getByRole('region', { name: 'Edit floor 3', exact: true });
+	await expect(third).toBeFocused();
+	await third.getByLabel('Floor label', { exact: true }).fill('Archive renamed');
+	await third.getByRole('button', { name: 'MOVE UP', exact: true }).click();
+	await expect(index.getByRole('link')).toHaveText([/01.*Hidden vault.*REVEALED/s, /02.*Archive renamed.*REVEALED/s, /03.*Security.*REVEALED/s]);
+	await page.getByRole('button', { name: 'CANCEL EDIT', exact: true }).click();
+	await architecture.getByText('MANAGE ARCHITECTURE', { exact: true }).click();
+	await architecture.getByRole('button', { name: 'DELETE ARCHITECTURE', exact: true }).click();
+	await expect(architecture.getByRole('button', { name: 'CONFIRM DELETE ARCHITECTURE', exact: true })).toBeVisible();
+	await architecture.getByRole('button', { name: 'KEEP ARCHITECTURE', exact: true }).click();
+	await expect(architecture).toBeVisible();
+	await expect(architecture.getByRole('button', { name: 'CONFIRM DELETE ARCHITECTURE', exact: true })).toHaveCount(0);
+});
+
+
+test('long Architecture, floor and entry names stay inside the phone and laptop layouts', async ({ page }) => {
+	const a = { ...newArchitecture(), name: 'W'.repeat(100), floors: [{ ...newFloor('floor', 'M'.repeat(100)), entries: [{ ...newEntry('entry', 'file'), name: 'W'.repeat(100) }] }] };
+	const result = await rpc(GM, 'select public.save_net_architecture($1,null,0,$2) as v', [CAMPAIGN, JSON.stringify(a)]);
+	expect(result.code).toBeUndefined();
+	await connect(page.context(), GM);
+	await open(page);
+	for (const width of [390, 1280]) {
+		await page.setViewportSize({ width, height: 900 });
+		await page.evaluate(() => document.fonts.ready);
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+		await page.getByRole('button', { name: 'EDIT ARCHITECTURE', exact: true }).click();
+		expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+		await page.getByRole('button', { name: 'CANCEL EDIT', exact: true }).click();
+	}
 });
