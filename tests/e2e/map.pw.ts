@@ -1,6 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { findPlace, expectMapFillsViewport } from './map-helpers.ts';
+import { findPlace, expectMapFillsViewport, useMapArt } from './map-helpers.ts';
 import { DISTRICTS, MAP_WIDTH } from '../../src/lib/map/districts.ts';
+
+// These tests cover the detailed map art; the simple schematic has its own tests.
+test.beforeEach(async ({ page }) => useMapArt(page));
 
 test.use({ hasTouch: true });
 

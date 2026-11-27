@@ -65,6 +65,23 @@
 	let error = $state('');
 	let drawer = $state<'finder' | 'layers' | 'pin' | 'district' | null>(null);
 	let outlines = $state(false);
+	// The simple schematic city (#101 mockup A) or the detailed map art; remembered on this device.
+	let schematic = $state(true);
+	onMount(() => {
+		try {
+			schematic = localStorage.getItem('cybrdek:map:schematic') !== '0';
+		} catch {
+			// storage blocked: use the default
+		}
+	});
+	function setSchematic(on: boolean) {
+		schematic = on;
+		try {
+			localStorage.setItem('cybrdek:map:schematic', on ? '1' : '0');
+		} catch {
+			// storage blocked: it just won't be remembered
+		}
+	}
 	let showPins = $state(true);
 	let mapFocus = $state<MapFocus | null>(null);
 	let headerHeight = $state(0);
@@ -330,17 +347,19 @@
 				<g data-map-interactive class="pin" class:hidden={!pin.visible} class:selected={pin.id === selectedPinId} onclick={() => openPin(pin)} role="button" tabindex="-1">
 					<circle cx={pin.x} cy={pin.y} r={22 / scale} class="hit" />
 					<circle cx={pin.x} cy={pin.y} r={9 / scale} class="dot" style:stroke-width={2.5 / scale} />
+					{#if isVoyage && schematic}<text class="pin-name" x={pin.x + 16 / scale} y={pin.y} style:font-size="{13 / scale}px">{pin.label}</text>{/if}
 				</g>
 			{/each}
 			{#if draft}<circle cx={draft.x} cy={draft.y} r={11 / scale} class="draft" style:stroke-width={2.5 / scale} />{/if}
 		{/snippet}
 		<CityMap map={currentMap} areas={isVoyage ? districts : []} immersive selectionPopup={false}
-			{outlines} focus={mapFocus} bind:selectedId={selectedDistrictId}
+			{outlines} schematic={isVoyage && schematic} focus={mapFocus} bind:selectedId={selectedDistrictId}
 			onselect={() => selectedPinId = undefined} ontap={tapped} overlay={pinMarkers} />
 		{#if !draft && tapMode === 'none'}
 			{#if selectedPin}
 				<aside class="selection pin-card" aria-label="Selected place" aria-live="polite">
 					<button class="close" type="button" aria-label="Close place card" onclick={() => selectedPinId = undefined}>×</button>
+					<span class="kicker">PLACE</span>
 					<h2>{selectedPin.label}</h2>
 					{#if !selectedPin.visible}<p class="dim">GM ONLY</p>{/if}
 					{#if selectedPinLore?.summary}<p>{selectedPinLore.summary}</p>{/if}
@@ -378,8 +397,9 @@
 </MapDrawer>
 <MapDrawer open={drawer === 'layers'} title="Layers" onclose={() => drawer = null}>
 	<div class="layer-options">
+		{#if isVoyage}<label><input type="checkbox" checked={schematic} onchange={(e) => setSchematic(e.currentTarget.checked)} /> Simple map (districts only)</label>{/if}
 		<label><input type="checkbox" bind:checked={showPins} /> Places & pins</label>
-		{#if isVoyage}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
+		{#if isVoyage && !schematic}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
 	</div>
 	<p class="dim">Drag to pan · pinch or scroll to zoom. Keyboard: arrows to pan, +/− to zoom, Home to recenter.</p>
 	{#if !isVoyage && (gm.isGm || canUpload || hasOwnMaps)}
@@ -411,13 +431,17 @@
 	.find, .dock p { flex: 1; text-align: left; }
 	.dock p { margin: 0; align-self: center; color: var(--bright); }
 	.add { color: var(--bright); border-color: var(--bright-dim); }
-	.selection { position: absolute; bottom: 0.75rem; left: 0.75rem; right: 0.75rem; max-width: 27rem; max-height: min(55%, 30rem); overflow-y: auto; overscroll-behavior: contain; background: var(--bg-0); border: 1px solid var(--bright-dim); }
-	.pin-card { padding: 0.75rem; }
-	.pin-card h2 { margin: 0; padding-right: 2.75rem; color: var(--bright); font-size: 1.1rem; overflow-wrap: anywhere; }
-	.close { position: absolute; top: 0; right: 0; border: none; }
+	/* The selected place or district: a compact red-framed card inset from the map's edges (#101 mockup A). */
+	.selection { position: absolute; bottom: 0.75rem; left: 0.75rem; right: 0.75rem; max-width: 24rem; max-height: min(55%, 30rem); overflow-y: auto; overscroll-behavior: contain; padding: 0.85rem 1rem; background: var(--bg-1); border: 1px solid var(--red); box-shadow: 0 8px 30px var(--bg-0); }
+	@media (min-width: 700px) { .selection { left: 1rem; bottom: 1rem; } }
+	.pin-card h2 { margin: 0 0 0.5rem; padding-right: 2.75rem; color: var(--bright); font-family: var(--f-label); font-size: 0.95rem; font-weight: normal; letter-spacing: 0.04em; line-height: 1.4; text-shadow: none; overflow-wrap: anywhere; }
+	.pin-card p { margin: 0 0 0.6rem; }
+	.kicker { font-family: var(--f-label); font-size: 0.55rem; letter-spacing: 0.16em; color: var(--muted); }
+	.pin-card .kicker + h2 { margin-top: 0.3rem; }
+	.close { position: absolute; top: 0.3rem; right: 0.3rem; border-color: transparent; background: transparent; box-shadow: none; font-size: 1.25rem; }
 	.card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 	.read { display: inline-flex; align-items: center; color: var(--bright); }
-	.edit-district { margin: 0.5rem; }
+	.edit-district { margin: 0.75rem 0 0; }
 	.dim { color: var(--muted); }
 	.layer-options { display: grid; gap: 0.5rem; }
 	.layer-options label { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; }
@@ -426,5 +450,9 @@
 	:global(.pin .dot) { fill: var(--bright); stroke: var(--bg-0); }
 	:global(.pin.hidden .dot) { fill: var(--bg-1); stroke: var(--bright); stroke-dasharray: 2 2; }
 	:global(.pin.selected .dot) { fill: var(--red); }
+	/* Simple map: pins are red dots with their names, like the mockup. */
+	:global(.schematic .pin .dot) { fill: var(--red); stroke: var(--bg-0); }
+	:global(.schematic .pin.selected .dot) { fill: var(--bright); }
+	:global(.schematic .pin-name) { font-family: var(--f-mono); fill: var(--bright); text-anchor: start; dominant-baseline: middle; paint-order: stroke; stroke: var(--bg-0); stroke-width: 0.35em; pointer-events: none; }
 	:global(circle.draft) { fill: var(--red); stroke: var(--value); pointer-events: none; }
 </style>

@@ -1,6 +1,9 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 
-import { findPlace, expectMapFillsViewport, openLayers, closeLayers } from './map-helpers.ts';
+import { findPlace, expectMapFillsViewport, openLayers, closeLayers, useMapArt } from './map-helpers.ts';
+
+// These tests cover the detailed map art; the simple schematic has its own tests.
+test.beforeEach(async ({ page }) => useMapArt(page));
 
 // GM pins and district edits on /map (#39). Supabase is faked for the whole
 // test, so nothing touches the live database and no email is ever sent.
