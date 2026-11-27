@@ -38,6 +38,15 @@ test('Critical Injuries: target rolls, receiving, duplicate rerolls, persistence
 	await page.getByRole('button', { name: 'APPLY TO THIS CHARACTER (−5 HP)' }).click();
 	await expect(page.locator('.current')).toHaveText('35');
 	await expect(page.getByRole('button', { name: 'TREATED: REMOVE Brain Injury' })).toBeVisible();
+	// The visible state updates before the asynchronous IndexedDB write commits.
+	await expect.poll(() => page.evaluate(() => new Promise<number>((resolve) => {
+		const request = indexedDB.open('cybrdek');
+		request.onsuccess = () => {
+			const db = request.result;
+			const read = db.transaction('characters').objectStore('characters').get('injury-test');
+			read.onsuccess = () => { db.close(); resolve(read.result.extra.criticalInjuries?.length ?? 0); };
+		};
+	}))).toBe(1);
 	await page.reload();
 	await expect(page.getByRole('button', { name: 'TREATED: REMOVE Brain Injury' })).toBeVisible();
 	await expect(page.locator('.current')).toHaveText('35');
