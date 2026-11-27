@@ -34,3 +34,8 @@ export async function expectMapFillsViewport(page: Page) {
 		expect(box.height).toBeGreaterThanOrEqual(44);
 	}
 }
+
+/** Show Voyage City's original art rather than the default concept city (for tests of the image itself). */
+export async function useOriginalArt(page: Page) {
+	await page.addInitScript(() => localStorage.setItem('cybrdek:map:style:00000000-0000-4000-8000-000000000001', 'art'));
+}
