@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Panel from '#lib/components/Panel.svelte';
 	import type { LoreEntry } from '#lib/lore/types.ts';
 	import type { District } from '#lib/map/districts.ts';
 	import { PIN_CATEGORY_LABELS, type DistrictPlaces, type MapPin } from '#lib/map/pins.ts';
@@ -49,11 +48,14 @@
 {/snippet}
 
 <section class="menu" aria-label="{places.district.name} district">
-	<Panel title="DISTRICT">
-		<div class="head">
+	<!-- A compact card over the map (#101 "Map first"): small label, name, close. -->
+	<div class="head">
+		<div>
+			<span class="kicker">DISTRICT</span>
 			<h2>{places.district.name}</h2>
-			<button type="button" class="close" aria-label="Close district menu" onclick={onclose}>×</button>
 		</div>
+		<button type="button" class="close" aria-label="Close district menu" onclick={onclose}>×</button>
+	</div>
 		{#if districtLore?.summary}<p class="dim">{districtLore.summary}</p>{/if}
 		{#if districtLore}<a class="read" href="/lore/{districtLore.slug}">READ LORE →</a>{/if}
 		<p class="dim small">
@@ -86,7 +88,6 @@
 				{/if}
 			</div>
 		{/if}
-	</Panel>
 </section>
 
 <style>
