@@ -1,0 +1,2560 @@
+[
+  {
+    "slug": "home",
+    "path": "/",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "Home",
+      "ROLL LOG",
+      "NEXT UP"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "characters",
+    "path": "/characters",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "CHARACTERS",
+      "ROSTER",
+      "Vex",
+      "Moss"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "",
+        "h": 12
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "sheet-combat",
+    "path": "/characters/audit-runner#combat",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 1854,
+    "headings": [
+      "Vex",
+      "HIT POINTS",
+      "WEAPONS",
+      "ARMOR / STOPPING POWER",
+      "CRITICAL INJURIES"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "sheet-skills",
+    "path": "/characters/audit-runner#skills",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 1402,
+    "headings": [
+      "Vex",
+      "STATS",
+      "SKILLS",
+      "Awareness",
+      "Body",
+      "Education",
+      "Fighting",
+      "Ranged Weapon",
+      "Technique"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "sheet-net",
+    "path": "/characters/audit-runner#net",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 2630,
+    "headings": [
+      "Vex",
+      "IN THE NET",
+      "INTERFACE"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "NET RULES \u2192",
+        "h": 14
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "sheet-kit",
+    "path": "/characters/audit-runner#kit",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 3336,
+    "headings": [
+      "Vex",
+      "CYBERDECK",
+      "HARDWARE",
+      "PROGRAM COPIES",
+      "GEAR",
+      "ARMOR",
+      "GEAR",
+      "CYBERWARE & HUMANITY",
+      "INSTALL",
+      "THERAPY"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "Remove Neural Link",
+        "h": 36
+      },
+      {
+        "text": "Remove Interface Plugs",
+        "h": 36
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "sheet-file",
+    "path": "/characters/audit-runner#file",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 1186,
+    "headings": [
+      "Vex",
+      "IMPROVEMENT POINTS",
+      "RAISE A SKILL",
+      "RAISE ROLE ABILITY",
+      "PAST VERSIONS",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "new-character",
+    "path": "/characters/new",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "NEW CHARACTER",
+      "01 // HANDLE"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "dice",
+    "path": "/dice",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "DICE",
+      "FREE ROLLER",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "combat-gm",
+    "path": "/combat",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 3070,
+    "headings": [
+      "COMBAT",
+      "CAMPAIGN CHARACTERS",
+      "NET COMBAT",
+      "ICE \u00b7 Hellhound \u00b7 20 REZ",
+      "Vex \u00b7 23 HP",
+      "ADD TO THE FIGHT",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "NET combat reference \u2192",
+        "h": 16
+      },
+      {
+        "text": "Black ICE reference \u2192",
+        "h": 16
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "combat-player",
+    "path": "/combat",
+    "role": "player",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "COMBAT",
+      "THE FIGHT \u00b7 READ ONLY",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "net-gm",
+    "path": "/net",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 1699,
+    "headings": [
+      "NET ARCHITECTURES",
+      "Zetatech Relay",
+      "Access Lobby",
+      "Records",
+      "Security Core"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "CAMPAIGNS \u2192",
+        "h": 16
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "net-player",
+    "path": "/net",
+    "role": "player",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 976,
+    "headings": [
+      "NET ARCHITECTURES",
+      "Zetatech Relay",
+      "Access Lobby",
+      "Records"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "CAMPAIGNS \u2192",
+        "h": 16
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "map",
+    "path": "/map",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 984,
+    "headings": [
+      "VOYAGE CITY"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "Nova Peak",
+        "h": 36
+      },
+      {
+        "text": "Amber Hill",
+        "h": 36
+      },
+      {
+        "text": "Ashgreene",
+        "h": 36
+      },
+      {
+        "text": "Newpine",
+        "h": 36
+      },
+      {
+        "text": "Port of Voyage",
+        "h": 36
+      },
+      {
+        "text": "Little Japan",
+        "h": 36
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "lore",
+    "path": "/lore",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "LORE DATABASE"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "ALL",
+        "h": 36
+      },
+      {
+        "text": "Character",
+        "h": 36
+      },
+      {
+        "text": "Location",
+        "h": 36
+      },
+      {
+        "text": "Faction / Corp",
+        "h": 36
+      },
+      {
+        "text": "Event",
+        "h": 36
+      },
+      {
+        "text": "Other",
+        "h": 36
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "rules",
+    "path": "/rules",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "RULES DATABASE",
+      "YOUR RULEBOOK"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "NET RULES QUICK REFERENCE \u2192",
+        "h": 16
+      },
+      {
+        "text": "pdfjs-dist/LICENSE",
+        "h": 16
+      },
+      {
+        "text": "standard_fonts/LICENSE_FOXIT",
+        "h": 16
+      },
+      {
+        "text": "standard_fonts/LICENSE_LIBERATION",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_JBIG2",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_OPENJPEG",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_JBIG2",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_OPENJPEG",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_QCMS",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_QUICKJS",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_QCMS",
+        "h": 16
+      },
+      {
+        "text": "wasm/LICENSE_QUICKJS",
+        "h": 16
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "rules-net",
+    "path": "/rules/net",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 3313,
+    "headings": [
+      "NET RULES",
+      "What you need Core p. 196\u2013198, 208",
+      "Your Turn Core p. 197\u2013198",
+      "Interface Abilities Core p. 198\u2013201",
+      "Architectures Core p. 209\u2013211",
+      "Programs Core p. 201\u2013202",
+      "NET combat Core p. 201",
+      "Black ICE Core p. 204\u2013205",
+      "Getting out Core p. 198"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "Your rulebook \u2192",
+        "h": 37
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "campaigns",
+    "path": "/campaigns",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 1112,
+    "headings": [
+      "CAMPAIGNS",
+      "YOUR NAME AT THIS TABLE",
+      "INVITE PLAYERS",
+      "THE PARTY",
+      "YOUR CAMPAIGNS",
+      "NEW CAMPAIGN"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "NET ARCHITECTURES \u2192",
+        "h": 16
+      },
+      {
+        "text": "OPEN LIVE DASHBOARD \u2192",
+        "h": 22
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "campaigns-party",
+    "path": "/campaigns/party",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "PARTY",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 16
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "account",
+    "path": "/account",
+    "role": "gm",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "ACCOUNT",
+      "SIGNED IN",
+      "PASSWORD"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "YOUR CAMPAIGNS \u2192",
+        "h": 16
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "campaigns-player",
+    "path": "/campaigns",
+    "role": "player",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "CAMPAIGNS",
+      "YOUR NAME AT THIS TABLE",
+      "YOUR CHARACTER",
+      "YOUR CAMPAIGNS",
+      "NEW CAMPAIGN"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "NET ARCHITECTURES \u2192",
+        "h": 16
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "account-sign-in",
+    "path": "/account",
+    "role": "anonymous",
+    "width": 390,
+    "errors": [],
+    "viewport": 390,
+    "scrollWidth": 390,
+    "height": 900,
+    "headings": [
+      "WELCOME TO CYBRDEK",
+      "LOG IN OR CREATE AN ACCOUNT"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 17
+      },
+      {
+        "text": "Keep browsing without an account \u2192",
+        "h": 16
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 29
+      }
+    ]
+  },
+  {
+    "slug": "home",
+    "path": "/",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "Home",
+      "ROLL LOG",
+      "NEXT UP"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "characters",
+    "path": "/characters",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "CHARACTERS",
+      "ROSTER",
+      "Vex",
+      "Moss"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "sheet-combat",
+    "path": "/characters/audit-runner#combat",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 1648,
+    "headings": [
+      "Vex",
+      "HIT POINTS",
+      "WEAPONS",
+      "ARMOR / STOPPING POWER",
+      "CRITICAL INJURIES",
+      "STATS",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "sheet-skills",
+    "path": "/characters/audit-runner#skills",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 1030,
+    "headings": [
+      "Vex",
+      "SKILLS",
+      "Awareness",
+      "Body",
+      "Education",
+      "Fighting",
+      "Ranged Weapon",
+      "Technique",
+      "STATS",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "sheet-net",
+    "path": "/characters/audit-runner#net",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 2034,
+    "headings": [
+      "Vex",
+      "IN THE NET",
+      "INTERFACE",
+      "STATS",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "NET RULES \u2192",
+        "h": 15
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "sheet-kit",
+    "path": "/characters/audit-runner#kit",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 2922,
+    "headings": [
+      "Vex",
+      "CYBERDECK",
+      "HARDWARE",
+      "PROGRAM COPIES",
+      "GEAR",
+      "ARMOR",
+      "GEAR",
+      "CYBERWARE & HUMANITY",
+      "INSTALL",
+      "THERAPY",
+      "STATS",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "Remove Neural Link",
+        "h": 36
+      },
+      {
+        "text": "Remove Interface Plugs",
+        "h": 36
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "sheet-file",
+    "path": "/characters/audit-runner#file",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 915,
+    "headings": [
+      "Vex",
+      "IMPROVEMENT POINTS",
+      "RAISE A SKILL",
+      "RAISE ROLE ABILITY",
+      "PAST VERSIONS",
+      "STATS",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "HP23/40",
+        "h": 36
+      },
+      {
+        "text": "SP11/11",
+        "h": 36
+      },
+      {
+        "text": "HUM46",
+        "h": 36
+      },
+      {
+        "text": "INJ1",
+        "h": 36
+      },
+      {
+        "text": "NETRecords",
+        "h": 36
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "new-character",
+    "path": "/characters/new",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "NEW CHARACTER",
+      "01 // HANDLE"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "dice",
+    "path": "/dice",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "DICE",
+      "FREE ROLLER",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "combat-gm",
+    "path": "/combat",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 2672,
+    "headings": [
+      "COMBAT",
+      "CAMPAIGN CHARACTERS",
+      "NET COMBAT",
+      "ICE \u00b7 Hellhound \u00b7 20 REZ",
+      "Vex \u00b7 23 HP",
+      "ADD TO THE FIGHT",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "NET combat reference \u2192",
+        "h": 18
+      },
+      {
+        "text": "Black ICE reference \u2192",
+        "h": 18
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "combat-player",
+    "path": "/combat",
+    "role": "player",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "COMBAT",
+      "THE FIGHT \u00b7 READ ONLY",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "net-gm",
+    "path": "/net",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 1685,
+    "headings": [
+      "NET ARCHITECTURES",
+      "Zetatech Relay",
+      "Access Lobby",
+      "Records",
+      "Security Core"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS \u2192",
+        "h": 18
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "net-player",
+    "path": "/net",
+    "role": "player",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 944,
+    "headings": [
+      "NET ARCHITECTURES",
+      "Zetatech Relay",
+      "Access Lobby",
+      "Records"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS \u2192",
+        "h": 18
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "map",
+    "path": "/map",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "VOYAGE CITY"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "Nova Peak",
+        "h": 36
+      },
+      {
+        "text": "Amber Hill",
+        "h": 36
+      },
+      {
+        "text": "Ashgreene",
+        "h": 36
+      },
+      {
+        "text": "Newpine",
+        "h": 36
+      },
+      {
+        "text": "Port of Voyage",
+        "h": 36
+      },
+      {
+        "text": "Little Japan",
+        "h": 36
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "lore",
+    "path": "/lore",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "LORE DATABASE"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "ALL",
+        "h": 36
+      },
+      {
+        "text": "Character",
+        "h": 36
+      },
+      {
+        "text": "Location",
+        "h": 36
+      },
+      {
+        "text": "Faction / Corp",
+        "h": 36
+      },
+      {
+        "text": "Event",
+        "h": 36
+      },
+      {
+        "text": "Other",
+        "h": 36
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "rules",
+    "path": "/rules",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "RULES DATABASE",
+      "YOUR RULEBOOK"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "NET RULES QUICK REFERENCE \u2192",
+        "h": 18
+      },
+      {
+        "text": "pdfjs-dist/LICENSE",
+        "h": 18
+      },
+      {
+        "text": "standard_fonts/LICENSE_FOXIT",
+        "h": 18
+      },
+      {
+        "text": "standard_fonts/LICENSE_LIBERATION",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_JBIG2",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_OPENJPEG",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_JBIG2",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_OPENJPEG",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_QCMS",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_PDFJS_QUICKJS",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_QCMS",
+        "h": 18
+      },
+      {
+        "text": "wasm/LICENSE_QUICKJS",
+        "h": 18
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "rules-net",
+    "path": "/rules/net",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 2073,
+    "headings": [
+      "NET RULES",
+      "What you need Core p. 196\u2013198, 208",
+      "Your Turn Core p. 197\u2013198",
+      "Interface Abilities Core p. 198\u2013201",
+      "Architectures Core p. 209\u2013211",
+      "Programs Core p. 201\u2013202",
+      "NET combat Core p. 201",
+      "Black ICE Core p. 204\u2013205",
+      "Getting out Core p. 198"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "Your rulebook \u2192",
+        "h": 18
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "campaigns",
+    "path": "/campaigns",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 1098,
+    "headings": [
+      "CAMPAIGNS",
+      "YOUR NAME AT THIS TABLE",
+      "INVITE PLAYERS",
+      "THE PARTY",
+      "YOUR CAMPAIGNS",
+      "NEW CAMPAIGN"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "NET ARCHITECTURES \u2192",
+        "h": 18
+      },
+      {
+        "text": "OPEN LIVE DASHBOARD \u2192",
+        "h": 24
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "campaigns-party",
+    "path": "/campaigns/party",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "PARTY",
+      "ROLL LOG"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 18
+      },
+      {
+        "text": "",
+        "h": 13
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "account",
+    "path": "/account",
+    "role": "gm",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "ACCOUNT",
+      "SIGNED IN",
+      "PASSWORD"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "YOUR CAMPAIGNS \u2192",
+        "h": 18
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "campaigns-player",
+    "path": "/campaigns",
+    "role": "player",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "CAMPAIGNS",
+      "YOUR NAME AT THIS TABLE",
+      "YOUR CHARACTER",
+      "YOUR CAMPAIGNS",
+      "NEW CAMPAIGN"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "NET ARCHITECTURES \u2192",
+        "h": 18
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  },
+  {
+    "slug": "account-sign-in",
+    "path": "/account",
+    "role": "anonymous",
+    "width": 1280,
+    "errors": [],
+    "viewport": 1280,
+    "scrollWidth": 1280,
+    "height": 900,
+    "headings": [
+      "WELCOME TO CYBRDEK",
+      "LOG IN OR CREATE AN ACCOUNT"
+    ],
+    "smallTargets": [
+      {
+        "text": "CYBRDEK://",
+        "h": 18
+      },
+      {
+        "text": "HOME",
+        "h": 30
+      },
+      {
+        "text": "CHARACTERS",
+        "h": 30
+      },
+      {
+        "text": "DICE",
+        "h": 30
+      },
+      {
+        "text": "COMBAT",
+        "h": 30
+      },
+      {
+        "text": "NET",
+        "h": 30
+      },
+      {
+        "text": "MAP",
+        "h": 30
+      },
+      {
+        "text": "LORE",
+        "h": 30
+      },
+      {
+        "text": "RULES",
+        "h": 30
+      },
+      {
+        "text": "CAMPAIGNS",
+        "h": 30
+      },
+      {
+        "text": "Keep browsing without an account \u2192",
+        "h": 18
+      },
+      {
+        "text": "Homebrew Content Policy",
+        "h": 14
+      }
+    ]
+  }
+]
