@@ -8,13 +8,15 @@
 
 	export type MapFocus = { area: District } | { point: Point };
 	export interface DistrictInfo { summary?: string; href?: string }
-	let { map, areas: districts, districtInfo, onselect, ontap, overlay, onpointdrag, outlines = false, selectionPopup = true, immersive = false, focus, selectedId = $bindable<string | undefined>() }: {
+	let { map, areas: districts, districtInfo, onselect, ontap, overlay, onpointdrag, outlines = false, schematic = false, selectionPopup = true, immersive = false, focus, selectedId = $bindable<string | undefined>() }: {
 		immersive?: boolean;
 		focus?: MapFocus | null;
 		selectedId?: string;
 		map: MapDefinition;
 		areas: readonly District[];
 		outlines?: boolean;
+		/** Draw the areas as a simple city (dark shapes, red outlines, labels) instead of the map image. */
+		schematic?: boolean;
 		selectionPopup?: boolean;
 		/** Overlay handles marked data-map-handle receive image-coordinate drag events. */
 		onpointdrag?: (handle: string, point: Point, phase: 'start' | 'move' | 'end' | 'cancel') => void;
@@ -41,6 +43,11 @@
 	const selected = $derived(districts.find((d) => d.id === selectedId));
 	const info = $derived(selected ? districtInfo?.(selected) : undefined);
 	const mainDistricts = $derived(districts.filter((d) => d.kind === 'district'));
+	const wards = $derived(districts.filter((d) => d.kind === 'ward'));
+	const points = (d: District) => d.polygon.map((p) => p.join(',')).join(' ');
+	// Labels keep the same size on screen whatever the zoom.
+	const labelSize = $derived(16 / view.scale);
+	const wardLabelSize = $derived(12 / view.scale);
 	const parentName = (ward: District) => districts.find((d) => d.id === ward.parentId)?.name ?? 'a district';
 	let previousSize: Size | undefined;
 	let previousMap = '';
@@ -189,17 +196,44 @@
 	onpointerdown={down} onpointermove={move} onpointerup={(event) => up(event)} onpointercancel={(event) => up(event, true)}
 	onlostpointercapture={(event) => up(event, true)} onwheel={wheel} onkeydown={keys}>
 	<div class="scene" style:width="{map.width}px" style:height="{map.height}px" style:transform="translate({view.x}px, {view.y}px) scale({view.scale})">
-		<img src={detail && map.detailImageUrl ? map.detailImageUrl : map.imageUrl}
-			width={map.width} height={map.height} alt={map.alt ?? map.name} draggable="false" onload={() => imageError = false}
-			onerror={() => { if (detail && map.detailImageUrl) detailFailed = true; else imageError = true; }} />
-		<svg viewBox="0 0 {map.width} {map.height}" width={map.width} height={map.height} aria-hidden="true">
-			{#each districts as district (district.id)}
-				<polygon class:outlined={outlines} points={district.polygon.map((p) => p.join(',')).join(' ')} class:selected={selectedId === district.id} />
-			{/each}
+		{#if !schematic}
+			<img src={detail && map.detailImageUrl ? map.detailImageUrl : map.imageUrl}
+				width={map.width} height={map.height} alt={map.alt ?? map.name} draggable="false" onload={() => imageError = false}
+				onerror={() => { if (detail && map.detailImageUrl) detailFailed = true; else imageError = true; }} />
+		{/if}
+		<svg viewBox="0 0 {map.width} {map.height}" width={map.width} height={map.height} aria-hidden="true" class:schematic>
+			{#if schematic}
+				<!-- The simple city: ground and grid, districts, wards, then labels on top. -->
+				<defs>
+					<pattern id="{helpId}-grid" width="64" height="64" patternUnits="userSpaceOnUse">
+						<path d="M64 0H0V64" class="grid" />
+					</pattern>
+				</defs>
+				<rect class="ground" width={map.width} height={map.height} />
+				<rect width={map.width} height={map.height} fill="url(#{helpId}-grid)" />
+				{#each mainDistricts as district (district.id)}
+					<polygon class="land" points={points(district)} class:selected={selectedId === district.id} />
+				{/each}
+				{#each wards as ward (ward.id)}
+					<polygon class="ward" points={points(ward)} class:selected={selectedId === ward.id} />
+				{/each}
+				{#each mainDistricts as district (district.id)}
+					<text class="label" x={district.label[0]} y={district.label[1]} style:font-size="{labelSize}px">{district.name.toUpperCase()}</text>
+				{/each}
+				{#if zoom > 1.6}
+					{#each wards as ward (ward.id)}
+						<text class="ward-label" x={ward.label[0]} y={ward.label[1]} style:font-size="{wardLabelSize}px">{ward.name}</text>
+					{/each}
+				{/if}
+			{:else}
+				{#each districts as district (district.id)}
+					<polygon class:outlined={outlines} points={points(district)} class:selected={selectedId === district.id} />
+				{/each}
+			{/if}
 			{@render overlay?.(view.scale)}
 		</svg>
 	</div>
-	{#if imageError}<p class="error" role="alert">The map image could not load. Reconnect and reload this page.</p>{/if}
+	{#if imageError && !schematic}<p class="error" role="alert">The map image could not load. Reconnect and reload this page.</p>{/if}
 	{#if selected && selectionPopup}
 		<aside class="popup" data-popup aria-label="Selected district" aria-live="polite">
 			<button class="close" type="button" aria-label="Close district popup" onclick={() => select(undefined)}>×</button>
@@ -250,6 +284,16 @@
 	polygon { fill: transparent; stroke: transparent; vector-effect: non-scaling-stroke; }
 	polygon.outlined { stroke: var(--frame); stroke-width: 1.5; }
 	polygon.selected { fill: var(--bright); fill-opacity: 0.18; stroke: var(--bright); stroke-width: 2; }
+	/* Schematic: dark land with red edges, like the "Map first" mockup (#101). */
+	.schematic .ground { fill: var(--bg-1); }
+	.schematic .grid { fill: none; stroke: color-mix(in srgb, var(--red) 12%, var(--bg-1)); stroke-width: 1; vector-effect: non-scaling-stroke; }
+	.schematic polygon.land { fill: color-mix(in srgb, var(--red) 6%, var(--bg-2)); stroke: color-mix(in srgb, var(--red) 65%, var(--bg-2)); stroke-width: 2; }
+	.schematic polygon.ward { fill: none; stroke: color-mix(in srgb, var(--red) 35%, var(--bg-2)); stroke-width: 1; stroke-dasharray: 4 3; }
+	.schematic polygon.selected { fill: color-mix(in srgb, var(--red) 16%, var(--bg-2)); fill-opacity: 1; stroke: var(--red); stroke-width: 3; }
+	.schematic polygon.ward.selected { fill: color-mix(in srgb, var(--red) 12%, transparent); stroke-dasharray: none; stroke-width: 2; }
+	.schematic text { text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: var(--bg-1); pointer-events: none; }
+	.schematic .label { font-family: var(--f-label); letter-spacing: 0.08em; fill: var(--bright); stroke-width: 0.4em; }
+	.schematic .ward-label { font-family: var(--f-mono); fill: var(--label); stroke-width: 0.35em; }
 	.popup { position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; max-width: 23rem; max-height: 45%; overflow-y: auto; padding: 0.8rem 3rem 0.8rem 0.9rem; border: 1px solid var(--bright-dim); background: var(--bg-1); color: var(--value); cursor: auto; user-select: text; touch-action: pan-y; }
 	.popup strong { color: var(--bright); }
 	.popup p { margin: 0.4rem 0; }
