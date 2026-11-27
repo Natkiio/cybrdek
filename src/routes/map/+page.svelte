@@ -341,6 +341,7 @@
 			{#if selectedPin}
 				<aside class="selection pin-card" aria-label="Selected place" aria-live="polite">
 					<button class="close" type="button" aria-label="Close place card" onclick={() => selectedPinId = undefined}>×</button>
+					<span class="kicker">PLACE</span>
 					<h2>{selectedPin.label}</h2>
 					{#if !selectedPin.visible}<p class="dim">GM ONLY</p>{/if}
 					{#if selectedPinLore?.summary}<p>{selectedPinLore.summary}</p>{/if}
@@ -411,13 +412,17 @@
 	.find, .dock p { flex: 1; text-align: left; }
 	.dock p { margin: 0; align-self: center; color: var(--bright); }
 	.add { color: var(--bright); border-color: var(--bright-dim); }
-	.selection { position: absolute; bottom: 0.75rem; left: 0.75rem; right: 0.75rem; max-width: 27rem; max-height: min(55%, 30rem); overflow-y: auto; overscroll-behavior: contain; background: var(--bg-0); border: 1px solid var(--bright-dim); }
-	.pin-card { padding: 0.75rem; }
-	.pin-card h2 { margin: 0; padding-right: 2.75rem; color: var(--bright); font-size: 1.1rem; overflow-wrap: anywhere; }
-	.close { position: absolute; top: 0; right: 0; border: none; }
+	/* The selected place or district: a compact red-framed card inset from the map's edges (#101 mockup A). */
+	.selection { position: absolute; bottom: 0.75rem; left: 0.75rem; right: 0.75rem; max-width: 24rem; max-height: min(55%, 30rem); overflow-y: auto; overscroll-behavior: contain; padding: 0.85rem 1rem; background: var(--bg-1); border: 1px solid var(--red); box-shadow: 0 8px 30px var(--bg-0); }
+	@media (min-width: 700px) { .selection { left: 1rem; bottom: 1rem; } }
+	.pin-card h2 { margin: 0 0 0.5rem; padding-right: 2.75rem; color: var(--bright); font-family: var(--f-label); font-size: 0.95rem; font-weight: normal; letter-spacing: 0.04em; line-height: 1.4; text-shadow: none; overflow-wrap: anywhere; }
+	.pin-card p { margin: 0 0 0.6rem; }
+	.kicker { font-family: var(--f-label); font-size: 0.55rem; letter-spacing: 0.16em; color: var(--muted); }
+	.pin-card .kicker + h2 { margin-top: 0.3rem; }
+	.close { position: absolute; top: 0.3rem; right: 0.3rem; border-color: transparent; background: transparent; box-shadow: none; font-size: 1.25rem; }
 	.card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 	.read { display: inline-flex; align-items: center; color: var(--bright); }
-	.edit-district { margin: 0.5rem; }
+	.edit-district { margin: 0.75rem 0 0; }
 	.dim { color: var(--muted); }
 	.layer-options { display: grid; gap: 0.5rem; }
 	.layer-options label { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; }
