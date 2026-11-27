@@ -266,7 +266,7 @@
 
 	.installed button {
 		min-width: 44px;
-		min-height: 36px;
+		min-height: 44px;
 		padding: 0 0.4rem;
 	}
 

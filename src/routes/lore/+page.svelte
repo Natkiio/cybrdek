@@ -124,7 +124,7 @@
 	}
 
 	.types button {
-		min-height: 36px;
+		min-height: 44px;
 		font-size: 0.7rem;
 	}
 

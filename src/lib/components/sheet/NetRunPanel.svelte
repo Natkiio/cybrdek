@@ -144,7 +144,7 @@
 </p>
 
 {#if notice}<p class="notice" role="status">{notice}</p>{/if}
-<p class="small"><a href="/rules/net">NET RULES →</a></p>
+<p><a class="action-link" href="/rules/net">NET RULES →</a></p>
 
 <label class="arch">
 	<span>ARCHITECTURE</span>

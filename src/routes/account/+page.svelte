@@ -64,7 +64,7 @@
 				<span class="dim">Checking your role in {campaign.name}…</span>
 			{/if}
 		</p>
-		<p><a href="/campaigns">YOUR CAMPAIGNS →</a> <span class="dim">Create one to run it as its GM, or join one with an invite link.</span></p>
+		<p><a class="action-link" href="/campaigns">YOUR CAMPAIGNS →</a> <span class="dim">Create one to run it as its GM, or join one with an invite link.</span></p>
 		<p><button type="button" onclick={signOut}>SIGN OUT</button></p>
 	</Panel>
 
@@ -94,7 +94,7 @@
 		</p>
 		{#key start}<AccountForm emailLink {start} />{/key}
 	</Panel>
-	<p class="dim"><a href="/">Keep browsing without an account →</a> Characters stay on this device, and public campaigns are open to read.</p>
+	<p class="dim"><a class="action-link" href="/">KEEP BROWSING WITHOUT AN ACCOUNT →</a> Characters stay on this device, and public campaigns are open to read.</p>
 {/if}
 
 <style>

@@ -224,21 +224,24 @@
 
 					<div class="actions">
 						<a class="open" href={`/characters/${encodeURIComponent(character.id)}`}>OPEN</a>
-						<button type="button" onclick={() => downloadCharacter(character)}>EXPORT</button>
-						{#if gm.email && deviceOnly.has(character.id)}
-							<button type="button" class="move" onclick={() => void moveIn(character.id)}>MOVE TO MY ACCOUNT</button>
-						{/if}
-						{#if renamingId === character.id}
-							<button onclick={() => void saveRename(character.id)}>SAVE</button>
-							<button onclick={cancelRename}>CANCEL</button>
-						{:else if confirmingDeleteId === character.id}
-							<span class="confirm">CONFIRM DELETE?</span>
-							<button class="danger" onclick={() => void confirmDelete(character.id)}>YES</button>
-							<button onclick={() => (confirmingDeleteId = null)}>NO</button>
-						{:else}
-							<button onclick={() => beginRename(character)}>RENAME</button>
-							<button class="danger" onclick={() => (confirmingDeleteId = character.id)}>DELETE</button>
-						{/if}
+						<!-- Managing a character is secondary to opening it, and kept apart from it (#101). -->
+						<div class="manage">
+							<button type="button" onclick={() => downloadCharacter(character)}>EXPORT</button>
+							{#if gm.email && deviceOnly.has(character.id)}
+								<button type="button" class="move" onclick={() => void moveIn(character.id)}>MOVE TO MY ACCOUNT</button>
+							{/if}
+							{#if renamingId === character.id}
+								<button onclick={() => void saveRename(character.id)}>SAVE</button>
+								<button onclick={cancelRename}>CANCEL</button>
+							{:else if confirmingDeleteId === character.id}
+								<span class="confirm">CONFIRM DELETE?</span>
+								<button class="danger" onclick={() => void confirmDelete(character.id)}>YES</button>
+								<button onclick={() => (confirmingDeleteId = null)}>NO</button>
+							{:else}
+								<button onclick={() => beginRename(character)}>RENAME</button>
+								<button class="danger" onclick={() => (confirmingDeleteId = character.id)}>DELETE</button>
+							{/if}
+						</div>
 					</div>
 				</article>
 			{/each}
@@ -269,13 +272,19 @@
 	.identity input { width: 100%; min-height: 44px; margin-top: 0.25rem; }
 	.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.75rem; }
 	.actions button { min-height: 44px; }
+	/* OPEN is the main action: filled. Export/rename/delete sit apart, quieter. */
+	.open { background: var(--red); color: var(--ink-on-red); border-color: var(--red); justify-content: center; flex: 1 1 100%; }
+	.open:hover, .open:focus-visible { color: var(--ink-on-red); box-shadow: 0 0 10px var(--red-glow); }
+	.manage { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+	.manage button { font-size: 0.7rem; color: var(--label); }
 	.confirm { color: var(--red-soft); font-size: 0.85rem; }
-	.danger { border-color: var(--red-dim); color: var(--red-soft); }
+	.manage .danger, .danger { border-color: var(--red-dim); color: var(--red-soft); }
 	.choice-actions { margin-top: 0.5rem; }
 
 	@media (min-width: 560px) {
 		.character-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 		.identity { min-width: 14rem; }
 		.actions { justify-content: flex-end; margin-top: 0; }
+		.open { flex: none; order: 2; }
 	}
 </style>
