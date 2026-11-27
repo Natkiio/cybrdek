@@ -1,5 +1,7 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 
+import { findPlace, expectMapFillsViewport, openLayers, closeLayers } from './map-helpers.ts';
+
 // GM pins and district edits on /map (#39). Supabase is faked for the whole
 // test, so nothing touches the live database and no email is ever sent.
 const REF = 'hntlvhspyllaaidvxlox';
@@ -37,8 +39,11 @@ async function fakeSupabase(page: Page, fake: Fake) {
 		}
 		if (url.pathname.endsWith('/map_pins')) {
 			if (req.method() === 'GET') return json(fake.pins);
-			const row = { id: `p${fake.posted.length + 1}`, ...JSON.parse(req.postData() ?? '{}') };
+			const id = url.searchParams.get('id')?.replace('eq.', '');
+			if (req.method() === 'DELETE') { fake.pins = fake.pins.filter(p => p.id !== id); return route.fulfill({ status: 204 }); }
+			const row = { id: id ?? `p${fake.posted.length + 1}`, ...JSON.parse(req.postData() ?? '{}') };
 			fake.posted.push(row);
+			fake.pins = [...fake.pins.filter(p => p.id !== row.id), row];
 			return json(row, 201); // .single() asks for one object
 		}
 		return json({});
@@ -79,7 +84,7 @@ test('the GM drops a pin, links it to lore and shows it to players', async ({ pa
 	await expect(page.getByRole('link', { name: 'GM MODE' })).toBeVisible();
 
 	await page.getByRole('button', { name: '+ PIN' }).click();
-	await expect(page.getByRole('button', { name: 'TAP THE MAP…' })).toBeVisible();
+	await expect(page.getByText('TAP THE MAP…', { exact: true })).toBeVisible();
 	await tapMapAt(page, 0.5, 0.5);
 	await expect(page.getByText('NEW PIN')).toBeVisible();
 
@@ -95,7 +100,7 @@ test('the GM drops a pin, links it to lore and shows it to players', async ({ pa
 	expect(x).toBeLessThan(3840);
 	expect(y).toBeGreaterThan(0);
 	expect(y).toBeLessThan(2160);
-	await expect(page.getByText('PLACES (1)')).toBeVisible();
+	await expect(page.getByLabel('Selected place')).toContainText("Topaz's Bar");
 	await expect(page.locator('g.pin')).toHaveCount(1);
 	if (process.env.MAP_SCREENSHOT) await page.screenshot({ path: process.env.MAP_SCREENSHOT, fullPage: true });
 });
@@ -107,13 +112,14 @@ test('the GM renames a district; a tap while not placing still selects districts
 	await page.goto('/map');
 	await expect(page.getByRole('link', { name: 'GM MODE' })).toBeVisible();
 
-	await page.getByText('CHOOSE A DISTRICT', { exact: false }).click();
-	await page.getByRole('button', { name: 'Akiba', exact: true }).click();
+	await findPlace(page, 'Akiba');
+	await page.getByRole('button', { name: 'EDIT DISTRICT', exact: true }).click();
 	await page.getByLabel('NAME ON THE MAP').fill('Araki');
 	await page.getByRole('button', { name: 'SAVE DISTRICT' }).click();
 	await expect.poll(() => fake.districtWrites.length).toBe(1);
 	expect(fake.districtWrites[0]).toMatchObject({ district_id: 'akiba', name: 'Araki', lore_entry_id: null });
-	await expect(page.getByRole('button', { name: 'Araki', exact: true })).toBeVisible();
+	await page.getByRole('button', { name: 'Close District details' }).click();
+	await expect(page.getByLabel('Selected district')).toContainText('Araki');
 	if (process.env.MAP_SCREENSHOT) await page.screenshot({ path: process.env.MAP_SCREENSHOT.replace('.png', '-list.png'), fullPage: true });
 });
 
@@ -129,8 +135,7 @@ test('players see pins and lore links, but no GM tools', async ({ page }) => {
 	await expect(page.locator('g.pin')).toHaveCount(1);
 	await expect(page.getByRole('button', { name: '+ PIN' })).toHaveCount(0);
 
-	await page.getByText('PLACES', { exact: false }).click();
-	await page.getByRole('button', { name: "Topaz's Bar" }).click();
+	await findPlace(page, "Topaz's Bar");
 	await expect(page.getByText('Neon dive bar in Central Point.')).toBeVisible();
 	await expect(page.getByRole('link', { name: 'READ LORE →' })).toHaveAttribute('href', '/lore/topazs-bar');
 	await expect(page.getByText('EDIT PIN')).toHaveCount(0);
@@ -152,8 +157,7 @@ test('tapping a district opens its wards, with each place under its ward', async
 	};
 	await fakeSupabase(page, fake);
 	await page.goto('/map');
-	await page.getByText('CHOOSE A DISTRICT', { exact: false }).click();
-	await page.getByRole('button', { name: 'West Ridge', exact: true }).click();
+	await findPlace(page, 'West Ridge');
 
 	const menu = page.getByRole('region', { name: 'West Ridge district' });
 	await expect(menu.getByRole('heading', { name: 'West Ridge', exact: true })).toBeVisible();
@@ -166,7 +170,79 @@ test('tapping a district opens its wards, with each place under its ward', async
 	await expect(menu.getByText('Daynedale Diner')).toHaveCount(0);
 
 	// Tapping a ward opens its district's menu with that ward picked out.
-	await page.getByRole('button', { name: 'Nova Peak', exact: true }).click();
+	await findPlace(page, 'Nova Peak');
 	await expect(page.getByRole('region', { name: 'West Ridge district' }).locator('#ward-nova-peak.focus')).toBeVisible();
 	if (process.env.MAP_SCREENSHOT) await page.screenshot({ path: process.env.MAP_SCREENSHOT.replace('.png', '-menu.png'), fullPage: true });
+});
+
+
+for (const width of [390, 1280]) {
+	for (const isGm of [false, true]) {
+		test(`map-first layout, search, layers and selection at ${width}px as ${isGm ? 'GM' : 'player'}`, async ({ page }, testInfo) => {
+			await page.setViewportSize({ width, height: 844 });
+			const errors: string[] = [];
+			page.on('pageerror', e => errors.push(e.message));
+			const fake: Fake = { isGm, pins: [
+				{ id: 'public', x: 1070, y: 651, label: 'Public bar', visible: true, category: 'bar', lore_entry_id: null },
+				{ id: 'secret', x: 1100, y: 700, label: 'Secret hideout', visible: false, category: 'home', lore_entry_id: null }
+			], posted: [], districtWrites: [] };
+			await fakeSupabase(page, fake);
+			if (isGm) await signedInAs(page, 'gm@example.com');
+			await page.goto('/map');
+			await expect(page.locator('g.pin')).toHaveCount(isGm ? 2 : 1);
+			await expectMapFillsViewport(page);
+			await expect(page.locator('.map-page').getByRole('button')).toHaveCount(isGm ? 6 : 5);
+			await expect(page.getByRole('dialog', { name: 'Layers', exact: true })).not.toBeVisible();
+			await openLayers(page);
+			await page.getByLabel('Places & pins').uncheck();
+			await closeLayers(page);
+			await expect(page.locator('g.pin')).toHaveCount(0);
+			await openLayers(page);
+			await page.getByLabel('Places & pins').check();
+			await page.getByLabel('District outlines').check();
+			await page.keyboard.press('Escape');
+			await expect(page.getByRole('button', { name: 'LAYERS', exact: true })).toBeFocused();
+			await expect(page.locator('polygon.outlined')).not.toHaveCount(0);
+			await page.getByRole('button', { name: 'Find a place', exact: false }).click();
+			const dialog = page.getByRole('dialog', { name: 'Find a place', exact: true });
+			await expect(dialog.getByRole('searchbox')).toBeFocused();
+			await expect(dialog.getByRole('button', { name: 'Secret hideout' })).toHaveCount(isGm ? 1 : 0);
+			await dialog.getByRole('searchbox').fill('public');
+			await dialog.getByRole('button', { name: 'Public bar', exact: true }).click();
+			await expect(page.getByLabel('Selected place')).toContainText('Public bar');
+			await expect(page.getByRole('button', { name: 'EDIT PIN', exact: true })).toHaveCount(isGm ? 1 : 0);
+			await page.getByLabel('Close place card').click();
+			await expect(page.getByLabel('Selected place')).toHaveCount(0);
+			await findPlace(page, 'West Ridge');
+			await expect(page.getByLabel('Selected district')).toBeVisible();
+			await page.getByLabel('Close district menu').click();
+			await expect(page.getByLabel('Selected district')).toHaveCount(0);
+			await expectMapFillsViewport(page);
+			await page.screenshot({ path: testInfo.outputPath(`map-${width}-${isGm ? 'gm' : 'player'}.png`) });
+			expect(errors).toEqual([]);
+		});
+	}
+}
+
+test('the GM can move, save and delete a pin through the drawer', async ({ page }) => {
+	const fake: Fake = { isGm: true, pins: [{ id: 'p1', x: 1070, y: 651, label: 'Move me', lore_entry_id: null, visible: false, category: 'other' }], posted: [], districtWrites: [] };
+	await fakeSupabase(page, fake);
+	await signedInAs(page, 'gm@example.com');
+	await page.goto('/map');
+	await findPlace(page, 'Move me');
+	await page.getByRole('button', { name: 'EDIT PIN', exact: true }).click();
+	await page.getByRole('button', { name: 'MOVE', exact: true }).click();
+	await expect(page.getByRole('dialog', { name: 'Pin details', exact: true })).not.toBeVisible();
+	await expect(page.getByText('TAP TO MOVE PIN', { exact: true })).toBeVisible();
+	await tapMapAt(page, 0.5, 0.3);
+	await expect(page.getByLabel('NAME', { exact: true })).toHaveValue('Move me');
+	await page.getByRole('button', { name: 'SAVE PIN' }).click();
+	await expect.poll(() => fake.posted.length).toBe(1);
+	expect(fake.posted[0].id).toBe('p1');
+	expect(fake.posted[0].y).not.toBe(651);
+	await page.getByRole('button', { name: 'EDIT PIN', exact: true }).click();
+	await page.getByRole('button', { name: 'DELETE', exact: true }).click();
+	await page.getByRole('button', { name: 'CONFIRM DELETE', exact: true }).click();
+	await expect(page.locator('g.pin')).toHaveCount(0);
+	await expect(page.getByLabel('Selected place')).toHaveCount(0);
 });

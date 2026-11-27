@@ -69,6 +69,7 @@ test('local PDF survives offline reload, uses cached worker, searches/navigates 
 	await page.reload();
 	await expect(page.getByLabel('CHOOSE PDF')).toBeEnabled();
 	await expect(page.locator('canvas')).toHaveCount(0);
-	expect(requests.every(({ url, method }) => method === 'GET' && (url.startsWith('http://127.0.0.1:4178/') || url.startsWith('data:') || url.startsWith('blob:')))).toBe(true);
+	const origin = new URL(page.url()).origin;
+	expect(requests.every(({ url, method }) => method === 'GET' && (url.startsWith(`${origin}/`) || url.startsWith('data:') || url.startsWith('blob:')))).toBe(true);
 	expect(errors).toEqual([]);
 });

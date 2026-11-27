@@ -83,3 +83,22 @@ describe('districts and wards (Nathan, 2026-11-03)', () => {
 		}
 	});
 });
+
+
+describe('immersive map', () => {
+	it.each([{ width: 390, height: 650 }, { width: 1280, height: 650 }])('covers %j after recenter, zoom-out, extreme pan and resize', size => {
+		const fit = fitMap(size, VOYAGE_MAP, 'cover');
+		expect(fit.x + MAP_WIDTH * fit.scale / 2).toBeCloseTo(size.width / 2);
+		expect(fit.y + MAP_HEIGHT * fit.scale / 2).toBeCloseTo(size.height / 2);
+		const views = [fit,
+			zoomAt(fit, [100, 100], 0.001, size, VOYAGE_MAP, undefined, 'cover'),
+			constrain({ x: 99999, y: -99999, scale: fit.scale * 3 }, size, VOYAGE_MAP, 'cover'),
+			resizeView(fitMap(phone, VOYAGE_MAP, 'cover'), phone, size, VOYAGE_MAP, 'cover')];
+		for (const view of views) {
+			expect(view.x).toBeLessThanOrEqual(0.001);
+			expect(view.y).toBeLessThanOrEqual(0.001);
+			expect(view.x + MAP_WIDTH * view.scale).toBeGreaterThanOrEqual(size.width - 0.001);
+			expect(view.y + MAP_HEIGHT * view.scale).toBeGreaterThanOrEqual(size.height - 0.001);
+		}
+	});
+});

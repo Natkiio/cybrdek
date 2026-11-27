@@ -146,6 +146,8 @@
 
 	.place {
 		flex: 1;
+		min-width: 0;
+		overflow-wrap: anywhere;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
@@ -190,7 +192,7 @@
 	}
 
 	.read.small {
-		min-height: 0;
+		min-height: 44px;
 		font-size: 0.65rem;
 	}
 

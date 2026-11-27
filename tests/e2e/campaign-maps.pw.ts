@@ -2,6 +2,8 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 
 // A campaign's own maps (#62). Supabase, including Storage, is faked; who may
 // do what is tested on real Postgres in tests/db/campaign-maps.test.ts.
+import { findPlace, openLayers, closeLayers } from './map-helpers.ts';
+
 const REF = 'hntlvhspyllaaidvxlox';
 const GAME = 'c0000000-0000-4000-8000-000000000002';
 
@@ -12,6 +14,7 @@ interface MapRow {
 	height: number;
 	active: boolean;
 	uploaded_by?: string | null;
+	adopted?: boolean;
 }
 
 interface Fake {
@@ -137,6 +140,7 @@ async function pngOf(page: Page, width: number, height: number): Promise<Buffer>
 }
 
 async function uploadAs(page: Page, name: string, width: number, height: number) {
+	await openLayers(page);
 	const panel = page.locator('section.panel').filter({ hasText: 'MAPS' }).last();
 	await panel.getByLabel('Map name').fill(name);
 	await panel.getByLabel('Map image').setInputFiles({ name: 'map.png', mimeType: 'image/png', buffer: await pngOf(page, width, height) });
@@ -163,6 +167,7 @@ test('the GM uploads a map: shrunk to two WebP copies, shown to players at once,
 	}
 	await expect(page.locator('.scene img')).toHaveAttribute('src', /^blob:/);
 
+	await closeLayers(page);
 	await page.getByRole('button', { name: '+ PIN' }).click();
 	const box = (await page.locator('.scene img').boundingBox())!;
 	await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -230,6 +235,7 @@ test('a non-image file is refused before anything is sent', async ({ page }) => 
 	const fake = fresh();
 	await setup(page, 'gm', fake);
 	await page.goto('/map');
+	await openLayers(page);
 	const panel = page.locator('section.panel').filter({ hasText: 'MAPS' }).last();
 	await panel.getByLabel('Map name').fill('Notes');
 	await panel.getByLabel('Map image').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
@@ -242,6 +248,7 @@ test('the GM lets players upload; a player adds a map, can remove it, and leaves
 	const fake = fresh();
 	await setup(page, 'gm', fake);
 	await page.goto('/map');
+	await openLayers(page);
 	await expect(page.getByText('PLAYERS CAN UPLOAD MAPS: NO')).toBeVisible();
 	await page.getByRole('button', { name: 'LET PLAYERS UPLOAD' }).click();
 	await expect(page.getByText('PLAYERS CAN UPLOAD MAPS: YES')).toBeVisible();
@@ -262,4 +269,29 @@ test('the GM lets players upload; a player adds a map, can remove it, and leaves
 	await panel.getByRole('button', { name: /YES, DELETE/ }).click();
 	await expect(panel.getByText('Found a map')).toHaveCount(0);
 	expect(fake.calls.slice(-2)).toEqual(['remove-files', 'delete-map']);
+});
+
+
+test('an adopted player upload stays read-only after uploads are turned off and the GM switches away', async ({ page }) => {
+	const fake = fresh();
+	fake.playersUpload = true;
+	await setup(page, 'player', fake);
+	await page.goto('/map');
+	await uploadAs(page, 'Player floorplan', 400, 200);
+	await expect.poll(() => fake.maps.length).toBe(1);
+	await expect(page.getByRole('button', { name: 'UPLOAD MAP', exact: true })).toBeEnabled();
+	fake.maps[0].active = true;
+	fake.maps[0].adopted = true;
+	fake.playersUpload = false;
+	await page.evaluate(() => window.dispatchEvent(new Event('online')));
+	await expect(page.getByRole('heading', { name: 'Player floorplan', exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'UPLOAD MAP', exact: true })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'DELETE', exact: true })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'SHOW THIS ONE', exact: true })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'RENAME', exact: true })).toHaveCount(0);
+	fake.maps[0].active = false;
+	await page.evaluate(() => window.dispatchEvent(new Event('online')));
+	await expect(page.getByRole('heading', { name: 'Home Game', exact: true })).toBeVisible();
+	await expect(page.locator('section.panel li').filter({ hasText: 'Player floorplan' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'DELETE', exact: true })).toHaveCount(0);
 });
