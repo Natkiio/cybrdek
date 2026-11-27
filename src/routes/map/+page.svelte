@@ -8,6 +8,9 @@
 	import DistrictMenu from '#lib/components/map/DistrictMenu.svelte';
 	import PinEditor from '#lib/components/map/PinEditor.svelte';
 	import MapManager from '#lib/components/map/MapManager.svelte';
+	import AreaEditor from '#lib/components/map/AreaEditor.svelte';
+	import { loadAreas, saveAreas, type SavedAreas } from '#lib/map/map-areas.ts';
+	import type { MapArea } from '#lib/map/types.ts';
 	import {
 		activeMapKey,
 		canUploadMap,
@@ -81,9 +84,34 @@
 	const visiblePins = $derived(pins.filter(p => gm.isGm || p.visible));
 
 	const overrideFor = (id: string) => overrides.find((o) => o.district_id === id);
+	// The map's districts and wards: what the GM drew and saved, else the starting
+	// set (Voyage City's traced areas, or none for an uploaded map).
+	let savedAreas = $state<SavedAreas | null>(null);
+	let focusWardId = $state<string | undefined>(); // the ward tapped or found, highlighted in its district's card
+	let areasOffline = $state(false);
+	const baseAreas = $derived<readonly MapArea[]>(savedAreas?.areas ?? (isVoyage ? DISTRICTS : []));
 	const districts = $derived(
-		DISTRICTS.map((d) => ({ ...d, name: resolveDistrict(d, overrideFor(d.id), entries).name }))
+		baseAreas.map((d) => (isVoyage ? { ...d, name: resolveDistrict(d, overrideFor(d.id), entries).name } : d))
 	);
+	// GM area editing (districts and wards), saved per campaign map.
+	let editingAreas = $state(false);
+	let areaStatus = $state('');
+	let areaError = $state('');
+	async function saveEditedAreas(next: MapArea[]) {
+		const campaignId = campaign.id, mapId = currentMapId;
+		areaError = '';
+		areaStatus = 'SAVING…';
+		const result = await saveAreas(campaignId, mapId, savedAreas?.revision ?? 0, next);
+		if (campaignId !== campaign.id || mapId !== currentMapId) return;
+		if ('error' in result) {
+			areaStatus = '';
+			areaError = result.error;
+			if (result.conflict) void load();
+			return;
+		}
+		savedAreas = { areas: next, revision: result.revision };
+		areaStatus = 'SAVED';
+	}
 	const selectedDistrict = $derived(districts.find((d) => d.id === selectedDistrictId));
 	// The menu always shows a whole district; a tapped ward is highlighted in it.
 	const menuDistrict = $derived(selectedDistrict ? districtOf(selectedDistrict, districts) : undefined);
@@ -120,6 +148,8 @@
 			selectedDistrictId = undefined;
 			mapFocus = null;
 			pins = [];
+			savedAreas = null;
+			editingAreas = false;
 		}
 		uploaded?.release();
 		uploaded = next;
@@ -181,12 +211,15 @@
 		}
 		if (!current()) return;
 		const mapId = campaignId === VOYAGE_CITY_ID ? null : (uploaded?.map.id ?? undefined);
-		const [lore, pinRows, overrideRows] = await Promise.all([
+		const [lore, pinRows, overrideRows, areaRows] = await Promise.all([
 			listEntries(),
 			mapId === undefined ? Promise.resolve([]) : listPins(mapId),
-			campaignId === VOYAGE_CITY_ID ? listDistrictOverrides() : Promise.resolve([])
+			campaignId === VOYAGE_CITY_ID ? listDistrictOverrides() : Promise.resolve([]),
+			mapId === undefined ? Promise.resolve({ saved: null, offline: false }) : loadAreas(campaignId, mapId)
 		]);
 		if (!current()) return;
+		savedAreas = areaRows.saved;
+		areasOffline = areaRows.offline;
 		entries = lore.entries;
 		pins = pinRows;
 		overrides = overrideRows;
@@ -334,10 +367,28 @@
 			{/each}
 			{#if draft}<circle cx={draft.x} cy={draft.y} r={11 / scale} class="draft" style:stroke-width={2.5 / scale} />{/if}
 		{/snippet}
-		<CityMap map={currentMap} areas={isVoyage ? districts : []} immersive selectionPopup={false}
+		{#if editingAreas && gm.isGm}
+			<!-- GM: draw and edit this map's districts and wards. Each SAVE AREA saves the whole set. -->
+			<section class="area-editing" aria-label="Edit districts and wards">
+				<div class="area-bar">
+					<span><strong>EDITING DISTRICTS & WARDS</strong>{#if areaStatus}<span class="dim" role="status"> · {areaStatus}</span>{/if}</span>
+					<button type="button" onclick={() => { editingAreas = false; areaStatus = ''; areaError = ''; }}>DONE</button>
+				</div>
+				{#if areaError}<p class="error" role="alert">{areaError}</p>{/if}
+				<p class="dim small">A ward belongs to a district; on the map, a tap anywhere in a district selects the district and lists its wards.</p>
+				<AreaEditor map={currentMap} areas={baseAreas} onchange={saveEditedAreas} />
+			</section>
+		{:else}
+		<CityMap map={currentMap} areas={districts} immersive selectionPopup={false}
 			{outlines} focus={mapFocus} bind:selectedId={selectedDistrictId}
-			onselect={() => selectedPinId = undefined} ontap={tapped} overlay={pinMarkers} />
-		{#if !draft && tapMode === 'none'}
+			onselect={(area) => {
+				selectedPinId = undefined;
+				// Districts are what you tap; a ward selects its district (the card lists its wards).
+				focusWardId = area?.kind === 'ward' ? area.id : undefined;
+				if (area?.kind === 'ward' && area.parentId) selectedDistrictId = area.parentId;
+			}} ontap={tapped} overlay={pinMarkers} />
+		{/if}
+		{#if !draft && tapMode === 'none' && !editingAreas}
 			{#if selectedPin}
 				<aside class="selection pin-card" aria-label="Selected place" aria-live="polite">
 					<button class="close" type="button" aria-label="Close place card" onclick={() => selectedPinId = undefined}>×</button>
@@ -352,10 +403,10 @@
 				</aside>
 			{:else if menuPlaces}
 				<aside class="selection" aria-label="Selected district" aria-live="polite">
-					<DistrictMenu places={menuPlaces} focusWardId={selectedDistrict?.kind === 'ward' ? selectedDistrict.id : undefined}
+					<DistrictMenu places={menuPlaces} {focusWardId}
 						{selectedPinId} isGm={gm.isGm} loreFor={loreForArea} pinLore={(pin) => pinLore(pin, entries)} onpick={openPin}
 						onclose={() => selectedDistrictId = undefined} />
-					{#if gm.isGm}<button class="edit-district" type="button" onclick={() => drawer = 'district'}>EDIT DISTRICT</button>{/if}
+					{#if gm.isGm && isVoyage}<button class="edit-district" type="button" onclick={() => drawer = 'district'}>EDIT DISTRICT</button>{/if}
 				</aside>
 			{/if}
 		{/if}
@@ -373,15 +424,19 @@
 </div>
 
 <MapDrawer open={drawer === 'finder'} title="Find a place" onclose={() => drawer = null}>
-	{#if drawer === 'finder'}<MapFinder areas={isVoyage ? districts : []} pins={visiblePins}
+	{#if drawer === 'finder'}<MapFinder areas={districts} pins={visiblePins}
 		onarea={(area) => { drawer = null; mapFocus = { area }; }}
 		onpin={(pin) => { drawer = null; openPin(pin); mapFocus = { point: [pin.x, pin.y] }; }} />{/if}
 </MapDrawer>
 <MapDrawer open={drawer === 'layers'} title="Layers" onclose={() => drawer = null}>
 	<div class="layer-options">
 		<label><input type="checkbox" bind:checked={showPins} /> Places & pins</label>
-		{#if isVoyage}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
+		{#if districts.length}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
 	</div>
+	{#if gm.isGm && currentMap}
+		<button type="button" class="edit-areas" onclick={() => { drawer = null; selectedDistrictId = undefined; selectedPinId = undefined; editingAreas = true; }}>EDIT DISTRICTS & WARDS</button>
+		<p class="dim small">{districts.length ? `${districts.filter((a) => a.kind === 'district').length} districts · ${districts.filter((a) => a.kind === 'ward').length} wards on this map.` : 'No districts on this map yet. Draw some to make it clickable.'}{areasOffline ? ' Offline: showing this device’s last copy.' : ''}</p>
+	{/if}
 	<p class="dim">Drag to pan · pinch or scroll to zoom. Keyboard: arrows to pan, +/− to zoom, Home to recenter.</p>
 	{#if !isVoyage && (gm.isGm || canUpload || hasOwnMaps)}
 		<MapManager campaignId={campaign.id} {maps} onchange={() => void load()} isGm={gm.isGm} userId={gm.userId} canUpload={gm.isGm || canUpload} {playersUpload} />
@@ -407,6 +462,12 @@
 	button, .read { min-width: 44px; min-height: 44px; }
 	.head button { flex-shrink: 0; }
 	.stage { position: relative; min-height: 0; overflow: hidden; }
+	.area-editing { height: 100%; overflow-y: auto; padding: 0.75rem; display: grid; gap: 0.5rem; align-content: start; }
+	.area-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
+	.area-bar strong { color: var(--bright); font-weight: normal; font-family: var(--f-label); font-size: 0.7rem; letter-spacing: 0.12em; }
+	.edit-areas { width: 100%; margin-top: 0.75rem; }
+	.small { font-size: 0.8rem; }
+	.error { color: var(--red-soft); }
 	.empty { padding: 1rem; }
 	.dock { display: flex; gap: 0.5rem; padding: 0.65rem 0.75rem max(0.65rem, env(safe-area-inset-bottom)); background: var(--bg-1); border-top: 1px solid var(--frame-dim); }
 	.find, .dock p { flex: 1; text-align: left; }

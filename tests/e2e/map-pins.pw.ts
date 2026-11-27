@@ -22,6 +22,8 @@ interface Fake {
 	pins: Record<string, unknown>[];
 	posted: Record<string, unknown>[];
 	districtWrites: Record<string, unknown>[];
+	areas?: { areas: unknown[]; revision: number } | null; // map_areas for Voyage City
+	areaSaves?: unknown[][];
 }
 
 async function fakeSupabase(page: Page, fake: Fake) {
@@ -36,6 +38,14 @@ async function fakeSupabase(page: Page, fake: Fake) {
 			if (req.method() === 'GET') return json([]);
 			fake.districtWrites.push(JSON.parse(req.postData() ?? '{}'));
 			return json([], 201);
+		}
+		if (url.pathname.endsWith('/map_areas')) return json(fake.areas ? [fake.areas] : []);
+		if (url.pathname.endsWith('/rpc/save_map_areas')) {
+			const body = JSON.parse(req.postData() ?? '{}');
+			if (body.expected_revision !== (fake.areas?.revision ?? 0)) return json({ code: '40001', message: 'stale' }, 409);
+			fake.areas = { areas: body.list, revision: (fake.areas?.revision ?? 0) + 1 };
+			(fake.areaSaves ??= []).push(body.list);
+			return json(fake.areas.revision);
 		}
 		if (url.pathname.endsWith('/map_pins')) {
 			if (req.method() === 'GET') return json(fake.pins);
@@ -245,4 +255,59 @@ test('the GM can move, save and delete a pin through the drawer', async ({ page 
 	await page.getByRole('button', { name: 'CONFIRM DELETE', exact: true }).click();
 	await expect(page.locator('g.pin')).toHaveCount(0);
 	await expect(page.getByLabel('Selected place')).toHaveCount(0);
+});
+
+test('the GM draws a new ward; it is saved, searchable, and tapping it opens its district', async ({ page }) => {
+	const fake: Fake = { isGm: true, pins: [], posted: [], districtWrites: [], areas: null };
+	await fakeSupabase(page, fake);
+	await signedInAs(page, 'gm@example.com');
+	await page.goto('/map');
+	await openLayers(page);
+	await page.getByRole('button', { name: 'EDIT DISTRICTS & WARDS' }).click();
+	const editor = page.getByRole('region', { name: 'Edit districts and wards' });
+	await expect(editor).toBeVisible();
+	// Draw a small ward inside Akiba (label at 1530, 1700 on the 3840 × 2160 map).
+	await editor.getByRole('button', { name: 'NEW AREA', exact: true }).click();
+	await editor.getByLabel('Area name', { exact: true }).fill('Night Market');
+	await editor.getByLabel('Area kind', { exact: true }).selectOption('ward');
+	await editor.getByLabel('Ward district', { exact: true }).selectOption({ label: 'Akiba' });
+	await editor.getByRole('application', { name: /interactive map/ }).scrollIntoViewIfNeeded();
+	const box = (await editor.locator('.scene').boundingBox())!;
+	const at = (x: number, y: number) => ({ x: box.x + (x * box.width) / 3840, y: box.y + (y * box.height) / 2160 });
+	for (const [x, y] of [[1440, 1640], [1560, 1640], [1560, 1740], [1440, 1740]]) {
+		const p = at(x, y);
+		await page.mouse.click(p.x, p.y);
+	}
+	await editor.getByRole('button', { name: 'SAVE AREA', exact: true }).click();
+	await expect(editor.locator('.area-bar [role="status"]')).toContainText('SAVED');
+	expect(fake.areaSaves).toHaveLength(1);
+	const saved = fake.areaSaves![0] as { name: string; kind: string; parentId?: string }[];
+	expect(saved).toHaveLength(14); // the 13 traced areas plus the new ward
+	expect(saved.find((a) => a.name === 'Night Market')).toMatchObject({ kind: 'ward', parentId: 'akiba' });
+	await editor.getByRole('button', { name: 'DONE' }).click();
+
+	// Back on the map: search finds it, and its card is Akiba's, listing the ward.
+	await findPlace(page, 'Night Market');
+	const card = page.getByLabel('Selected district');
+	await expect(card).toContainText('Akiba');
+	await expect(card).toContainText('Night Market');
+
+	// After a reload the saved areas come back from the campaign.
+	await page.reload();
+	await findPlace(page, 'Night Market');
+	await expect(page.getByLabel('Selected district')).toContainText('Akiba');
+});
+
+test('players get no area editor, but see the saved wards', async ({ page }) => {
+	const traced = (await import('../../src/lib/map/districts.ts')).DISTRICTS;
+	const ward = { id: 'night-market', name: 'Night Market', kind: 'ward', parentId: 'akiba', polygon: [[1440, 1640], [1560, 1640], [1560, 1740], [1440, 1740]], label: [1500, 1690] };
+	const fake: Fake = { isGm: false, pins: [], posted: [], districtWrites: [], areas: { areas: [...traced, ward], revision: 3 } };
+	await fakeSupabase(page, fake);
+	await signedInAs(page, 'player@example.com');
+	await page.goto('/map');
+	await openLayers(page);
+	await expect(page.getByRole('button', { name: 'EDIT DISTRICTS & WARDS' })).toHaveCount(0);
+	await closeLayers(page);
+	await findPlace(page, 'Night Market');
+	await expect(page.getByLabel('Selected district')).toContainText('Akiba');
 });
