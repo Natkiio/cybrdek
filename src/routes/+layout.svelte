@@ -138,8 +138,9 @@
 		padding: 1.25rem 1rem 1rem;
 	}
 
-	/* Pages built to fill a laptop screen (the sheet) opt out of the reading width. */
-	.shell:has(:global(.sheet)) {
+	/* Pages built to fill a laptop screen (the sheet, the GM's combat console)
+	   opt out of the reading width. */
+	.shell:has(:global(.sheet), :global(.wide-page)) {
 		max-width: 1800px;
 		padding-inline: clamp(1rem, 3vw, 4.5rem);
 	}

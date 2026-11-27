@@ -156,13 +156,14 @@ test('NET and meatspace share a persisted GM fight, with real SQL redaction for 
 	await page.addInitScript(() => (Math.random = () => 0.5));
 	await page.goto('/combat');
 	await page.getByRole('button', { name: 'START FIGHT', exact: true }).click();
-	const net = page
-		.locator('section.panel')
-		.filter({ has: page.getByText('NET COMBAT', { exact: true }) });
+	// The turn console's NET actions for whoever the panel is showing.
+	const net = page.getByRole('group', { name: /^NET actions for/ });
+	const row = (name: string) =>
+		page.getByRole('list', { name: 'Initiative queue' }).getByRole('button', { name: new RegExp(name) });
 	await expect(page.getByText('Up now:')).toContainText('ICE · Hellhound');
 	await net.getByLabel(/^NET target/).selectOption('runner');
 	await net.getByRole('button', { name: 'ENCOUNTER / SPEED CONTEST' }).click();
-	await expect(net.getByRole('region', { name: 'NET state Runner' })).toContainText('32 HP');
+	await expect(row('Runner')).toContainText('32/');
 	// A rejected save must refresh the authoritative fight and never announce a hit.
 	const saveUrl = '**/rest/v1/rpc/save_campaign_encounter';
 	let rejectSave = true;
@@ -174,17 +175,15 @@ test('NET and meatspace share a persisted GM fight, with real SQL redaction for 
 	await net.getByRole('button', { name: 'RESOLVE NET ATTACK' }).click();
 	await expect(net.getByRole('alert')).toContainText('NET action was not saved');
 	await expect(net.getByRole('status')).toHaveCount(0);
-	await expect(net.getByRole('region', { name: 'NET state Runner' })).toContainText('32 HP');
+	await expect(row('Runner')).toContainText('32/');
 	await net.getByRole('button', { name: 'RESOLVE NET ATTACK' }).click();
-	await expect(net.getByRole('region', { name: 'NET state Runner' })).toContainText('24 HP');
+	await expect(row('Runner')).toContainText('24/');
 	await page.getByRole('button', { name: 'NEXT TURN →' }).click();
 	await expect(page.getByText('Up now:')).toContainText('Runner');
 	await net.getByLabel(/^NET target/).selectOption('ice');
 	await net.getByLabel(/^Attack\s/).selectOption('copy-0');
 	await net.getByRole('button', { name: 'RESOLVE NET ATTACK' }).click();
-	await expect(net.getByRole('region', { name: 'NET state ICE · Hellhound' })).toContainText(
-		'8 REZ'
-	);
+	await expect(row('ICE · Hellhound')).toContainText('8/20');
 	await net.getByRole('button', { name: 'RESOLVE NET ATTACK' }).click();
 	await expect(net.getByRole('alert')).toContainText('available Attacker');
 	await net
@@ -197,9 +196,7 @@ test('NET and meatspace share a persisted GM fight, with real SQL redaction for 
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 	await page.screenshot({ path: info.outputPath('net-combat-mobile.png'), fullPage: true });
 	await page.reload();
-	await expect(net.getByRole('region', { name: 'NET state ICE · Hellhound' })).toContainText(
-		'8 REZ'
-	);
+	await expect(row('ICE · Hellhound')).toContainText('8/20');
 	await expect(net.getByRole('region', { name: 'NET state Runner' })).toContainText(
 		'7 REZ · active'
 	);
@@ -227,17 +224,65 @@ test('GM can create NPC runners and security from the combat UI before starting 
 	await connect(page.context(), GM);
 	await page.goto('/combat');
 	await page.getByRole('button', { name: 'NEW ENCOUNTER', exact: true }).click();
-	const net = page
-		.locator('section.panel')
-		.filter({ has: page.getByText('NET COMBAT', { exact: true }) });
-	await net.getByText('ADD NPC NETRUNNER', { exact: true }).click();
-	await net.getByLabel('NPC runner name').fill('Enemy');
-	await net.getByRole('button', { name: 'ADD NPC RUNNER', exact: true }).click();
-	await net.getByLabel('Security kind').selectOption('demon');
-	await net.getByRole('button', { name: 'ADD NET SECURITY', exact: true }).click();
+	// The turn console's NET actions for whoever the panel is showing.
+	const net = page.getByRole('group', { name: /^NET actions for/ });
+	const row = (name: string) =>
+		page.getByRole('list', { name: 'Initiative queue' }).getByRole('button', { name: new RegExp(name) });
+	// Setup lives in SET UP THE FIGHT, open until the fight starts.
+	await page.getByText('ADD NPC NETRUNNER', { exact: true }).click();
+	await page.getByLabel('NPC runner name').fill('Enemy');
+	await page.getByRole('button', { name: 'ADD NPC RUNNER', exact: true }).click();
+	await page.getByLabel('Security kind').selectOption('demon');
+	await page.getByRole('button', { name: 'ADD NET SECURITY', exact: true }).click();
 	await page.getByRole('button', { name: 'START FIGHT', exact: true }).click();
 	await expect(page.getByText('Up now:')).toContainText('DEMON · Imp');
 	await net.getByLabel(/^NET target/).selectOption({ label: 'Enemy' });
 	await net.getByRole('button', { name: 'OPERATE CONTROL NODE (NET ACTION)' }).click();
 	await expect(net).toContainText('NET actions spent 1');
+});
+test('turn console: act on someone else, jump back, and NEXT TURN follows whoever is up', async ({ page }, info) => {
+	await fixture();
+	await connect(page.context(), GM);
+	await page.addInitScript(() => (Math.random = () => 0.5));
+	await page.goto('/combat');
+	await page.getByRole('button', { name: 'START FIGHT', exact: true }).click();
+	const row = (name: string) =>
+		page.getByRole('list', { name: 'Initiative queue' }).getByRole('button', { name: new RegExp(name) });
+	await expect(page.getByText('Up now:')).toContainText('ICE · Hellhound');
+	await expect(page.getByText('UP NOW · ICE · Hellhound')).toBeVisible();
+	// Black ICE has NET actions but no meatspace damage form.
+	await expect(page.getByLabel('Amount for ICE · Hellhound')).toHaveCount(0);
+
+	// The guard gets shot on the Hellhound's Turn: tap the guard, damage them, jump back.
+	await row('Guard').click();
+	await expect(row('Guard')).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.getByText('ACTING ON · Guard')).toBeVisible();
+	await page.getByLabel('Amount for Guard').fill('10');
+	await page.getByLabel('Hit location for Guard').selectOption('direct');
+	await page.getByRole('button', { name: 'DAMAGE', exact: true }).click();
+	await expect(row('Guard')).toContainText('20/30');
+	await page.getByRole('button', { name: /BACK TO ICE · HELLHOUND/ }).click();
+	await expect(page.getByText('UP NOW · ICE · Hellhound')).toBeVisible();
+
+	// Admin actions sit behind MANAGE.
+	await expect(page.getByRole('button', { name: 'REMOVE FROM FIGHT' })).not.toBeVisible();
+
+	// NEXT TURN moves the panel on, even if someone else was selected.
+	await row('Guard').click();
+	await page.getByRole('button', { name: 'NEXT TURN →' }).click();
+	await expect(page.getByText('Up now:')).toContainText('Runner');
+	await expect(page.getByText('UP NOW · Runner')).toBeVisible();
+	await expect(page.getByRole('group', { name: 'NET actions for Runner' })).toBeVisible();
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+	await page.screenshot({ path: info.outputPath('console-phone.png'), fullPage: true });
+
+	// Laptop: queue | panel | setup side by side.
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const queue = (await page.getByRole('list', { name: 'Initiative queue' }).boundingBox())!;
+	const panel = (await page.getByRole('group', { name: 'NET actions for Runner' }).boundingBox())!;
+	const setup = (await page.getByText('SET UP THE FIGHT', { exact: true }).boundingBox())!;
+	expect(queue.x).toBeLessThan(panel.x);
+	expect(panel.x).toBeLessThan(setup.x);
+	await expect(page.getByRole('button', { name: 'NEXT TURN →' })).toHaveCount(1); // in the turn bar now, not the phone's bottom bar
+	await page.screenshot({ path: info.outputPath('console-laptop.png') });
 });
