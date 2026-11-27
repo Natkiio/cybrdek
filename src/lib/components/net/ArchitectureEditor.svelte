@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { architectureProblem, newFloor, type Architecture } from '#lib/net/architecture.ts';
+	import FloorIndex from './FloorIndex.svelte';
 	import FloorEditor from './FloorEditor.svelte';
 	let {
 		initial,
@@ -17,6 +18,7 @@
 	let draft = $state<Architecture>(untrack(() => structuredClone($state.snapshot(initial))));
 	const problem = $derived(architectureProblem(draft));
 	let removing = $state('');
+	const floorPrefix = $props.id();
 	function move(index: number, direction: number) {
 		const floors = [...draft.floors];
 		[floors[index], floors[index + direction]] = [floors[index + direction], floors[index]];
@@ -41,29 +43,34 @@
 			>Architecture GM notes <textarea maxlength="4000" bind:value={draft.gmNotes}
 			></textarea></label
 		>
-		{#each draft.floors as floor, i (floor.id)}
-			<section class="floor" aria-label={`Edit floor ${i + 1}`}>
-				<h3>FLOOR {i + 1}</h3>
-				<FloorEditor bind:floor={draft.floors[i]} />
-				<div class="actions">
-					<button type="button" disabled={i === 0} onclick={() => move(i, -1)}>MOVE UP</button>
-					<button type="button" disabled={i === draft.floors.length - 1} onclick={() => move(i, 1)}
-						>MOVE DOWN</button
-					>
-					{#if removing === floor.id}
-						<button
-							type="button"
-							onclick={() => {
-								draft.floors = draft.floors.filter((f) => f.id !== floor.id);
-								removing = '';
-							}}>CONFIRM REMOVE FLOOR</button
-						>
-						<button type="button" onclick={() => (removing = '')}>KEEP FLOOR</button>
-					{:else}<button type="button" onclick={() => (removing = floor.id)}>REMOVE FLOOR</button
-						>{/if}
-				</div>
-			</section>
-		{/each}
+		<div class="editor-floors">
+			<FloorIndex floors={draft.floors} prefix={floorPrefix} name={draft.name} editing />
+			<div class="floor-forms">
+				{#each draft.floors as floor, i (floor.id)}
+					<section class="floor" id="{floorPrefix}-{floor.id}" tabindex="-1" aria-label={`Edit floor ${i + 1}`}>
+						<h3>FLOOR {i + 1}</h3>
+						<FloorEditor bind:floor={draft.floors[i]} />
+						<div class="actions">
+							<button type="button" disabled={i === 0} onclick={() => move(i, -1)}>MOVE UP</button>
+							<button type="button" disabled={i === draft.floors.length - 1} onclick={() => move(i, 1)}
+								>MOVE DOWN</button
+							>
+							{#if removing === floor.id}
+								<button
+									type="button"
+									onclick={() => {
+										draft.floors = draft.floors.filter((f) => f.id !== floor.id);
+										removing = '';
+									}}>CONFIRM REMOVE FLOOR</button
+								>
+								<button type="button" onclick={() => (removing = '')}>KEEP FLOOR</button>
+							{:else}<button type="button" onclick={() => (removing = floor.id)}>REMOVE FLOOR</button
+								>{/if}
+						</div>
+					</section>
+				{/each}
+			</div>
+		</div>
 		<div class="actions">
 			<button
 				type="button"
@@ -82,6 +89,11 @@
 </form>
 
 <style>
+	.editor-floors { display: grid; align-items: start; gap: 0 1.5rem; }
+	.floor-forms { min-width: 0; }
+	.floor:focus { outline: 2px solid var(--bright); outline-offset: 2px; }
+	@media (min-width: 1000px) { .editor-floors:has(> :global(nav)) { grid-template-columns: 13rem minmax(0, 1fr); } }
+
 	fieldset {
 		min-width: 0;
 		border: 1px solid var(--frame-dim);
@@ -105,8 +117,9 @@
 		min-height: 80px;
 	}
 	.floor {
-		margin: 1rem 0;
-		padding-top: 0.75rem;
+		margin: 0.65rem 0;
+		padding-top: 0.65rem;
+		scroll-margin-top: calc(var(--net-header-height, 4rem) + 1rem);
 		border-top: 1px solid var(--frame-dim);
 	}
 	.actions {

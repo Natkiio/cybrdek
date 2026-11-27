@@ -65,6 +65,23 @@
 	let error = $state('');
 	let drawer = $state<'finder' | 'layers' | 'pin' | 'district' | null>(null);
 	let outlines = $state(false);
+	// The simple schematic city (#101 mockup A) or the detailed map art; remembered on this device.
+	let schematic = $state(true);
+	onMount(() => {
+		try {
+			schematic = localStorage.getItem('cybrdek:map:schematic') !== '0';
+		} catch {
+			// storage blocked: use the default
+		}
+	});
+	function setSchematic(on: boolean) {
+		schematic = on;
+		try {
+			localStorage.setItem('cybrdek:map:schematic', on ? '1' : '0');
+		} catch {
+			// storage blocked: it just won't be remembered
+		}
+	}
 	let showPins = $state(true);
 	let mapFocus = $state<MapFocus | null>(null);
 	let headerHeight = $state(0);
@@ -330,12 +347,13 @@
 				<g data-map-interactive class="pin" class:hidden={!pin.visible} class:selected={pin.id === selectedPinId} onclick={() => openPin(pin)} role="button" tabindex="-1">
 					<circle cx={pin.x} cy={pin.y} r={22 / scale} class="hit" />
 					<circle cx={pin.x} cy={pin.y} r={9 / scale} class="dot" style:stroke-width={2.5 / scale} />
+					{#if isVoyage && schematic}<text class="pin-name" x={pin.x + 16 / scale} y={pin.y} style:font-size="{13 / scale}px">{pin.label}</text>{/if}
 				</g>
 			{/each}
 			{#if draft}<circle cx={draft.x} cy={draft.y} r={11 / scale} class="draft" style:stroke-width={2.5 / scale} />{/if}
 		{/snippet}
 		<CityMap map={currentMap} areas={isVoyage ? districts : []} immersive selectionPopup={false}
-			{outlines} focus={mapFocus} bind:selectedId={selectedDistrictId}
+			{outlines} schematic={isVoyage && schematic} focus={mapFocus} bind:selectedId={selectedDistrictId}
 			onselect={() => selectedPinId = undefined} ontap={tapped} overlay={pinMarkers} />
 		{#if !draft && tapMode === 'none'}
 			{#if selectedPin}
@@ -379,8 +397,9 @@
 </MapDrawer>
 <MapDrawer open={drawer === 'layers'} title="Layers" onclose={() => drawer = null}>
 	<div class="layer-options">
+		{#if isVoyage}<label><input type="checkbox" checked={schematic} onchange={(e) => setSchematic(e.currentTarget.checked)} /> Simple map (districts only)</label>{/if}
 		<label><input type="checkbox" bind:checked={showPins} /> Places & pins</label>
-		{#if isVoyage}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
+		{#if isVoyage && !schematic}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
 	</div>
 	<p class="dim">Drag to pan · pinch or scroll to zoom. Keyboard: arrows to pan, +/− to zoom, Home to recenter.</p>
 	{#if !isVoyage && (gm.isGm || canUpload || hasOwnMaps)}
@@ -431,5 +450,9 @@
 	:global(.pin .dot) { fill: var(--bright); stroke: var(--bg-0); }
 	:global(.pin.hidden .dot) { fill: var(--bg-1); stroke: var(--bright); stroke-dasharray: 2 2; }
 	:global(.pin.selected .dot) { fill: var(--red); }
+	/* Simple map: pins are red dots with their names, like the mockup. */
+	:global(.schematic .pin .dot) { fill: var(--red); stroke: var(--bg-0); }
+	:global(.schematic .pin.selected .dot) { fill: var(--bright); }
+	:global(.schematic .pin-name) { font-family: var(--f-mono); fill: var(--bright); text-anchor: start; dominant-baseline: middle; paint-order: stroke; stroke: var(--bg-0); stroke-width: 0.35em; pointer-events: none; }
 	:global(circle.draft) { fill: var(--red); stroke: var(--value); pointer-events: none; }
 </style>
