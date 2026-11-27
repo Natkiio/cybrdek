@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { findPlace, expectMapFillsViewport } from './map-helpers.ts';
 import { DISTRICTS, MAP_WIDTH } from '../../src/lib/map/districts.ts';
 
 test.use({ hasTouch: true });
@@ -31,14 +32,15 @@ test('district tapping, focused list, wheel/pan/keyboard and real touch pinch', 
 	page.on('pageerror', (error) => errors.push(error.message));
 	await ready(page);
 	await expect(page.getByLabel('Map zoom')).toHaveText('100%');
+	await expectMapFillsViewport(page);
+	await findPlace(page, 'West Ridge');
 	await tapDistrict(page, 'West Ridge');
 	await expect(page.getByLabel('Selected district')).toContainText('West Ridge');
 	await expect(page.locator('polygon.selected')).toHaveCount(1);
-	await page.getByLabel('Close district popup').click();
+	await page.getByLabel('Close district menu').click();
 	await expect(page.getByLabel('Selected district')).toHaveCount(0);
-	await page.getByText('CHOOSE A DISTRICT', { exact: false }).click();
-	await page.getByRole('button', { name: 'Nova Peak', exact: true }).click();
-	await expect(page.getByLabel('Selected district')).toContainText('Nova Peak');
+	await findPlace(page, 'Nova Peak');
+	await expect(page.getByLabel('Selected district').locator('#ward-nova-peak')).toHaveClass(/focus/);
 	expect(await percent(page)).toBeGreaterThan(100);
 	await expect.poll(() => page.locator('.scene img').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(3072);
 	await expect.poll(() => cached(page, '/maps/voyage-detail.webp')).toBe(true);
@@ -53,7 +55,7 @@ test('district tapping, focused list, wheel/pan/keyboard and real touch pinch', 
 	await page.mouse.move(box.x + box.width * 0.65 - 70, box.y + 110, { steps: 8 });
 	await page.mouse.up();
 	await expect.poll(() => page.locator('.scene').getAttribute('style')).not.toBe(before);
-	await expect(page.getByLabel('Selected district')).toContainText('Nova Peak');
+	await expect(page.getByLabel('Selected district').locator('#ward-nova-peak')).toHaveClass(/focus/);
 	await map(page).focus();
 	await page.keyboard.press('Escape');
 	await expect(page.getByLabel('Selected district')).toHaveCount(0);
@@ -62,7 +64,7 @@ test('district tapping, focused list, wheel/pan/keyboard and real touch pinch', 
 	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 	await page.mouse.wheel(0, -400);
 	await expect.poll(() => percent(page)).toBeGreaterThan(100);
-	await page.getByRole('button', { name: 'FIT MAP', exact: true }).click();
+	await page.getByRole('button', { name: 'Recenter map', exact: true }).click();
 
 	// CDP sends actual two-contact touch events through the browser's pointer handling.
 	await map(page).scrollIntoViewIfNeeded();
@@ -80,8 +82,10 @@ test('district tapping, focused list, wheel/pan/keyboard and real touch pinch', 
 	expect(await page.evaluate(() => window.visualViewport?.scale)).toBe(1);
 	await expect(page.getByLabel('Selected district')).toHaveCount(0);
 	await cdp.detach();
-	await page.setViewportSize({ width: 1200, height: 850 });
-	await page.getByRole('button', { name: 'FIT MAP', exact: true }).click();
+	await page.setViewportSize({ width: 1280, height: 850 });
+	await page.getByRole('button', { name: 'Recenter map', exact: true }).click();
+	await expectMapFillsViewport(page);
+	await findPlace(page, 'Daynedale');
 	await tapDistrict(page, 'Daynedale');
 	await expect(page.getByLabel('Selected district')).toContainText('Daynedale');
 	await page.screenshot({ path: testInfo.outputPath('map-desktop.png'), fullPage: true });
@@ -96,9 +100,10 @@ test('overview works offline before detail was ever loaded', async ({ page, cont
 	await context.setOffline(true);
 	await page.reload();
 	await expect(page.getByLabel('Map zoom')).toHaveText('100%');
-	await tapDistrict(page, 'Eagelton');
+	await findPlace(page, 'Eagelton');
 	await expect(page.getByLabel('Selected district')).toContainText('Eagelton');
-	await page.getByLabel('Close district popup').click();
+	await page.getByLabel('Close district menu').click();
+	await page.getByRole('button', { name: 'Recenter map' }).click();
 	await page.getByLabel('Zoom in', { exact: true }).click();
 	await page.getByLabel('Zoom in', { exact: true }).click();
 	await expect.poll(() => page.locator('.scene img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1920);

@@ -6,8 +6,12 @@
 
 	const helpId = $props.id();
 
+	export type MapFocus = { area: District } | { point: Point };
 	export interface DistrictInfo { summary?: string; href?: string }
-	let { map, areas: districts, districtInfo, onselect, ontap, overlay, onpointdrag, outlines = false, selectionPopup = true }: {
+	let { map, areas: districts, districtInfo, onselect, ontap, overlay, onpointdrag, outlines = false, selectionPopup = true, immersive = false, focus, selectedId = $bindable<string | undefined>() }: {
+		immersive?: boolean;
+		focus?: MapFocus | null;
+		selectedId?: string;
 		map: MapDefinition;
 		areas: readonly District[];
 		outlines?: boolean;
@@ -27,12 +31,12 @@
 	let viewport: HTMLDivElement;
 	let width = $state(0), height = $state(0);
 	let view = $state<Transform>({ x: 0, y: 0, scale: 1 });
-	let selectedId = $state<string | undefined>();
 	let detailFailed = $state(false);
 	let imageError = $state(false);
 	let dragging = $state(false);
 	const size: Size = $derived({ width, height });
-	const zoom = $derived(width && height ? view.scale / fitScale(size, map) : 1);
+	const fitMode = $derived(immersive ? 'cover' : 'contain');
+	const zoom = $derived(width && height ? view.scale / fitScale(size, map, fitMode) : 1);
 	const detail = $derived(!detailFailed && (width > 700 || zoom > 1.8));
 	const selected = $derived(districts.find((d) => d.id === selectedId));
 	const info = $derived(selected ? districtInfo?.(selected) : undefined);
@@ -48,7 +52,7 @@
 		const next = { width, height };
 		if (!width || !height) return;
 		const mapKey = JSON.stringify([map.imageUrl, map.detailImageUrl, map.width, map.height]);
-		view = previousSize && previousMap === mapKey ? resizeView(untrack(() => view), previousSize, next, map) : fitMap(next, map);
+		view = previousSize && previousMap === mapKey ? resizeView(untrack(() => view), previousSize, next, map, fitMode) : fitMap(next, map, fitMode);
 		if (previousMap !== mapKey) {
 			detailFailed = imageError = false;
 			selectedId = undefined;
@@ -58,6 +62,19 @@
 		}
 		previousMap = mapKey;
 		previousSize = next;
+	});
+
+	$effect(() => {
+		const next = focus;
+		if (!next) return;
+		untrack(() => {
+			if (!width || !height) return;
+			if ('area' in next) select(next.area, true);
+			else {
+				const scale = Math.max(view.scale, fitScale(size, map, fitMode) * 1.5);
+				view = constrain({ scale, x: width / 2 - next.point[0] * scale, y: height / 2 - next.point[1] * scale }, size, map, fitMode);
+			}
+		});
 	});
 
 	const local = (event: PointerEvent | WheelEvent): Point => {
@@ -104,8 +121,8 @@
 		if (Math.hypot(dx, dy) > 5 || pointers.size > 1) gesture.moved = true;
 		dragging = gesture.moved;
 		view = pointers.size > 1 && gesture.distance > 0
-			? zoomAt(gesture.view, gesture.center, pointerDistance() / gesture.distance, size, map, center)
-			: constrain({ ...gesture.view, x: gesture.view.x + dx, y: gesture.view.y + dy }, size, map);
+			? zoomAt(gesture.view, gesture.center, pointerDistance() / gesture.distance, size, map, center, fitMode)
+			: constrain({ ...gesture.view, x: gesture.view.x + dx, y: gesture.view.y + dy }, size, map, fitMode);
 	}
 	function up(event: PointerEvent, cancelled = false) {
 		if (pointDrag?.pointerId === event.pointerId) {
@@ -130,37 +147,38 @@
 	}
 	function select(district: District | undefined, focus = false) {
 		selectedId = district?.id;
-		if (district && focus) view = focusDistrict(district, size, map);
+		if (district && focus) view = focusDistrict(district, size, map, fitMode);
 		onselect?.(district);
 	}
 	function wheel(event: WheelEvent) {
 		event.preventDefault();
-		view = zoomAt(view, local(event), Math.exp(-event.deltaY * 0.002), size, map);
+		view = zoomAt(view, local(event), Math.exp(-event.deltaY * 0.002), size, map, undefined, fitMode);
 	}
-	function zoomBy(factor: number) { view = zoomAt(view, [width / 2, height / 2], factor, size, map); }
-	function pan(dx: number, dy: number) { view = constrain({ ...view, x: view.x + dx, y: view.y + dy }, size, map); }
+	function zoomBy(factor: number) { view = zoomAt(view, [width / 2, height / 2], factor, size, map, undefined, fitMode); }
+	function pan(dx: number, dy: number) { view = constrain({ ...view, x: view.x + dx, y: view.y + dy }, size, map, fitMode); }
 	function keys(event: KeyboardEvent) {
 		if (event.target !== viewport) return;
 		const directions: Record<string, Point> = { ArrowLeft: [80, 0], ArrowRight: [-80, 0], ArrowUp: [0, 80], ArrowDown: [0, -80] };
 		if (directions[event.key]) { event.preventDefault(); pan(...directions[event.key]); }
 		else if (['+', '='].includes(event.key)) { event.preventDefault(); zoomBy(1.5); }
 		else if (event.key === '-') { event.preventDefault(); zoomBy(1 / 1.5); }
-		else if (event.key === 'Home') { event.preventDefault(); view = fitMap(size, map); }
+		else if (event.key === 'Home') { event.preventDefault(); view = fitMap(size, map, fitMode); }
 		else if (event.key === 'Escape') select(undefined);
 	}
 </script>
 
+<div class="map-view" class:immersive>
 <div class="toolbar" role="group" aria-label="Map controls">
 	<button type="button" aria-label="Zoom out" disabled={zoom <= 1.001} onclick={() => zoomBy(1 / 1.5)}>−</button>
 	<output aria-label="Map zoom">{Math.round(zoom * 100)}%</output>
 	<button type="button" aria-label="Zoom in" disabled={zoom >= MAX_ZOOM - 0.001} onclick={() => zoomBy(1.5)}>+</button>
-	<button type="button" onclick={() => view = fitMap(size, map)}>FIT MAP</button>
-	<div class="pan-controls" role="group" aria-label="Pan map">
+	<button type="button" aria-label={immersive ? 'Recenter map' : undefined} onclick={() => view = fitMap(size, map, fitMode)}>{immersive ? '⌖' : 'FIT MAP'}</button>
+	{#if !immersive}<div class="pan-controls" role="group" aria-label="Pan map">
 		<button type="button" aria-label="Pan left" onclick={() => pan(100, 0)}>←</button>
 		<button type="button" aria-label="Pan up" onclick={() => pan(0, 100)}>↑</button>
 		<button type="button" aria-label="Pan down" onclick={() => pan(0, -100)}>↓</button>
 		<button type="button" aria-label="Pan right" onclick={() => pan(-100, 0)}>→</button>
-	</div>
+	</div>{/if}
 </div>
 <p id={helpId} class="hint">Drag to pan · pinch or scroll to zoom{districts.length ? ' · tap a district' : ''}. Keyboard: arrows, +/−, Home to fit, Escape to close.</p>
 
@@ -193,7 +211,7 @@
 	{/if}
 </div>
 
-<details class="districts">
+{#if !immersive}<details class="districts">
 	<summary>CHOOSE A DISTRICT <span class="hint">({mainDistricts.length} districts · {districts.length - mainDistricts.length} wards)</span></summary>
 	<div class="district-list">
 		{#each mainDistricts as district (district.id)}
@@ -206,9 +224,16 @@
 			</div>
 		{/each}
 	</div>
-</details>
+</details>{/if}
+</div>
 
 <style>
+	.map-view.immersive { height: 100%; position: relative; }
+	.immersive .viewport { height: 100%; border: 0; }
+	.immersive .toolbar { position: absolute; top: 0.75rem; right: 0.75rem; z-index: 2; flex-direction: column; gap: 0; background: var(--bg-1); border: 1px solid var(--frame-dim); }
+	.immersive .toolbar button { width: 44px; border: 0; border-bottom: 1px solid var(--frame-dim); font-size: 1.25rem; }
+	.immersive .toolbar button:last-child { border-bottom: 0; }
+	.immersive > .hint, .immersive output { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 	.toolbar, .pan-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 	.pan-controls { margin-left: auto; }
 	button { min-width: 44px; min-height: 44px; }
