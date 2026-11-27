@@ -15,14 +15,14 @@
 
 	const nav = [
 		{ href: '/', label: 'HOME' },
+		{ href: '/campaigns', label: 'CAMPAIGNS' },
 		{ href: '/characters', label: 'CHARACTERS' },
 		{ href: '/dice', label: 'DICE' },
 		{ href: '/combat', label: 'COMBAT' },
 		{ href: '/net', label: 'NET' },
 		{ href: '/map', label: 'MAP' },
 		{ href: '/lore', label: 'LORE' },
-		{ href: '/rules', label: 'RULES' },
-		{ href: '/campaigns', label: 'CAMPAIGNS' }
+		{ href: '/rules', label: 'RULES' }
 	];
 
 	const isHere = (href: string) => (href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href));

@@ -55,7 +55,7 @@
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
 	<p class="actions">
 		<button type="button" disabled={busy} onclick={load}>REFRESH</button>
-		<a href="/campaigns/party">OPEN LIVE DASHBOARD →</a>
+		<a class="action-link" href="/campaigns/party">OPEN LIVE DASHBOARD →</a>
 	</p>
 </Panel>
 

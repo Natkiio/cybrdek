@@ -134,6 +134,7 @@ test('on a phone the app bar is pinned to the bottom, with no sideways scroll', 
 	expect(Math.round(box.y + box.height)).toBe(height);
 	await page.mouse.wheel(0, 2000);
 	expect(Math.round((await bar(page).boundingBox())!.y + box.height)).toBe(height); // still there after scrolling
+	for (const chip of await status(page).getByRole('button').all()) expect((await chip.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 	await expect(section(page, 'SKILLS')).toHaveCount(0);
 	await openFold(page, 'SKILLS');
 	await expect(section(page, 'STATS')).toBeVisible(); // on a phone STATS live in SKILLS

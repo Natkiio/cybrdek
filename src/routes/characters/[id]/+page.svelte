@@ -643,8 +643,8 @@
 		display: inline-flex;
 		align-items: baseline;
 		gap: 0.4rem;
-		min-height: 36px;
-		padding: 0.3rem 0.6rem;
+		min-height: 44px;
+		padding: 0.3rem 0.7rem;
 		font-family: var(--f-mono);
 		letter-spacing: 0;
 		text-transform: none;
