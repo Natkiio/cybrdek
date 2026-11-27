@@ -3,7 +3,6 @@
 	import Panel from '#lib/components/Panel.svelte';
 	import MapDrawer from '#lib/components/map/MapDrawer.svelte';
 	import MapFinder from '#lib/components/map/MapFinder.svelte';
-	import { supabase } from '#lib/supabase/client.ts';
 	import CityMap, { type MapFocus } from '#lib/components/map/CityMap.svelte';
 	import DistrictEditor from '#lib/components/map/DistrictEditor.svelte';
 	import DistrictMenu from '#lib/components/map/DistrictMenu.svelte';
@@ -216,28 +215,16 @@
 	});
 
 	$effect(() => {
-		const campaignId = campaign.id;
+		void campaign.id;
 		void gm.userId;
 		if (!gm.ready) return;
-		const client = supabase();
 		const refresh = () => { if (navigator.onLine) void load(); };
-		const channel = client.channel(`map:${campaignId}`);
-		for (const table of ['map_pins', 'map_districts', 'campaign_maps', 'lore_entries']) {
-			channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `campaign_id=eq.${campaignId}` }, refresh);
-		}
-		let connected = false;
-		channel.subscribe(status => {
-			if (status === 'SUBSCRIBED') { if (connected) refresh(); connected = true; }
-		});
 		const visible = () => { if (document.visibilityState === 'visible') refresh(); };
 		window.addEventListener('online', refresh);
 		document.addEventListener('visibilitychange', visible);
-		const timer = window.setInterval(visible, 30_000);
 		return () => {
-			void client.removeChannel(channel);
 			window.removeEventListener('online', refresh);
 			document.removeEventListener('visibilitychange', visible);
-			clearInterval(timer);
 		};
 	});
 

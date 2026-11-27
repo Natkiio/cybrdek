@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route, type WebSocketRoute } from '@playwright/test';
+import { test, expect, type Page, type Route } from '@playwright/test';
 
 import { findPlace, expectMapFillsViewport, openLayers, closeLayers } from './map-helpers.ts';
 
@@ -48,24 +48,6 @@ async function fakeSupabase(page: Page, fake: Fake) {
 		}
 		return json({});
 	});
-	const sockets: { ws: WebSocketRoute; join: string; topic: string; id: number }[] = [];
-	await page.context().routeWebSocket(/supabase\.co/, ws => {
-		ws.onMessage(message => {
-			const [join, ref, topic, event, payload] = JSON.parse(String(message));
-			if (event === 'phx_join') {
-				const filters = (payload.config.postgres_changes ?? []).map((f: { table: string }, i: number) => ({ ...f, id: i + 1 }));
-				const pins = filters.find((f: { table: string }) => f.table === 'map_pins');
-				if (pins) sockets.push({ ws, join, topic, id: pins.id });
-				ws.send(JSON.stringify([join, ref, topic, 'phx_reply', { status: 'ok', response: { postgres_changes: filters } }]));
-			} else if (event === 'heartbeat') ws.send(JSON.stringify([null, ref, topic, 'phx_reply', { status: 'ok', response: {} }]));
-		});
-	});
-	return {
-		connected: () => sockets.length > 0,
-		emit: () => { for (const s of sockets) s.ws.send(JSON.stringify([s.join, null, s.topic, 'postgres_changes', { ids: [s.id], data: {
-			schema: 'public', table: 'map_pins', type: 'UPDATE', commit_timestamp: new Date().toISOString(), columns: [], record: {}, old_record: {}, errors: null
-		} }])); }
-	};
 }
 
 /** A signed-in session as supabase-js stores it, so no real login is needed. */
@@ -261,21 +243,6 @@ test('the GM can move, save and delete a pin through the drawer', async ({ page 
 	await page.getByRole('button', { name: 'EDIT PIN', exact: true }).click();
 	await page.getByRole('button', { name: 'DELETE', exact: true }).click();
 	await page.getByRole('button', { name: 'CONFIRM DELETE', exact: true }).click();
-	await expect(page.locator('g.pin')).toHaveCount(0);
-	await expect(page.getByLabel('Selected place')).toHaveCount(0);
-});
-
-test('a live pin notification refetches authorized rows and updates an open place card', async ({ page }) => {
-	const fake: Fake = { isGm: false, pins: [{ id: 'p1', x: 1070, y: 651, label: 'Live place', lore_entry_id: null, visible: true, category: 'other' }], posted: [], districtWrites: [] };
-	const realtime = await fakeSupabase(page, fake);
-	await page.goto('/map');
-	await expect.poll(realtime.connected).toBe(true);
-	await findPlace(page, 'Live place');
-	fake.pins[0].label = 'Updated place';
-	realtime.emit();
-	await expect(page.getByLabel('Selected place')).toContainText('Updated place');
-	fake.pins = [];
-	realtime.emit();
 	await expect(page.locator('g.pin')).toHaveCount(0);
 	await expect(page.getByLabel('Selected place')).toHaveCount(0);
 });
