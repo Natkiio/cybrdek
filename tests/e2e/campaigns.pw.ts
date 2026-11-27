@@ -91,8 +91,15 @@ test('no account: Voyage City is the default, and creating needs sign-in', async
 	await expect(page.getByRole('link', { name: 'CAMPAIGN: Voyage City' })).toBeVisible();
 	await expect.poll(() => fake.loreRequests.at(-1)).toBe(`eq.${VOYAGE}`);
 	await page.goto('/campaigns');
+	// The header says where you are; switching and starting live under ALL CAMPAIGNS on a phone.
+	const hero = page.getByRole('region', { name: 'Current campaign' });
+	await expect(hero).toContainText("YOU'RE BROWSING");
+	await expect(hero).toContainText('Voyage City');
+	await expect(page.getByRole('navigation', { name: 'Game tools' })).toHaveCount(0);
+	await page.getByRole('tab', { name: 'ALL CAMPAIGNS' }).click();
+	await expect(page).toHaveURL(/#all$/);
 	await expect(page.getByRole('button', { name: /Voyage City/ })).toContainText('CURRENT');
-	await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Sign in', exact: true }).first()).toBeVisible();
 	await expect(page.getByLabel('Campaign name')).toHaveCount(0);
 	await expect(page.getByLabel('Invite link')).toHaveCount(0);
 });
@@ -101,13 +108,20 @@ test('create a campaign: become its GM, get an invite, everything is scoped to i
 	const fake = fresh();
 	await fakeSupabase(page, fake);
 	await signedIn(page);
-	await page.goto('/campaigns');
+	await page.goto('/campaigns#all');
 	await page.getByLabel('Campaign name').fill('The Long Night');
 	await page.getByRole('button', { name: 'CREATE' }).click();
 
 	await expect(page.getByRole('link', { name: 'CAMPAIGN: The Long Night' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'GM MODE' })).toBeVisible();
+	// THIS CAMPAIGN: you're its GM, with the game tools and the invite link.
+	const hero = page.getByRole('region', { name: 'Current campaign' });
+	await expect(hero).toContainText("YOU'RE IN");
+	await expect(hero).toContainText('GM');
+	const tools = page.getByRole('navigation', { name: 'Game tools' });
+	for (const label of ['COMBAT', 'NET', 'MAP', 'LORE', 'PARTY']) await expect(tools.getByRole('link', { name: new RegExp(label) })).toBeVisible();
 	await expect(page.getByLabel('Invite link')).toHaveValue(/\/join\/secret-code$/);
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
 	// Lore reads and writes go to this campaign.
 	await page.goto('/lore/new');
@@ -125,9 +139,25 @@ test('create a campaign: become its GM, get an invite, everything is scoped to i
 
 	// Switching back works.
 	await page.goto('/campaigns');
+	await page.getByRole('tab', { name: 'ALL CAMPAIGNS' }).click();
 	await page.getByRole('button', { name: /Voyage City/ }).click();
 	await expect(page.getByRole('link', { name: 'CAMPAIGN: Voyage City' })).toBeVisible();
 	await expect(page.getByRole('link', { name: 'GM MODE' })).toHaveCount(0);
+});
+
+test('on a laptop THIS CAMPAIGN and ALL CAMPAIGNS sit side by side, with no tabs', async ({ page }) => {
+	const fake = fresh();
+	await fakeSupabase(page, fake);
+	await page.setViewportSize({ width: 1280, height: 860 });
+	await page.goto('/campaigns');
+	await expect(page.getByRole('tab')).toHaveCount(0);
+	const all = page.locator('section.panel').filter({ hasText: 'ALL CAMPAIGNS' });
+	const start = page.locator('section.panel').filter({ hasText: 'START A CAMPAIGN' });
+	await expect(all.getByRole('button', { name: /Voyage City/ })).toContainText('CURRENT');
+	const hero = (await page.getByRole('region', { name: 'Current campaign' }).boundingBox())!;
+	const right = (await all.boundingBox())!;
+	expect(right.x).toBeGreaterThan(hero.x + 300); // the second column
+	await expect(start).toBeVisible();
 });
 
 test('an invite link: asks you to sign in, then joins and switches', async ({ page, context }) => {
