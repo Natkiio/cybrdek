@@ -93,6 +93,30 @@
 	const districts = $derived(
 		baseAreas.map((d) => (isVoyage ? { ...d, name: resolveDistrict(d, overrideFor(d.id), entries).name } : d))
 	);
+	// Map style: the generated concept city (drawn from the districts) or the map's
+	// own image. Remembered per campaign on this device; Voyage City opens as the concept.
+	let mapStyle = $state<'concept' | 'art' | null>(null);
+	const styleKey = (id: string) => `cybrdek:map:style:${id}`;
+	$effect(() => {
+		const id = campaign.id;
+		untrack(() => {
+			try {
+				const saved = localStorage.getItem(styleKey(id));
+				mapStyle = saved === 'concept' || saved === 'art' ? saved : null;
+			} catch {
+				mapStyle = null;
+			}
+		});
+	});
+	const conceptOn = $derived(districts.length > 0 && (mapStyle ?? (isVoyage ? 'concept' : 'art')) === 'concept');
+	function chooseStyle(next: 'concept' | 'art') {
+		mapStyle = next;
+		try {
+			localStorage.setItem(styleKey(campaign.id), next);
+		} catch {
+			// storage blocked: it just won't be remembered
+		}
+	}
 	// GM area editing (districts and wards), saved per campaign map.
 	let editingAreas = $state(false);
 	let areaStatus = $state('');
@@ -363,6 +387,7 @@
 				<g data-map-interactive class="pin" class:hidden={!pin.visible} class:selected={pin.id === selectedPinId} onclick={() => openPin(pin)} role="button" tabindex="-1">
 					<circle cx={pin.x} cy={pin.y} r={22 / scale} class="hit" />
 					<circle cx={pin.x} cy={pin.y} r={9 / scale} class="dot" style:stroke-width={2.5 / scale} />
+					{#if conceptOn}<text class="pin-name" x={pin.x + 15 / scale} y={pin.y} style:font-size="{13 / scale}px">{pin.label}</text>{/if}
 				</g>
 			{/each}
 			{#if draft}<circle cx={draft.x} cy={draft.y} r={11 / scale} class="draft" style:stroke-width={2.5 / scale} />{/if}
@@ -380,7 +405,7 @@
 			</section>
 		{:else}
 		<CityMap map={currentMap} areas={districts} immersive selectionPopup={false}
-			{outlines} focus={mapFocus} bind:selectedId={selectedDistrictId}
+			{outlines} concept={conceptOn} focus={mapFocus} bind:selectedId={selectedDistrictId}
 			onselect={(area) => {
 				selectedPinId = undefined;
 				// Districts are what you tap; a ward selects its district (the card lists its wards).
@@ -430,8 +455,15 @@
 </MapDrawer>
 <MapDrawer open={drawer === 'layers'} title="Layers" onclose={() => drawer = null}>
 	<div class="layer-options">
+		{#if districts.length}
+			<fieldset class="map-style">
+				<legend>MAP STYLE</legend>
+				<label><input type="radio" name="map-style" checked={conceptOn} onchange={() => chooseStyle('concept')} /> Concept city</label>
+				<label><input type="radio" name="map-style" checked={!conceptOn} onchange={() => chooseStyle('art')} /> Original art</label>
+			</fieldset>
+		{/if}
 		<label><input type="checkbox" bind:checked={showPins} /> Places & pins</label>
-		{#if districts.length}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
+		{#if districts.length && !conceptOn}<label><input type="checkbox" bind:checked={outlines} /> District outlines</label>{/if}
 	</div>
 	{#if gm.isGm && currentMap}
 		<button type="button" class="edit-areas" onclick={() => { drawer = null; selectedDistrictId = undefined; selectedPinId = undefined; editingAreas = true; }}>EDIT DISTRICTS & WARDS</button>
@@ -492,5 +524,11 @@
 	:global(.pin .dot) { fill: var(--bright); stroke: var(--bg-0); }
 	:global(.pin.hidden .dot) { fill: var(--bg-1); stroke: var(--bright); stroke-dasharray: 2 2; }
 	:global(.pin.selected .dot) { fill: var(--red); }
+	/* Concept city: pins are red dots with their names, like the mockup. */
+	:global(.concept .pin .dot) { fill: var(--red); stroke: var(--bg-0); }
+	:global(.concept .pin.selected .dot) { fill: var(--bright); }
+	:global(.concept .pin-name) { font-family: var(--f-mono); fill: var(--bright); dominant-baseline: middle; paint-order: stroke; stroke: var(--bg-0); stroke-width: 0.35em; pointer-events: none; }
+	.map-style { display: grid; gap: 0.25rem; border: 1px solid var(--frame-dim); padding: 0.4rem 0.75rem 0.6rem; margin: 0; }
+	.map-style legend { font-family: var(--f-label); font-size: 0.55rem; letter-spacing: 0.14em; color: var(--muted); }
 	:global(circle.draft) { fill: var(--red); stroke: var(--value); pointer-events: none; }
 </style>

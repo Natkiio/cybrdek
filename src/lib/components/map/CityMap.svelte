@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import ConceptCity from './ConceptCity.svelte';
 	import type { Snippet } from 'svelte';
 	import { pointOnMap, type MapDefinition, type MapArea as District, type Point } from '#lib/map/types.ts';
 	import { constrain, districtAt, fitMap, fitScale, focusDistrict, mapPoint, MAX_ZOOM, resizeView, zoomAt, type Size, type Transform } from '#lib/map/geometry.ts';
@@ -8,13 +9,15 @@
 
 	export type MapFocus = { area: District } | { point: Point };
 	export interface DistrictInfo { summary?: string; href?: string }
-	let { map, areas: districts, districtInfo, onselect, ontap, overlay, onpointdrag, outlines = false, selectionPopup = true, immersive = false, focus, selectedId = $bindable<string | undefined>() }: {
+	let { map, areas: districts, districtInfo, onselect, ontap, overlay, onpointdrag, outlines = false, concept = false, selectionPopup = true, immersive = false, focus, selectedId = $bindable<string | undefined>() }: {
 		immersive?: boolean;
 		focus?: MapFocus | null;
 		selectedId?: string;
 		map: MapDefinition;
 		areas: readonly District[];
 		outlines?: boolean;
+		/** Draw the generated concept city from the areas instead of the map image. */
+		concept?: boolean;
 		selectionPopup?: boolean;
 		/** Overlay handles marked data-map-handle receive image-coordinate drag events. */
 		onpointdrag?: (handle: string, point: Point, phase: 'start' | 'move' | 'end' | 'cancel') => void;
@@ -189,17 +192,25 @@
 	onpointerdown={down} onpointermove={move} onpointerup={(event) => up(event)} onpointercancel={(event) => up(event, true)}
 	onlostpointercapture={(event) => up(event, true)} onwheel={wheel} onkeydown={keys}>
 	<div class="scene" style:width="{map.width}px" style:height="{map.height}px" style:transform="translate({view.x}px, {view.y}px) scale({view.scale})">
+		{#if !concept}
 		<img src={detail && map.detailImageUrl ? map.detailImageUrl : map.imageUrl}
 			width={map.width} height={map.height} alt={map.alt ?? map.name} draggable="false" onload={() => imageError = false}
 			onerror={() => { if (detail && map.detailImageUrl) detailFailed = true; else imageError = true; }} />
-		<svg viewBox="0 0 {map.width} {map.height}" width={map.width} height={map.height} aria-hidden="true">
+		{/if}
+		<svg viewBox="0 0 {map.width} {map.height}" width={map.width} height={map.height} aria-hidden="true" class:concept>
+			{#if concept}<ConceptCity areas={districts} {map} {selectedId} scale={view.scale} uid={helpId} />{/if}
 			{#each districts as district (district.id)}
 				<polygon class:outlined={outlines} points={district.polygon.map((p) => p.join(',')).join(' ')} class:selected={selectedId === district.id} />
 			{/each}
 			{@render overlay?.(view.scale)}
 		</svg>
 	</div>
-	{#if imageError}<p class="error" role="alert">The map image could not load. Reconnect and reload this page.</p>{/if}
+	{#if concept}
+		<!-- The concept city's HUD touches: a grid readout and a centre crosshair. -->
+		<span class="hud" aria-hidden="true">{map.name.toUpperCase()} <b>/</b> GRID {Math.round(zoom * 100)}%</span>
+		<span class="crosshair" aria-hidden="true"></span>
+	{/if}
+		{#if imageError && !concept}<p class="error" role="alert">The map image could not load. Reconnect and reload this page.</p>{/if}
 	{#if selected && selectionPopup}
 		<aside class="popup" data-popup aria-label="Selected district" aria-live="polite">
 			<button class="close" type="button" aria-label="Close district popup" onclick={() => select(undefined)}>×</button>
@@ -250,6 +261,12 @@
 	polygon { fill: transparent; stroke: transparent; vector-effect: non-scaling-stroke; }
 	polygon.outlined { stroke: var(--frame); stroke-width: 1.5; }
 	polygon.selected { fill: var(--bright); fill-opacity: 0.18; stroke: var(--bright); stroke-width: 2; }
+	/* In the concept city the selected district glows red; its edges are drawn by ConceptCity. */
+	.hud { position: absolute; top: 0.75rem; left: 0.9rem; z-index: 1; font-family: var(--f-mono); font-size: 0.65rem; letter-spacing: 0.12em; color: var(--muted); pointer-events: none; }
+	.hud b { color: var(--red); font-weight: normal; }
+	.crosshair { position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; opacity: 0.45; pointer-events: none; z-index: 1;
+		background: linear-gradient(var(--muted), var(--muted)) center / 16px 1px no-repeat, linear-gradient(var(--muted), var(--muted)) center / 1px 16px no-repeat; }
+	.concept > polygon.selected { fill: var(--red); fill-opacity: 0.14; stroke: transparent; }
 	.popup { position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; max-width: 23rem; max-height: 45%; overflow-y: auto; padding: 0.8rem 3rem 0.8rem 0.9rem; border: 1px solid var(--bright-dim); background: var(--bg-1); color: var(--value); cursor: auto; user-select: text; touch-action: pan-y; }
 	.popup strong { color: var(--bright); }
 	.popup p { margin: 0.4rem 0; }

@@ -1,6 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { findPlace, expectMapFillsViewport } from './map-helpers.ts';
+import { findPlace, expectMapFillsViewport, useOriginalArt } from './map-helpers.ts';
 import { DISTRICTS, MAP_WIDTH } from '../../src/lib/map/districts.ts';
+
+// These tests cover the original map art; the concept city has its own tests.
+test.beforeEach(async ({ page }) => useOriginalArt(page));
 
 test.use({ hasTouch: true });
 
