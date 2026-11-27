@@ -347,6 +347,7 @@
 				<g data-map-interactive class="pin" class:hidden={!pin.visible} class:selected={pin.id === selectedPinId} onclick={() => openPin(pin)} role="button" tabindex="-1">
 					<circle cx={pin.x} cy={pin.y} r={22 / scale} class="hit" />
 					<circle cx={pin.x} cy={pin.y} r={9 / scale} class="dot" style:stroke-width={2.5 / scale} />
+					{#if isVoyage && schematic}<text class="pin-name" x={pin.x + 16 / scale} y={pin.y} style:font-size="{13 / scale}px">{pin.label}</text>{/if}
 				</g>
 			{/each}
 			{#if draft}<circle cx={draft.x} cy={draft.y} r={11 / scale} class="draft" style:stroke-width={2.5 / scale} />{/if}
@@ -449,5 +450,9 @@
 	:global(.pin .dot) { fill: var(--bright); stroke: var(--bg-0); }
 	:global(.pin.hidden .dot) { fill: var(--bg-1); stroke: var(--bright); stroke-dasharray: 2 2; }
 	:global(.pin.selected .dot) { fill: var(--red); }
+	/* Simple map: pins are red dots with their names, like the mockup. */
+	:global(.schematic .pin .dot) { fill: var(--red); stroke: var(--bg-0); }
+	:global(.schematic .pin.selected .dot) { fill: var(--bright); }
+	:global(.schematic .pin-name) { font-family: var(--f-mono); fill: var(--bright); text-anchor: start; dominant-baseline: middle; paint-order: stroke; stroke: var(--bg-0); stroke-width: 0.35em; pointer-events: none; }
 	:global(circle.draft) { fill: var(--red); stroke: var(--value); pointer-events: none; }
 </style>
