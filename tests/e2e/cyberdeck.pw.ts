@@ -2,6 +2,11 @@ import { test, expect, type Page } from '@playwright/test';
 import { openFold } from './sheet.ts';
 import { goToSection } from './nav.ts';
 const panel = (page: Page) => page.locator('section.panel').filter({ has: page.getByText('CYBERDECK', { exact: true }) });
+/** Deck quality and the implant/suit links live in DECK SETTINGS, folded by default (#101). */
+async function deckSettings(page: Page) {
+ const settings = panel(page).locator('details.more').filter({ hasText: 'DECK SETTINGS' });
+ if ((await settings.getAttribute('open')) === null) await settings.locator('summary').click();
+}
 async function seed(page: Page, links = false) {
  await page.context().route(/supabase\.co/, route => route.abort());
  await page.goto('/characters'); await expect(page.getByRole('heading').first()).toBeVisible();
@@ -31,6 +36,7 @@ async function addCopy(page: Page) { await panel(page).getByRole('button', { nam
 test('device loadout: duplicates, shared hardware budget, refusal restores quality select, offline reload', async ({ page, context }, testInfo) => {
  await seed(page); const deck = panel(page);
  await deck.getByRole('button', { name: '+ CYBERDECK', exact: true }).click();
+ await deckSettings(page);
  await deck.getByLabel('Deck quality').selectOption('poor');
  await deck.getByLabel('Program to add').selectOption('sword');
  for (let i=0; i<5; i++) await addCopy(page);
@@ -46,11 +52,14 @@ test('device loadout: duplicates, shared hardware budget, refusal restores quali
  await deck.getByRole('button', { name: 'FIT HARDWARE' }).click();
  await expect(deck.getByRole('button', { name: 'Remove Backup Drive', exact: true })).toBeVisible();
  await expect(deck.getByRole('status')).toContainText('3 program slots + 2 hardware slots used · 0 shared slots free');
+ await deckSettings(page);
  await deck.getByLabel('Deck quality').selectOption('standard');
  await deck.getByRole('button', { name: 'Load Sword', exact: true }).first().click();
  await deck.getByRole('button', { name: 'Load Sword', exact: true }).first().click();
+ await deckSettings(page);
  await deck.getByLabel('Deck quality').selectOption('poor');
  await expect(deck.getByRole('alert')).toContainText('Not enough deck slots');
+ await deckSettings(page);
  await expect(deck.getByLabel('Deck quality')).toHaveValue('standard');
  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
  await page.screenshot({ path: testInfo.outputPath('cyberdeck-mobile.png'), fullPage: true });
@@ -72,11 +81,16 @@ test('explicit implant and suit links add the right slot types without applying 
  await seed(page,true); const deck = panel(page);
  await deck.getByLabel('Existing gear for deck').selectOption('spare-deck');
  await deck.getByRole('button', { name: 'CONFIGURE AS DECK', exact: true }).click();
+ await deck.locator('details.more').filter({ hasText: 'ADD ANOTHER DECK' }).locator('summary').click(); // now folded away
  await expect(deck.getByRole('button', { name: 'CONFIGURE AS DECK', exact: true })).toBeDisabled();
  expect((await stored(page)).extra.gear.find((g: any) => g.id === 'spare-deck').notes).toBe('retain my notes');
+ await deckSettings(page);
  await deck.getByLabel('Deck quality').selectOption('poor');
+ await deckSettings(page);
  await deck.getByLabel('Cyberdeck implant link').selectOption('implant');
+ await deckSettings(page);
  await deck.getByLabel('Bodyweight Suit link').selectOption('suit');
+ await deckSettings(page);
  await expect(deck).toContainText('Capacity: 6 shared + 1 hardware-only');
  await deck.getByLabel('Program to add').selectOption('worm');
  for (let i=0;i<6;i++) await addCopy(page);
