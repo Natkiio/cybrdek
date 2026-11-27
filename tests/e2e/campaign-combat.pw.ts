@@ -128,6 +128,8 @@ test('GM runs a campaign fight; a second session sees only server-redacted updat
 		await gm.page.getByRole('button', { name: 'ADD NPC' }).click();
 		await expect(fightPanel(player.page).getByText('Secret NPC', { exact: true })).toBeVisible();
 		for (const [name, init] of [['Secret NPC', '20'], ['Vex', '12'], ['Kit', '10']]) {
+			// Turn console: pick someone in the queue, then set their initiative in the panel.
+			await gm.page.getByRole('list', { name: 'Initiative queue' }).getByRole('button', { name: new RegExp(name) }).click();
 			await gm.page.getByLabel(`Initiative for ${name}`).fill(init); await gm.page.getByLabel(`Initiative for ${name}`).blur();
 			await expect.poll(() => cloud.fight?.encounter.combatants.find(c => c.name === name)?.initiative).toBe(Number(init));
 		}
@@ -135,10 +137,11 @@ test('GM runs a campaign fight; a second session sees only server-redacted updat
 		await expect(fightPanel(player.page)).toContainText('ROUND 1');
 		await gm.page.getByRole('button', { name: 'NEXT TURN →' }).click();
 		await expect(fightPanel(player.page).locator('li.current')).toContainText('Vex');
-		await gm.page.locator('li.card').filter({ hasText: 'Vex' }).getByRole('button', { name: /Vex/ }).click();
+		// Vex is up, so the console's panel is already Vex's.
+		await expect(gm.page.getByText('Up now:')).toContainText('Vex');
 		await gm.page.getByLabel('Amount for Vex').fill('5');
 		await gm.page.getByLabel('Hit location for Vex').selectOption('direct');
-		await gm.page.locator('li.card').filter({ hasText: 'Vex' }).getByRole('button', { name: 'DAMAGE', exact: true }).click();
+		await gm.page.getByRole('button', { name: 'DAMAGE', exact: true }).click();
 		await expect(fightPanel(player.page)).toContainText('YOUR CHARACTER · HP 35/40 · SP 0/0');
 		const body = cloud.reads.filter(r => r.who === PLAYER).at(-1)!.body as any;
 		const enemy = body.encounter.combatants.find((c: any) => c.name === 'Secret NPC');
@@ -149,6 +152,7 @@ test('GM runs a campaign fight; a second session sees only server-redacted updat
 		expect(cloud.requests.filter(r => r.who === PLAYER && /\/characters$|\/campaign_encounters$/.test(r.path))).toEqual([]);
 		expect(cloud.writes.every(w => w.who === GM)).toBe(true);
 		expect(await player.page.evaluate(() => localStorage.getItem('cybrdek:encounter'))).toBeNull();
+		await gm.page.getByText('SET UP THE FIGHT', { exact: true }).click(); // ending is tucked away with setup once fighting
 		await gm.page.getByRole('button', { name: 'END ENCOUNTER', exact: true }).click();
 		await gm.page.getByRole('button', { name: 'CONFIRM: END ENCOUNTER' }).click();
 		await expect(player.page.getByRole('status').filter({ hasText: 'ENCOUNTER ENDED' })).toBeVisible();

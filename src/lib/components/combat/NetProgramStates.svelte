@@ -6,13 +6,15 @@
 	let {
 		encounter,
 		disabled,
+		only = null,
 		oncommand
 	}: {
 		encounter: Encounter;
 		disabled: boolean;
+		only?: string | null; // show just this combatant (the turn console's selection)
 		oncommand: (fn: () => Encounter) => void | Promise<void>;
 	} = $props();
-	const participants = $derived(encounter.combatants.filter((c) => c.net));
+	const participants = $derived(encounter.combatants.filter((c) => c.net && (!only || c.id === only)));
 </script>
 
 {#each participants as c (c.id)}
