@@ -286,3 +286,43 @@ test('turn console: act on someone else, jump back, and NEXT TURN follows whoeve
 	await expect(page.getByRole('button', { name: 'NEXT TURN →' })).toHaveCount(1); // in the turn bar now, not the phone's bottom bar
 	await page.screenshot({ path: info.outputPath('console-laptop.png') });
 });
+test('turn console: long names wrap, the panel follows a new Round, and the laptop always has a roll log', async ({ page }) => {
+	await connect(page.context(), GM);
+	// Real dice here: two NPCs with a fixed roll would tie on initiative forever.
+	// Laptop, before any encounter: the roll log is there.
+	await page.setViewportSize({ width: 1280, height: 860 });
+	await page.goto('/combat');
+	await expect(page.getByRole('button', { name: 'NEW ENCOUNTER', exact: true })).toBeVisible();
+	await expect(page.getByText('ROLL LOG', { exact: true })).toBeVisible();
+
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.getByRole('button', { name: 'NEW ENCOUNTER', exact: true }).click();
+	const long = 'W'.repeat(60);
+	for (const name of [long, 'Lone Wolf']) {
+		await page.getByLabel('NPC NAME').fill(name);
+		await page.getByRole('button', { name: 'ADD NPC' }).click();
+	}
+	const row = (name: string) =>
+		page.getByRole('list', { name: 'Initiative queue' }).getByRole('button', { name: new RegExp(name) });
+	await row(long).click();
+	await expect(page.getByText(`SELECTED · ${long}`)).toBeVisible();
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+	// Knock the long-named NPC out, so Lone Wolf is the only one left acting.
+	await expect(page.getByRole('list', { name: 'Initiative queue' }).getByRole('button')).toHaveCount(2);
+	await expect(page.getByRole('button', { name: 'START FIGHT', exact: true })).toBeEnabled();
+	await page.getByRole('button', { name: 'START FIGHT', exact: true }).click();
+	await expect(page.getByText('Up now:')).toBeVisible();
+	await row(long).click();
+	await page.getByText(/⋯ MANAGE/).click();
+	await page.getByRole('button', { name: 'KNOCK OUT' }).click();
+	await expect(row(long)).toContainText('Out of the fight');
+	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+	// Whoever's up, select the out NPC and advance until Lone Wolf is up in a new Round.
+	for (let i = 0; i < 3; i++) {
+		await row(long).click();
+		await page.getByRole('button', { name: 'NEXT TURN →' }).click();
+		await expect(page.getByText('Up now:')).toContainText('Lone Wolf');
+		await expect(page.getByText('UP NOW · Lone Wolf')).toBeVisible();
+	}
+});

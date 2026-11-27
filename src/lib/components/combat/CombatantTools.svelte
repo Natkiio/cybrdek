@@ -133,6 +133,8 @@
 	.tools {
 		display: grid;
 		gap: 0.6rem;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 
 	.group {
@@ -169,6 +171,13 @@
 		min-width: 0;
 	}
 
+	/* Buttons that carry a name (MARK DEAD: …) wrap rather than widen the page. */
+	button {
+		max-width: 100%;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+
 	.row input {
 		width: 6rem;
 	}
@@ -197,6 +206,7 @@
 	}
 
 	.manage summary {
+		overflow-wrap: anywhere;
 		cursor: pointer;
 		min-height: 44px;
 		display: flex;

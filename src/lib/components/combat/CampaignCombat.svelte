@@ -72,11 +72,21 @@
 	);
 	// A new Turn brings the panel back to whoever's up. Every save brings a new
 	// fight object, so watch only the id: a derived value only changes when it does.
-	const currentId = $derived(managed?.currentId ?? null);
+	// The Round counts too: with one combatant left, NEXT TURN keeps the same id.
+	const turnKey = $derived(`${managed?.round ?? 0}:${managed?.currentId ?? ''}`);
 	$effect(() => {
-		void currentId;
+		void turnKey;
 		untrack(() => (selectedId = null));
 	});
+	/** Move the Turn on or back; either way the panel goes to whoever's up. */
+	function turn(next: Encounter) {
+		selectedId = null;
+		return edit(next);
+	}
+	// The console (and its sidebar roll log) only shows for a live fight the GM runs.
+	const consoleOpen = $derived(
+		!!(combat.view?.canManage && combat.view.id && !combat.view.ended && managed)
+	);
 	const isSecurity = (c: Combatant) => c.net?.kind === 'ice' || c.net?.kind === 'demon';
 	function statusOf(c: Combatant) {
 		if (isSecurity(c)) return c.hp === 0 ? 'Derezzed' : c.net?.kind === 'ice' ? 'Black ICE' : 'Demon';
@@ -162,8 +172,8 @@
 					<span class="round">ROUND {fight.round}</span>
 					<span class="now">Up now: <strong>{current?.name ?? '—'}</strong></span>
 					{#if wide}
-						<button type="button" onclick={() => edit(previousTurn(fight))}>← BACK</button>
-						<button type="button" class="primary" onclick={() => edit(beginNetTurn(nextTurn(endNetTurn(fight))))}
+						<button type="button" onclick={() => turn(previousTurn(fight))}>← BACK</button>
+						<button type="button" class="primary" onclick={() => turn(beginNetTurn(nextTurn(endNetTurn(fight))))}
 							>NEXT TURN →</button
 						>
 					{/if}
@@ -276,8 +286,8 @@
 			{#if fight.started && !wide}
 				<!-- NEXT TURN within thumb reach on a phone. -->
 				<div class="bottombar">
-					<button type="button" onclick={() => edit(previousTurn(fight))}>← BACK</button>
-					<button type="button" class="primary" onclick={() => edit(beginNetTurn(nextTurn(endNetTurn(fight))))}>NEXT TURN →</button>
+					<button type="button" onclick={() => turn(previousTurn(fight))}>← BACK</button>
+					<button type="button" class="primary" onclick={() => turn(beginNetTurn(nextTurn(endNetTurn(fight))))}>NEXT TURN →</button>
 				</div>
 			{/if}
 		</fieldset>
@@ -288,7 +298,7 @@
 		fightVersion={`${combat.view.id}:${combat.view.revision}`}
 	/>
 {/if}
-{#if !(managed && wide)}<RollLog />{/if}
+{#if !(consoleOpen && wide)}<RollLog />{/if}
 
 <style>
 	fieldset {
@@ -469,7 +479,10 @@
 	}
 
 	/* Whoever's up is framed in red; someone else you're acting on, in white. */
+	/* Long names (NPCs allow 60 characters) wrap inside the panel, never widen the page. */
 	.actor {
+		min-width: 0;
+		overflow-wrap: anywhere;
 		border: 1px solid var(--frame-dim);
 		background: var(--bg-1);
 		padding: 0.75rem 0.85rem 0.25rem;
@@ -480,8 +493,16 @@
 		border-color: var(--red);
 	}
 
+	.actor :global(header) {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
 	.back {
 		margin-bottom: 0.6rem;
+		max-width: 100%;
+		white-space: normal;
+		overflow-wrap: anywhere;
 	}
 
 	.setup > summary {
