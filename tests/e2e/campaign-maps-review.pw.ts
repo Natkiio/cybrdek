@@ -4,6 +4,8 @@ import { goToSection } from './nav.ts';
 // Campaign maps (#62): fixes from the review of #99, adapted from the reviewer's
 // reproductions to assert the fixed behaviour. Supabase, including Storage, is faked.
 test.use({ serviceWorkers: 'block' });
+import { findPlace, openLayers, closeLayers } from './map-helpers.ts';
+
 const REF = 'hntlvhspyllaaidvxlox';
 const GAME = 'c0000000-0000-4000-8000-000000000002';
 
@@ -140,6 +142,7 @@ async function pngOf(page: Page, width: number, height: number): Promise<Buffer>
 }
 
 async function uploadAs(page: Page, name: string, width: number, height: number) {
+	await openLayers(page);
 	const panel = page.locator('section.panel').filter({ hasText: 'MAPS' }).last();
 	await panel.getByLabel('Map name').fill(name);
 	await panel.getByLabel('Map image').setInputFiles({ name: 'map.png', mimeType: 'image/png', buffer: await pngOf(page, width, height) });
@@ -209,12 +212,15 @@ test('showing another map closes the pin editor, so nothing is saved onto the wr
 	await expect(page.getByRole('heading', { name: 'Map B' })).toBeVisible();
 	await manager.locator('li').filter({ hasText: 'Map A' }).getByRole('button', { name: 'SHOW THIS ONE' }).click();
 	await expect(page.getByRole('heading', { name: 'Map A' })).toBeVisible();
-	await page.locator('details.places summary').click();
-	await page.getByRole('button', { name: 'A secret location', exact: true }).click();
+	await closeLayers(page);
+	await findPlace(page, 'A secret location');
+	await page.getByRole('button', { name: 'EDIT PIN', exact: true }).click();
 	await expect(page.getByText('EDIT PIN', { exact: true })).toBeVisible();
-	await manager.locator('li').filter({ hasText: 'Map B' }).getByRole('button', { name: 'SHOW THIS ONE' }).click();
+	// Another GM changes the active map while this device is editing. Reconnect refetches it.
+	fake.maps.forEach(m => m.active = m.name === 'Map B');
+	await page.evaluate(() => window.dispatchEvent(new Event('online')));
 	await expect(page.getByRole('heading', { name: 'Map B' })).toBeVisible();
-	await expect(page.getByText('EDIT PIN', { exact: true })).toHaveCount(0);
+	await expect(page.getByRole('dialog', { name: 'Pin details', exact: true })).not.toBeVisible();
 	await expect(page.getByText('A secret location')).toHaveCount(0);
 	expect(fake.pinUpdates).toEqual([]);
 });
@@ -230,7 +236,8 @@ test("reloading a remembered map loads it once and shows its pins", async ({ pag
 	const before = fake.mapReads ?? 0;
 	await page.reload();
 	await expect(page.getByRole('heading', { name: 'Reload Map' })).toBeVisible();
-	await expect(page.locator('details.places')).toContainText('PLACES');
+	await findPlace(page, 'Must survive reload');
+	await expect(page.getByLabel('Selected place')).toContainText('Must survive reload');
 	await page.waitForTimeout(1000);
 	expect((fake.mapReads ?? 0) - before).toBeLessThanOrEqual(3);
 });
