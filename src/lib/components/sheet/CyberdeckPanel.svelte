@@ -135,7 +135,8 @@
 				<div class="actions"><button type="button" onclick={() => change({ ...deck!, hardware: [...deck!.hardware, { id: crypto.randomUUID(), defId: hardwareId }] })}>FIT HARDWARE</button></div>
 			</div>
 
-			<details class="more">
+			<!-- Opens itself when a link needs fixing, since the fix lives here. -->
+			<details class="more" open={slots.warnings.length > 0}>
 				<summary>DECK SETTINGS</summary>
 				<label>Deck quality <select aria-label="Deck quality" value={deck.quality} onchange={e => selectChange(e, 'quality')}>
 					{#each DECK_TYPES as t}<option value={t.id}>{t.name} · {t.slots} slots · {t.cost} eb</option>{/each}
