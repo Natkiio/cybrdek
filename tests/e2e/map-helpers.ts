@@ -34,3 +34,8 @@ export async function expectMapFillsViewport(page: Page) {
 		expect(box.height).toBeGreaterThanOrEqual(44);
 	}
 }
+
+/** Show the detailed map art instead of the default simple schematic (for tests of the image itself). */
+export async function useMapArt(page: Page) {
+	await page.addInitScript(() => localStorage.setItem('cybrdek:map:schematic', '0'));
+}
